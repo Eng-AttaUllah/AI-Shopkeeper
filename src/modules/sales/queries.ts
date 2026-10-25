@@ -1,22 +1,37 @@
 import type { Sale, SaleItem } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
 
-export type SaleWithItems = Sale & { items: SaleItem[] };
+export type SaleCustomer = {
+  id: string;
+  name: string;
+  phone: string | null;
+};
+
+export type SaleWithItems = Sale & {
+  items: SaleItem[];
+  customer: SaleCustomer | null;
+};
 
 /** Recent sales, newest first, with the number of lines in each. */
 export async function listSales(take = 50) {
   return prisma.sale.findMany({
     orderBy: { createdAt: "desc" },
     take,
-    include: { _count: { select: { items: true } } },
+    include: {
+      _count: { select: { items: true } },
+      customer: { select: { id: true, name: true } },
+    },
   });
 }
 
-/** One sale with its lines in receipt order. */
+/** One sale with its lines in receipt order and the credit customer. */
 export async function getSale(id: string): Promise<SaleWithItems | null> {
   return prisma.sale.findUnique({
     where: { id },
-    include: { items: { orderBy: { position: "asc" } } },
+    include: {
+      items: { orderBy: { position: "asc" } },
+      customer: { select: { id: true, name: true, phone: true } },
+    },
   });
 }
 

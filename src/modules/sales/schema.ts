@@ -34,8 +34,9 @@ export const createSaleSchema = z.object({
     .max(50, "A sale can have at most 50 lines"),
   discount: moneyField.default("0"),
   paid: moneyField.optional(),
-  // Credit sales arrive in Phase 3. Until then the server only accepts cash.
-  paymentMethod: z.literal("CASH"),
+  paymentMethod: z.enum(["CASH", "CREDIT"]),
+  /// Required for credit sales; ignored for cash.
+  customerId: z.string().min(1).optional(),
   note: optionalText(200),
 });
 
