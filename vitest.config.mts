@@ -11,5 +11,11 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["tests/**/*.test.ts"],
+    // Tests share one SQLite file, so they must not run in parallel.
+    fileParallelism: false,
+    env: {
+      DATABASE_URL: "file:./prisma/test.db",
+    },
+    globalSetup: ["./tests/global-setup.ts"],
   },
 });

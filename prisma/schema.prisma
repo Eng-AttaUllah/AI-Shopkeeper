@@ -1,8 +1,8 @@
 // Prisma schema for AI Shopkeeper Assistant.
 // See docs/architecture.md for the storage model and invariants.
 //
-// Phase 0 contains only the Shop model, which proves the database connection
-// works. Business models (Product, Sale, Customer, ...) arrive in later phases.
+// Quantities are stored as integer thousandths of a unit (1.5 kg = 1500) so
+// that stock arithmetic is exact. Money is stored as integer paisa.
 
 generator client {
   provider = "prisma-client"
@@ -21,4 +21,66 @@ model Shop {
   timezone  String   @default("Asia/Karachi")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+/// A sellable item. Stock is never written directly: every change goes through
+/// a StockMovement in the same transaction (invariant 6).
+model Product {
+  id        String  @id @default(cuid())
+  name      String
+  /// Lowercased, whitespace-collapsed name used to reject near-duplicates.
+  nameNormalized String @unique
+  category  String?
+  barcode   String? @unique
+  /// kg | litre | piece | packet
+  unit      String
+  costPricePaisa Int
+  salePricePaisa Int
+  /// Cached stock in thousandths of `unit`. Recomputed by reconcileStock().
+  stockMilli Int @default(0)
+  /// Alert threshold in thousandths of `unit`.
+  lowStockMilli Int @default(0)
+  imagePath String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  aliases        ProductAlias[]
+  stockMovements StockMovement[]
+
+  @@index([isActive, name])
+  @@map("products")
+}
+
+/// Alternative names for a product, so search matches how people actually talk.
+model ProductAlias {
+  id        String   @id @default(cuid())
+  productId String
+  alias     String
+  createdAt DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, alias])
+  @@index([alias])
+  @@map("product_aliases")
+}
+
+/// An immutable record of a stock change. `quantityMilli` is signed:
+/// positive for stock coming in, negative for stock going out.
+model StockMovement {
+  id            String   @id @default(cuid())
+  productId     String
+  quantityMilli Int
+  /// OPENING | ADJUSTMENT | SALE | VOID | RETURN
+  reason        String
+  /// Source record id (sale id, etc.) when applicable.
+  reference     String?
+  note          String?
+  createdAt     DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([productId, createdAt])
+  @@map("stock_movements")
 }
