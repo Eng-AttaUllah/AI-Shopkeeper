@@ -1,0 +1,43 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens. Every component must use these variables or the Tailwind
+ * utilities generated from them. No hardcoded colours. See docs/ui-context.md.
+ */
+:root {
+  --bg-base: #f7f7f5;
+  --bg-surface: #ffffff;
+  --bg-subtle: #f1f1ee;
+  --text-primary: #17181a;
+  --text-muted: #6b7280;
+  --accent-primary: #0f766e;
+  --accent-hover: #115e59;
+  --accent-soft: #e6f4f1;
+  --border-default: #e4e4e7;
+  --state-error: #dc2626;
+  --state-warning: #b45309;
+  --state-success: #16a34a;
+}
+
+@theme inline {
+  --color-page: var(--bg-base);
+  --color-surface: var(--bg-surface);
+  --color-subtle: var(--bg-subtle);
+  --color-ink: var(--text-primary);
+  --color-muted: var(--text-muted);
+  --color-accent: var(--accent-primary);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-soft: var(--accent-soft);
+  --color-line: var(--border-default);
+  --color-error: var(--state-error);
+  --color-warning: var(--state-warning);
+  --color-success: var(--state-success);
+
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+}

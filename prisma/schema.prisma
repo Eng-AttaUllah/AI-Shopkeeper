@@ -1,0 +1,24 @@
+// Prisma schema for AI Shopkeeper Assistant.
+// See docs/architecture.md for the storage model and invariants.
+//
+// Phase 0 contains only the Shop model, which proves the database connection
+// works. Business models (Product, Sale, Customer, ...) arrive in later phases.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+/// The single shop this installation serves.
+model Shop {
+  id        String   @id @default(cuid())
+  name      String
+  currency  String   @default("PKR")
+  timezone  String   @default("Asia/Karachi")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
