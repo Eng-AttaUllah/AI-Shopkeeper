@@ -19,8 +19,8 @@ export default async function Home() {
         </p>
         <h1 className="mt-1 text-3xl font-semibold">Shop overview</h1>
         <p className="mt-2 text-ink-muted">
-          Record sales, watch stock, and keep prices up to date. Customers,
-          credit, and reports arrive in the next phases.
+          Record sales, watch stock, keep prices up to date, and track customer
+          credit (khata).
         </p>
         <div className="mt-4 flex flex-wrap gap-3">
           <Link
@@ -39,6 +39,15 @@ export default async function Home() {
             })}
           >
             Products
+          </Link>
+          <Link
+            href="/customers"
+            className={buttonVariants({
+              variant: "outline",
+              className: "h-11 px-4 text-base",
+            })}
+          >
+            Customers
           </Link>
         </div>
       </header>
@@ -94,7 +103,7 @@ export default async function Home() {
 
       <footer className="text-sm text-ink-muted">
         Specification: <code className="font-mono">docs/</code> · Next step:
-        Phase 3 — customers and credit.
+        Phase 4 — dashboard and reports.
       </footer>
     </main>
   );

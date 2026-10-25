@@ -40,5 +40,10 @@ export async function createSaleAction(
   revalidatePath("/products");
   revalidatePath("/sales");
 
+  if (result.data.customerId) {
+    revalidatePath("/customers");
+    revalidatePath(`/customers/${result.data.customerId}`);
+  }
+
   redirect(`/sales/${result.data.id}`);
 }

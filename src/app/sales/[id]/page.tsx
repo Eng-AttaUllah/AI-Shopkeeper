@@ -38,6 +38,17 @@ export default async function SaleReceiptPage({
           <p className="mt-1 text-sm text-ink-muted">
             {formatDateTime(sale.createdAt)}
           </p>
+          {sale.customer ? (
+            <p className="mt-1 text-sm font-medium">
+              Customer:{" "}
+              <Link
+                href={`/customers/${sale.customer.id}`}
+                className="text-brand hover:text-brand-hover"
+              >
+                {sale.customer.name}
+              </Link>
+            </p>
+          ) : null}
         </div>
         <Badge variant="secondary">
           {sale.paymentMethod === "CASH" ? "Cash" : "Credit"}
@@ -87,14 +98,31 @@ export default async function SaleReceiptPage({
             <dt>Total</dt>
             <dd className="tabular-nums">{formatPaisa(sale.totalPaisa)}</dd>
           </div>
-          <div className="flex justify-between">
-            <dt className="text-ink-muted">Cash received</dt>
-            <dd className="tabular-nums">{formatPaisa(sale.paidPaisa)}</dd>
-          </div>
-          <div className="flex justify-between">
-            <dt className="text-ink-muted">Change</dt>
-            <dd className="tabular-nums">{formatPaisa(sale.changePaisa)}</dd>
-          </div>
+          {sale.paymentMethod === "CREDIT" ? (
+            <>
+              <div className="flex justify-between">
+                <dt className="text-ink-muted">Paid now</dt>
+                <dd className="tabular-nums">{formatPaisa(sale.paidPaisa)}</dd>
+              </div>
+              <div className="flex justify-between font-medium">
+                <dt className="text-error">Added to khata</dt>
+                <dd className="tabular-nums text-error">
+                  {formatPaisa(sale.totalPaisa - sale.paidPaisa)}
+                </dd>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="flex justify-between">
+                <dt className="text-ink-muted">Cash received</dt>
+                <dd className="tabular-nums">{formatPaisa(sale.paidPaisa)}</dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="text-ink-muted">Change</dt>
+                <dd className="tabular-nums">{formatPaisa(sale.changePaisa)}</dd>
+              </div>
+            </>
+          )}
         </dl>
 
         {sale.note ? (

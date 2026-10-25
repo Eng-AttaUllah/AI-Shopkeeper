@@ -57,6 +57,7 @@ export default async function SalesPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Receipt</TableHead>
+                  <TableHead>Customer</TableHead>
                   <TableHead>When</TableHead>
                   <TableHead>Items</TableHead>
                   <TableHead>Total</TableHead>
@@ -73,6 +74,18 @@ export default async function SalesPage() {
                           Voided
                         </Badge>
                       ) : null}
+                    </TableCell>
+                    <TableCell>
+                      {sale.customer ? (
+                        <Link
+                          href={`/customers/${sale.customer.id}`}
+                          className="font-medium text-brand hover:text-brand-hover"
+                        >
+                          {sale.customer.name}
+                        </Link>
+                      ) : (
+                        <span className="text-ink-muted">Cash</span>
+                      )}
                     </TableCell>
                     <TableCell className="text-ink-muted">
                       {formatDateTime(sale.createdAt)}
@@ -106,12 +119,19 @@ export default async function SalesPage() {
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="font-medium">{sale.number}</p>
+                    {sale.customer ? (
+                      <p className="text-sm font-medium text-brand">
+                        {sale.customer.name}
+                      </p>
+                    ) : null}
                     <p className="text-sm text-ink-muted">
                       {formatDateTime(sale.createdAt)}
                     </p>
                   </div>
                   {sale.voidedAt ? (
                     <Badge variant="destructive">Voided</Badge>
+                  ) : sale.paymentMethod === "CREDIT" ? (
+                    <Badge variant="secondary">Credit</Badge>
                   ) : null}
                 </div>
                 <div className="mt-3 flex items-center justify-between text-sm">

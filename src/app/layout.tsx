@@ -60,6 +60,12 @@ export default function RootLayout({
               >
                 Sales
               </Link>
+              <Link
+                href="/customers"
+                className="text-ink-muted transition-colors hover:text-ink"
+              >
+                Customers
+              </Link>
             </nav>
           </div>
         </header>
