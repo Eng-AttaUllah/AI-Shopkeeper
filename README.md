@@ -80,7 +80,8 @@ The specification is the source of truth:
 
 ## Status
 
-Phase 1 — products and stock complete: product list with search and low-stock warnings, add
-and edit screens, stock adjustments backed by movement rows, and 38 passing tests.
+Phase 2 — sales complete: a touch-friendly sell screen with search and aliases, cart and
+quantity editing, discounts, cash and change, a receipt view, and stock movements written in
+the same transaction. 53 tests pass.
 
-Next: Phase 2 — sales and billing.
+Next: Phase 3 — customers and credit.

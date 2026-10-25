@@ -4,11 +4,11 @@ Update this file after every meaningful implementation change.
 
 ## Current Phase
 
-- Phase 2 — Sales: **Not started**
+- Phase 3 — Customers and credit: **Not started**
 
 ## Current Goal
 
-- Nothing in progress. Phase 1 is complete and verified end to end.
+- Nothing in progress. Phase 2 is complete and verified end to end.
 
 ## Completed
 
@@ -64,26 +64,65 @@ Update this file after every meaningful implementation change.
   stock, hide/show product. Test records were removed from `prisma/dev.db` afterwards.
 - `npm run typecheck`, `npm run lint`, `npm test`, and `npm run build` all pass.
 
+### Phase 2 — Sales (complete)
+
+- `Sale` and `SaleItem` models with migration `20261025102527_add_sales`. Each line stores
+  `productName`, `unit`, `unitPricePaisa`, and `unitCostPaisa` snapshots plus the line total
+  and line cost (invariant 5). `voidedAt` / `voidedReason` are reserved for Phase 5.
+- `src/lib/dates.ts` — `dateKeyInKarachi` for sale numbering; `formatDateTime` added to
+  `src/lib/format.ts`.
+- `src/lib/zod.ts` — shared `fieldErrors` helper, now used by both modules.
+- `src/modules/sales/schema.ts` — cart payload, discount, cash, and note validation. Credit is
+  rejected until Phase 3.
+- `src/modules/sales/service.ts` — `createSale` in one transaction: re-reads products, rejects
+  missing/inactive/short lines, merges duplicate lines, snapshots price and cost, applies the
+  discount, computes change, writes the sale and lines, decrements stock, and writes one
+  `SALE` movement per line with the sale id as reference (invariants 2, 3, 5, 6).
+- `src/modules/sales/queries.ts` — `listSales`, `getSale` in receipt order, `saleSubtotalPaisa`,
+  and `saleProfitPaisa` from the cost snapshots.
+- `src/modules/products/queries.ts` — `listSellableProducts` for the sell screen.
+- `/sell` — search by name, category, or alias; product grid with price and remaining stock;
+  cart with +/− and quantity entry; discount; cash received with change; sticky mobile bottom
+  bar showing the total and **Complete sale**.
+- `/sales` — last 50 sales with receipt number, time, line count, and total; responsive table
+  and cards.
+- `/sales/[id]` — receipt with line snapshots, subtotal, discount, total, cash, change, and
+  note.
+- `createSaleAction` in `src/app/sales/actions.ts`; revalidates `/sell`, `/products`, and
+  `/sales`, then redirects to the receipt.
+- Header navigation now includes Sell and Sales; the home page links to both.
+- Tests: 53 passing across 6 files, including atomic rollback, insufficient stock, inactive
+  products, duplicate-line merging, fractional quantities, snapshots surviving price changes,
+  sequential daily numbers, and cash/discount validation.
+- Verified end to end against the dev server: a two-item sale (2 kg Sugar + 3 Soap, Rs. 50
+  discount, Rs. 600 cash) produced receipt `20261025-0001`, subtotal Rs. 545.00, total
+  Rs. 495.00, change Rs. 105.00, stock 10 → 8 kg and 20 → 17 pcs, and appeared in the sales
+  list. An over-sell of 100 kg was rejected with "Only 8 kg of Sugar in stock." and wrote
+  nothing. Test records were removed from `prisma/dev.db` afterwards.
+- `npm run typecheck`, `npm run lint`, `npm test`, and `npm run build` all pass.
+
 ## In Progress
 
 - None.
 
 ## Next Up
 
-Phase 2 — Sales, in this order:
+Phase 3 — Customers and credit, in this order:
 
-1. Add `Sale` and `SaleItem` models (with `unitPricePaisa` and `unitCostPaisa` snapshots) and
-   one migration. Sales are voided, never edited, so plan the `voidedAt` field now.
-2. Add `src/modules/sales/schema.ts` for the cart payload (product id, quantity, discount) and
-   the payment amount.
-3. Add `src/modules/sales/service.ts` with one `createSale` transaction that re-reads stock,
-   refuses quantities above stock, decrements each product, writes a `SALE` stock movement per
-   line, snapshots cost and price, and records the total. Voiding is scheduled for Phase 5.
-4. Add `src/modules/sales/queries.ts` for the sale list and one sale with its lines.
-5. Build the sell screen: product search, cart with quantity editing, total, complete-sale
-   button, and a receipt view.
-6. Tests: atomic rollback when one line is short on stock, stock decremented exactly once,
-   snapshot survives a later price change, money totals use integer paisa.
+1. Add `Customer` and `Payment` models, add a nullable `customerId` to `Sale`, and create one
+   migration. A credit sale needs the unpaid amount to be derivable from the sale and its
+   payments, never stored twice.
+2. Add `src/modules/customers/schema.ts` for customer details and repayment input.
+3. Add `src/modules/customers/service.ts`: create/update a customer, record a repayment in one
+   transaction, and reject overpayment. Extend `createSale` to accept `CREDIT` with a customer
+   and a partial payment, keeping the stock and money writes atomic (invariant 2).
+4. Add `src/modules/customers/queries.ts`: search by name or phone, balance per customer
+   (credit sales minus payments), and transaction history.
+5. Build the customer list, customer detail with history, repayment form, and the Cash/Credit
+   choice on the sell screen. Credit sales require choosing or creating a customer.
+6. Tests: a credit sale raises the balance by exactly the unpaid amount, a repayment lowers it
+   by exactly the amount paid, overpayment is rejected, cash sales leave balances untouched,
+   and a failed credit sale writes nothing.
 
 ## Open Questions
 
@@ -150,6 +189,20 @@ Phase 2 — Sales, in this order:
   JavaScript. The shadcn `select` component stays available for non-form controls.
 - **Action state is a discriminated union.** Server actions return `{ ok: true }` or
   `{ ok: false, error, fieldErrors }`, matching the result rule in `code-standards.md`.
+- **Sale numbers are `YYYYMMDD-NNNN` per shop day.** Generated inside the sale transaction
+  from that day's sale count, with the unique index as a safety net. They are readable for
+  end-of-day cash reconciliation.
+- **The server never trusts client prices.** The cart payload carries only product id and
+  quantity. Price and cost are read from the product row inside the transaction, so a tampered
+  or stale browser cannot change what is charged.
+- **Sale totals are stored; derived sums are not.** `totalPaisa`, `discountPaisa`, `paidPaisa`,
+  and `changePaisa` are records. Subtotal and profit are computed from the immutable lines, so
+  there is no second source of truth to keep in sync.
+- **Cash only until Phase 3.** `paidPaisa`, `changePaisa`, and `paymentMethod` are already in
+  the schema. Credit is additive: a nullable `customerId`, a relaxed paid check, and the
+  customer balance in the same transaction.
+- **Duplicate cart lines are merged server-side.** The stock check runs once per product, so
+  two lines of the same item cannot each pass separately and oversell.
 
 ## Session Notes
 
@@ -172,6 +225,9 @@ Phase 2 — Sales, in this order:
 - Restart `npm run dev` after any Prisma schema change or `prisma generate`. The long-running
   server keeps the previously generated client, so new models appear as `undefined` (for
   example `Cannot read properties of undefined (reading 'findMany')`) until it is restarted.
-  The dev server was restarted during Phase 1 for this reason.
-- Server actions were exercised directly over HTTP during Phase 1 (progressive-enhancement
-  form posts), which verified the action wiring as well as the service layer.
+  This happened in both Phase 1 and Phase 2.
+- Prisma CLI commands must pass `--config prisma7.config.ts`; the project uses that file name
+  rather than Prisma's default `prisma.config.ts`. `migrate dev` does not regenerate the client
+  here, so run `npx prisma generate --config prisma7.config.ts` afterwards.
+- Server actions were exercised directly over HTTP during Phases 1 and 2 (progressive-
+  enhancement form posts), which verified the action wiring as well as the service layer.

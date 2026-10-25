@@ -20,8 +20,8 @@
   handler bodies, search params, and anything read from disk.
 - Derive types from Zod schemas (`z.infer`) so validation and types cannot drift apart.
 - Server actions and route handlers return a predictable result type: either
-  `{ ok: true, data }` or `{ ok: false, error, fieldErrors? }`. Never throw raw errors at UI
-  code.
+  `{ ok: true, data }` (or `{ ok: true }` when there is nothing to return), or
+  `{ ok: false, error, fieldErrors? }`. Never throw raw errors at UI code.
 - Use `const` by default. Avoid non-null assertions (`!`); narrow instead.
 - Money is `number` but always an integer number of paisa. Never use `parseFloat` on money.
 
