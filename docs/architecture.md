@@ -64,6 +64,10 @@ from `app`, and `lib` never imports from `modules`.
   Turbopack CSS-loader rule is deliberately not used: it also intercepts Next's generated
   font CSS and breaks `next/font`.
 - Tests run on Vitest with `vitest.config.mts`; the `@/*` alias mirrors `tsconfig.json`.
+- `next dev` runs webpack with `WATCHPACK_POLLING=true` on this machine. The system's
+  inotify watch limit is consumed by other applications, and both Turbopack and native
+  watching crash with `ENOSPC`. `npm run dev:turbo` is available where the limit allows it.
+  `next build` still uses Turbopack.
 
 ## Auth and Access Model
 

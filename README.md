@@ -31,11 +31,18 @@ network and use the laptop's local IP address:
 npm run dev -- --hostname 0.0.0.0
 ```
 
+> **Why `npm run dev` uses webpack and polling:** this machine's inotify watch
+> limit is already exhausted by other applications, so Turbopack and native
+> file watching crash with `ENOSPC`. `npm run dev` therefore runs webpack with
+> `WATCHPACK_POLLING=true`. On a machine without that limit you can use
+> `npm run dev:turbo` for faster rebuilds.
+
 ## Scripts
 
 | Command | Purpose |
 | ------- | ------- |
-| `npm run dev` | Development server with hot reload |
+| `npm run dev` | Development server with hot reload (polling, see note) |
+| `npm run dev:turbo` | Same, using Turbopack instead of webpack |
 | `npm run build` | Production build — must pass before moving on |
 | `npm start` | Run the production build |
 | `npm test` | Run the test suite once |

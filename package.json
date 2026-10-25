@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "WATCHPACK_POLLING=true next dev --webpack",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
@@ -13,7 +13,8 @@
     "db:migrate": "prisma migrate dev",
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "dev:turbo": "next dev"
   },
   "dependencies": {
     "@prisma/adapter-better-sqlite3": "^7.10.1",

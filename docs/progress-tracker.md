@@ -95,6 +95,10 @@ Phase 1 — Products and stock, in this order:
 - **Tailwind compiled by `@tailwindcss/postcss`.** The alternative Turbopack `*.css` loader
   rule also matched Next's generated font CSS and broke `next/font` during `next build`.
 - **Vitest config uses `.mts`.** Vitest 5 warns when an ESM config is loaded as CommonJS.
+- **`npm run dev` uses webpack with polling.** This machine's inotify watcher budget is
+  exhausted by other applications; Turbopack and native watching both crash with `ENOSPC`.
+  Polling costs some CPU but keeps development usable. `npm run dev:turbo` remains available,
+  and production builds still use Turbopack.
 - **`@types/node` raised to v22.** Vitest 5 requires Node 22 types; the runtime is Node 22.
 - **Project has its own git repository.** The parent directory `/home/attaullah` is itself a
   git repository, so committing from the project would have staged unrelated home files.
@@ -112,3 +116,9 @@ Phase 1 — Products and stock, in this order:
   They are kept because they document Prisma 7 specifics; duplicate copies under `.claude/`
   and `.windsurf/` were removed.
 - `next-env.d.ts` and `src/generated/prisma` are generated and git-ignored.
+- The inotify limit (`fs.inotify.max_user_watches`) is 62,571 with almost none free. Raising
+  it needs root: `sudo sysctl -w fs.inotify.max_user_watches=524288`. If that is ever done,
+  `npm run dev:turbo` becomes the faster option.
+- `next dev` appends a "This is NOT the Next.js you know" block to `AGENTS.md` on every run.
+  It is committed as-is so the working tree stays clean, and it tells future sessions to read
+  the version-matched guides in `node_modules/next/dist/docs/`.
