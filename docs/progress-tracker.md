@@ -4,11 +4,11 @@ Update this file after every meaningful implementation change.
 
 ## Current Phase
 
-- Phase 3 — Customers and credit: **Not started**
+- Phase 4 — Dashboard and reports: **Not started**
 
 ## Current Goal
 
-- Nothing in progress. Phase 2 is complete and verified end to end.
+- Nothing in progress. Phase 3 is complete and verified end to end.
 
 ## Completed
 
@@ -101,28 +101,64 @@ Update this file after every meaningful implementation change.
   nothing. Test records were removed from `prisma/dev.db` afterwards.
 - `npm run typecheck`, `npm run lint`, `npm test`, and `npm run build` all pass.
 
+### Phase 3 — Customers and credit (complete)
+
+- `Customer` and `Payment` models with migration `20261025104027_add_customers_and_credit`.
+  Customer balances are strictly derived from credit sales minus payments, never stored as a
+  mutable balance row (invariants 2, 9).
+- `src/modules/customers/balance.ts` — `outstandingPaisa` function operating inside a
+  `Prisma.TransactionClient` to ensure atomic checks and balance derivation.
+- `src/modules/customers/schema.ts` — customer input (name, phone, optional note) and repayment
+  validation.
+- `src/modules/customers/service.ts` — `createCustomer`, `updateCustomer`, `recordPayment`
+  (validates amount > 0, reads outstanding balance within transaction, refuses payments
+  exceeding balance).
+- `src/modules/customers/queries.ts` — `listCustomersWithBalances` (search by name or phone),
+  `listCustomerOptions` for the sell screen, `totalOutstandingPaisa`, `customerBalancePaisa`,
+  `customerHistory` (interleaving sales and payments in descending time order), and
+  `buildStatementText` (WhatsApp-ready statement).
+- `src/modules/sales/service.ts` — extended `createSale` to support `CREDIT` payment method:
+  verifies customer exists, rejects credit sales exceeding total or without customer, updates
+  balance atomically with stock movements.
+- `/customers` — summary cards (Customers, Owing, Total outstanding), search by name or
+  phone, responsive table on desktop and cards on mobile.
+- `/customers/new` and `/customers/[id]/edit` — customer creation and editing forms.
+- `/customers/[id]` — customer detail, outstanding balance badge, full transaction history
+  (credit sales and payments), in-page repayment form with live validation, WhatsApp
+  shareable statement with one-click link.
+- `/sell` — Cash vs Credit toggle; customer selector with real-time balance badge and
+  "+ New customer" link; optional cash received input with live "Added to khata" calculation
+  and change calculation; disabled submission when credit is chosen without a customer or
+  when cash received exceeds total on credit.
+- `/sales/[id]` (receipt) and `/sales` (list) — display customer attribution, credit badges,
+  and khata breakdown.
+- Header navigation and overview updated with Customers link.
+- Tests: 69 passing across 7 files, including 16 dedicated tests in `tests/customers.test.ts`.
+- Verified end to end: customer creation, credit sale with partial cash (Rs. 240 paid, Rs. 800
+  on khata), balance calculation, WhatsApp statement generation, repayment (Rs. 300 paid,
+  balance dropped to Rs. 500), and overpayment rejection. Test records were removed from
+  `prisma/dev.db` afterwards.
+- `npm run typecheck`, `npm run lint`, `npm test`, and `npm run build` all pass.
+
 ## In Progress
 
 - None.
 
 ## Next Up
 
-Phase 3 — Customers and credit, in this order:
+Phase 4 — Dashboard and reports, in this order:
 
-1. Add `Customer` and `Payment` models, add a nullable `customerId` to `Sale`, and create one
-   migration. A credit sale needs the unpaid amount to be derivable from the sale and its
-   payments, never stored twice.
-2. Add `src/modules/customers/schema.ts` for customer details and repayment input.
-3. Add `src/modules/customers/service.ts`: create/update a customer, record a repayment in one
-   transaction, and reject overpayment. Extend `createSale` to accept `CREDIT` with a customer
-   and a partial payment, keeping the stock and money writes atomic (invariant 2).
-4. Add `src/modules/customers/queries.ts`: search by name or phone, balance per customer
-   (credit sales minus payments), and transaction history.
-5. Build the customer list, customer detail with history, repayment form, and the Cash/Credit
-   choice on the sell screen. Credit sales require choosing or creating a customer.
-6. Tests: a credit sale raises the balance by exactly the unpaid amount, a repayment lowers it
-   by exactly the amount paid, overpayment is rejected, cash sales leave balances untouched,
-   and a failed credit sale writes nothing.
+1. Add `src/modules/reports/queries.ts`: today, this month, this year, and custom date-range
+   sales totals, along with gross profit aggregated using the immutable sale-item cost
+   snapshots in `Asia/Karachi` timezone (invariants 5, 10).
+2. Product performance and stock reports: top-selling products, slow-moving products, inventory
+   valuation, and low-stock list.
+3. Credit reports: total outstanding khata and list of customers with outstanding balances.
+4. Build the dashboard at `/` with summary cards, recent sales, and quick metrics.
+5. Build the dedicated `/reports` view with date range pickers, profit graphs (using Recharts),
+   and downloadable or printable summaries.
+6. Tests: time boundary calculations in `Asia/Karachi`, gross profit calculation across multiple
+   items with discount, empty periods, and product sales ranking.
 
 ## Open Questions
 
@@ -203,6 +239,14 @@ Phase 3 — Customers and credit, in this order:
   customer balance in the same transaction.
 - **Duplicate cart lines are merged server-side.** The stock check runs once per product, so
   two lines of the same item cannot each pass separately and oversell.
+- **Customer balances are always derived, never stored.** Outstanding credit is computed from
+  non-voided credit sales minus repayments. This prevents drift between customer rows and sale
+  records (invariants 2, 9).
+- **Credit sales accept partial cash.** When a buyer pays part of the total upfront,
+  `paidPaisa` is captured on the sale and the difference is placed on credit. Paying more than
+  the total on credit is rejected.
+- **WhatsApp statement format.** Built directly from customer balance and recent transaction
+  history, providing a one-click WhatsApp deep link (`wa.me`) for instant debtor reminders.
 
 ## Session Notes
 
