@@ -1,3 +1,6 @@
+import Link from "next/link";
+
+import { buttonVariants } from "@/components/ui/button";
 import { formatDate } from "@/lib/format";
 import { prisma } from "@/lib/db";
 
@@ -11,14 +14,22 @@ export default async function Home() {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10">
       <header>
-        <p className="text-sm font-medium uppercase tracking-wide text-muted">
+        <p className="text-sm font-medium uppercase tracking-wide text-ink-muted">
           AI Shopkeeper Assistant
         </p>
-        <h1 className="mt-1 text-3xl font-semibold">Environment status</h1>
-        <p className="mt-2 text-muted">
-          Phase 0 is the foundation only. Products, sales, customers, and
-          reports arrive in the next phases.
+        <h1 className="mt-1 text-3xl font-semibold">Shop overview</h1>
+        <p className="mt-2 text-ink-muted">
+          The foundation and the product list are ready. Sales, customers,
+          credit, and reports arrive in the next phases.
         </p>
+        <Link
+          href="/products"
+          className={buttonVariants({
+            className: "mt-4 h-11 px-4 text-base",
+          })}
+        >
+          Open products
+        </Link>
       </header>
 
       <section className="rounded-xl border border-line bg-surface p-5">
@@ -27,19 +38,19 @@ export default async function Home() {
         {shop ? (
           <dl className="mt-4 grid gap-3 sm:grid-cols-2">
             <div>
-              <dt className="text-sm text-muted">Shop</dt>
+              <dt className="text-sm text-ink-muted">Shop</dt>
               <dd className="font-medium">{shop.name}</dd>
             </div>
             <div>
-              <dt className="text-sm text-muted">Currency</dt>
+              <dt className="text-sm text-ink-muted">Currency</dt>
               <dd className="font-medium">{shop.currency}</dd>
             </div>
             <div>
-              <dt className="text-sm text-muted">Timezone</dt>
+              <dt className="text-sm text-ink-muted">Timezone</dt>
               <dd className="font-medium">{shop.timezone}</dd>
             </div>
             <div>
-              <dt className="text-sm text-muted">Created</dt>
+              <dt className="text-sm text-ink-muted">Created</dt>
               <dd className="font-medium">{formatDate(shop.createdAt)}</dd>
             </div>
           </dl>
@@ -70,9 +81,9 @@ export default async function Home() {
         </ul>
       </section>
 
-      <footer className="text-sm text-muted">
+      <footer className="text-sm text-ink-muted">
         Specification: <code className="font-mono">docs/</code> · Next step:
-        Phase 1 — products and stock.
+        Phase 2 — sales and billing.
       </footer>
     </main>
   );
