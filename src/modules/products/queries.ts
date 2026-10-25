@@ -77,6 +77,43 @@ export async function inventoryValuePaisa(): Promise<number> {
   );
 }
 
+export type SellableProduct = {
+  id: string;
+  name: string;
+  category: string | null;
+  unit: string;
+  salePricePaisa: number;
+  stockMilli: number;
+  lowStockMilli: number;
+  aliases: string[];
+};
+
+/**
+ * The columns the sell screen needs, with aliases flattened so the client can
+ * search by the names people actually use.
+ */
+export async function listSellableProducts(): Promise<SellableProduct[]> {
+  const products = await prisma.product.findMany({
+    where: { isActive: true },
+    select: {
+      id: true,
+      name: true,
+      category: true,
+      unit: true,
+      salePricePaisa: true,
+      stockMilli: true,
+      lowStockMilli: true,
+      aliases: { select: { alias: true }, orderBy: { alias: "asc" } },
+    },
+    orderBy: { name: "asc" },
+  });
+
+  return products.map((product) => ({
+    ...product,
+    aliases: product.aliases.map((row) => row.alias),
+  }));
+}
+
 export type StockDrift = {
   id: string;
   name: string;

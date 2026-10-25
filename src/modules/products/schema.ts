@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { PRODUCT_UNITS } from "@/lib/quantity";
 
-import type { FieldErrors } from "@/lib/result";
+export { fieldErrors } from "@/lib/zod";
 
 const moneyField = z
   .string()
@@ -69,21 +69,6 @@ export const adjustStockSchema = z.object({
 export type CreateProductInput = z.infer<typeof createProductSchema>;
 export type UpdateProductInput = z.infer<typeof updateProductSchema>;
 export type AdjustStockInput = z.infer<typeof adjustStockSchema>;
-
-/** Turn a Zod error into one message per field, keyed by the field name. */
-export function fieldErrors(error: z.ZodError): FieldErrors {
-  const result: FieldErrors = {};
-
-  for (const issue of error.issues) {
-    const key = issue.path[0];
-
-    if (typeof key === "string" && result[key] === undefined) {
-      result[key] = issue.message;
-    }
-  }
-
-  return result;
-}
 
 /**
  * Split a comma-separated alias list, deduplicate case-insensitively, and

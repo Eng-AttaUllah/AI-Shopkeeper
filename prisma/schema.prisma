@@ -47,6 +47,7 @@ model Product {
 
   aliases        ProductAlias[]
   stockMovements StockMovement[]
+  saleItems      SaleItem[]
 
   @@index([isActive, name])
   @@map("products")
@@ -72,7 +73,7 @@ model StockMovement {
   id            String   @id @default(cuid())
   productId     String
   quantityMilli Int
-  /// OPENING | ADJUSTMENT | SALE | VOID | RETURN
+  /// OPENING | RESTOCK | DAMAGE | CORRECTION | OTHER | SALE | VOID | RETURN
   reason        String
   /// Source record id (sale id, etc.) when applicable.
   reference     String?
@@ -83,4 +84,62 @@ model StockMovement {
 
   @@index([productId, createdAt])
   @@map("stock_movements")
+}
+
+/// A completed sale. Never edited: a correction voids it and records a new sale
+/// (invariant 4). Stock and money effects are written in the same transaction.
+model Sale {
+  id     String @id @default(cuid())
+  /// Human-readable receipt number, e.g. 20261025-0001.
+  number String @unique
+
+  /// Sum of the line totals after the sale-level discount.
+  totalPaisa    Int
+  discountPaisa Int @default(0)
+  /// Cash handed over and the change returned. Credit sales (Phase 3) may pay
+  /// less than the total and carry the difference on the customer balance.
+  paidPaisa     Int
+  changePaisa   Int @default(0)
+
+  /// CASH | CREDIT
+  paymentMethod String @default("CASH")
+  note          String?
+
+  /// Set by the void workflow (Phase 5). A voided sale stays in the record.
+  voidedAt     DateTime?
+  voidedReason String?
+
+  createdAt DateTime @default(now())
+
+  items SaleItem[]
+
+  @@index([createdAt])
+  @@map("sales")
+}
+
+/// One line of a sale, with the price and cost frozen at sale time so later
+/// product changes never alter historical profit (invariant 5).
+model SaleItem {
+  id        String @id @default(cuid())
+  saleId    String
+  productId String
+  /// Order of the line on the receipt, starting at 0.
+  position  Int
+
+  /// Snapshots so history survives renames and price changes.
+  productName String
+  unit        String
+
+  quantityMilli  Int
+  unitPricePaisa Int
+  unitCostPaisa  Int
+  lineTotalPaisa Int
+  lineCostPaisa  Int
+
+  sale    Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([saleId])
+  @@index([productId])
+  @@map("sale_items")
 }

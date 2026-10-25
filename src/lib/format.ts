@@ -28,3 +28,18 @@ const DATE_FORMATTER = new Intl.DateTimeFormat("en-GB", {
 export function formatDate(value: Date): string {
   return DATE_FORMATTER.format(value);
 }
+
+const DATE_TIME_FORMATTER = new Intl.DateTimeFormat("en-GB", {
+  timeZone: "Asia/Karachi",
+  day: "2-digit",
+  month: "short",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: true,
+});
+
+/** Format a date and time in the shop's timezone, for example "26 Oct 2026, 3:42 pm". */
+export function formatDateTime(value: Date): string {
+  return DATE_TIME_FORMATTER.format(value);
+}
