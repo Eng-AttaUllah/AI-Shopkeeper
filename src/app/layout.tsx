@@ -43,10 +43,22 @@ export default function RootLayout({
                 Dashboard
               </Link>
               <Link
+                href="/sell"
+                className="text-ink-muted transition-colors hover:text-ink"
+              >
+                Sell
+              </Link>
+              <Link
                 href="/products"
                 className="text-ink-muted transition-colors hover:text-ink"
               >
                 Products
+              </Link>
+              <Link
+                href="/sales"
+                className="text-ink-muted transition-colors hover:text-ink"
+              >
+                Sales
               </Link>
             </nav>
           </div>

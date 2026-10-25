@@ -19,17 +19,28 @@ export default async function Home() {
         </p>
         <h1 className="mt-1 text-3xl font-semibold">Shop overview</h1>
         <p className="mt-2 text-ink-muted">
-          The foundation and the product list are ready. Sales, customers,
+          Record sales, watch stock, and keep prices up to date. Customers,
           credit, and reports arrive in the next phases.
         </p>
-        <Link
-          href="/products"
-          className={buttonVariants({
-            className: "mt-4 h-11 px-4 text-base",
-          })}
-        >
-          Open products
-        </Link>
+        <div className="mt-4 flex flex-wrap gap-3">
+          <Link
+            href="/sell"
+            className={buttonVariants({
+              className: "h-11 px-4 text-base",
+            })}
+          >
+            Start a sale
+          </Link>
+          <Link
+            href="/products"
+            className={buttonVariants({
+              variant: "outline",
+              className: "h-11 px-4 text-base",
+            })}
+          >
+            Products
+          </Link>
+        </div>
       </header>
 
       <section className="rounded-xl border border-line bg-surface p-5">
@@ -83,7 +94,7 @@ export default async function Home() {
 
       <footer className="text-sm text-ink-muted">
         Specification: <code className="font-mono">docs/</code> · Next step:
-        Phase 2 — sales and billing.
+        Phase 3 — customers and credit.
       </footer>
     </main>
   );
