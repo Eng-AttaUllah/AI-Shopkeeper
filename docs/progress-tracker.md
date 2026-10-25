@@ -4,11 +4,11 @@ Update this file after every meaningful implementation change.
 
 ## Current Phase
 
-- Phase 1 — Products and stock: **Not started**
+- Phase 2 — Sales: **Not started**
 
 ## Current Goal
 
-- Nothing in progress. Phase 0 is complete and verified end to end.
+- Nothing in progress. Phase 1 is complete and verified end to end.
 
 ## Completed
 
@@ -31,23 +31,59 @@ Update this file after every meaningful implementation change.
   `src/components/` placeholders, and `src/modules/README.md` created.
 - Documentation set filled and `AGENTS.md` added so future sessions load the specs.
 
+### Phase 1 — Products and stock (complete)
+
+- `Product`, `ProductAlias`, and `StockMovement` models with migration
+  `20261025065819_add_products_and_stock`. Stock writes and opening stock always write a
+  movement row (invariants 3, 6, 9).
+- `src/lib/quantity.ts` — integer thousandths helpers (`toMilli`, `fromMilli`,
+  `formatQuantity`) and the four supported units.
+- `src/lib/result.ts` — shared `Result` type with `ok` / `fail` and field errors.
+- `src/modules/products/schema.ts` — Zod schemas for create, update, and stock adjustment;
+  alias parsing (accepts the Pashto comma); rupee and quantity patterns.
+- `src/modules/products/service.ts` — `createProduct` (product plus OPENING movement in one
+  transaction), `updateProduct`, `setProductActive`, `adjustStock` (refuses negative stock,
+  always writes a movement).
+- `src/modules/products/queries.ts` — `listProducts` (name, alias, category, barcode search),
+  `getProduct`, `lowStockProducts`, `inventoryValuePaisa`, `reconcileStock`.
+- shadcn/ui initialised (v4 `base-nova` style on Base UI) and the palette from
+  `ui-context.md` mapped onto its semantic tokens. Added `button`, `input`, `label`, `card`,
+  `badge`, `table`, `select`, `textarea`, `separator`.
+- App header with Dashboard and Products navigation.
+- `/products` — summary cards (count, low stock, stock value), search, responsive table on
+  desktop and stacked cards on mobile, low-stock badge.
+- `/products/new` — add form with opening stock.
+- `/products/[id]/edit` — details form, stock adjustment form, last 10 stock movements, and
+  stop/start selling.
+- Server actions in `src/app/products/actions.ts` returning
+  `{ ok: true } | { ok: false, error, fieldErrors }`, with `revalidatePath` after mutations.
+- Tests: 38 passing across 4 files, including duplicate names, negative prices, opening-stock
+  movement, negative-stock refusal, and cached stock reconciliation.
+- Verified end to end against the dev server: create (303 redirect), list and search, edit
+  prices, adjust stock (+5 → 15 kg), over-draw rejected with a readable message and unchanged
+  stock, hide/show product. Test records were removed from `prisma/dev.db` afterwards.
+- `npm run typecheck`, `npm run lint`, `npm test`, and `npm run build` all pass.
+
 ## In Progress
 
 - None.
 
 ## Next Up
 
-Phase 1 — Products and stock, in this order:
+Phase 2 — Sales, in this order:
 
-1. Add `Product`, `ProductAlias`, and `StockMovement` models; create one migration.
-   `StockMovement` is needed in this phase because opening stock is a stock write and
-   invariant 6 forbids a stock write without a movement row.
-2. Add Zod schemas for product input in `src/modules/products/schema.ts`.
-3. Add `src/modules/products/service.ts` (create, update, deactivate, set opening stock)
-   and `queries.ts` (list, search, low stock).
-4. Build the product list screen and the add/edit product form.
-5. Tests: duplicate name rejected, negative price rejected, opening stock writes a
-   movement, deactivation hides the product from the sale screen later.
+1. Add `Sale` and `SaleItem` models (with `unitPricePaisa` and `unitCostPaisa` snapshots) and
+   one migration. Sales are voided, never edited, so plan the `voidedAt` field now.
+2. Add `src/modules/sales/schema.ts` for the cart payload (product id, quantity, discount) and
+   the payment amount.
+3. Add `src/modules/sales/service.ts` with one `createSale` transaction that re-reads stock,
+   refuses quantities above stock, decrements each product, writes a `SALE` stock movement per
+   line, snapshots cost and price, and records the total. Voiding is scheduled for Phase 5.
+4. Add `src/modules/sales/queries.ts` for the sale list and one sale with its lines.
+5. Build the sell screen: product search, cart with quantity editing, total, complete-sale
+   button, and a receipt view.
+6. Tests: atomic rollback when one line is short on stock, stock decremented exactly once,
+   snapshot survives a later price change, money totals use integer paisa.
 
 ## Open Questions
 
@@ -103,6 +139,17 @@ Phase 1 — Products and stock, in this order:
 - **Project has its own git repository.** The parent directory `/home/attaullah` is itself a
   git repository, so committing from the project would have staged unrelated home files.
   `AI Shop/.git` keeps history isolated.
+- **shadcn/ui v4 (`base-nova`) on Base UI.** The current CLI generates components on
+  `@base-ui/react` with the `cn` package rather than Radix. It is the maintained default and
+  the CLI remains the supported way to add components, so generated files stay upgradeable.
+- **Project palette mapped onto shadcn's semantic tokens.** `--primary` is the teal accent,
+  `--muted` is the subtle surface, and `--accent` is soft teal. Project utilities keep their
+  documented names as `bg-page`, `text-ink`, `text-ink-muted`, `bg-brand`, `border-line`,
+  avoiding collisions with shadcn's `muted` and `accent` utilities.
+- **Native `<select>` inside forms.** It submits through `FormData` and keeps working without
+  JavaScript. The shadcn `select` component stays available for non-form controls.
+- **Action state is a discriminated union.** Server actions return `{ ok: true }` or
+  `{ ok: false, error, fieldErrors }`, matching the result rule in `code-standards.md`.
 
 ## Session Notes
 
@@ -122,3 +169,9 @@ Phase 1 — Products and stock, in this order:
 - `next dev` appends a "This is NOT the Next.js you know" block to `AGENTS.md` on every run.
   It is committed as-is so the working tree stays clean, and it tells future sessions to read
   the version-matched guides in `node_modules/next/dist/docs/`.
+- Restart `npm run dev` after any Prisma schema change or `prisma generate`. The long-running
+  server keeps the previously generated client, so new models appear as `undefined` (for
+  example `Cannot read properties of undefined (reading 'findMany')`) until it is restarted.
+  The dev server was restarted during Phase 1 for this reason.
+- Server actions were exercised directly over HTTP during Phase 1 (progressive-enhancement
+  form posts), which verified the action wiring as well as the service layer.

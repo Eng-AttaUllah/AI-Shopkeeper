@@ -80,7 +80,7 @@ The specification is the source of truth:
 
 ## Status
 
-Phase 0 — environment setup complete: Next.js, TypeScript, Tailwind, Prisma +
-SQLite, a seeded `Shop` record, and tested money helpers.
+Phase 1 — products and stock complete: product list with search and low-stock warnings, add
+and edit screens, stock adjustments backed by movement rows, and 38 passing tests.
 
-Next: Phase 1 — products and stock.
+Next: Phase 2 — sales and billing.

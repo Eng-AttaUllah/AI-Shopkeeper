@@ -42,6 +42,12 @@ Usage rules:
   `--state-success`. Low stock uses `--state-warning`.
 - Status is always reinforced with a label, never colour alone.
 
+In code, the palette is exposed as Tailwind utilities: `bg-page`, `bg-surface`, `bg-subtle`,
+`text-ink`, `text-ink-muted`, `bg-brand`, `text-brand`, `border-line`, `text-error`,
+`text-warning`, `text-success`. shadcn components use their own semantic tokens
+(`bg-primary`, `bg-muted`, `border-border`); `globals.css` maps those to the same palette, so
+`--primary` is the teal accent, `--muted` is the subtle surface, and `--accent` is soft teal.
+
 ## Typography
 
 | Role      | Font              | Variable      |
@@ -68,15 +74,19 @@ Radii map to 6px (`md`), 12px (`xl`), and 16px (`2xl`).
 
 ## Component Library
 
-shadcn/ui on top of Tailwind. Components live in `src/components/ui/` and are treated as
-protected files:
+shadcn/ui on top of Tailwind. The installed version (v4, `base-nova` style) builds on Base UI
+(`@base-ui/react`) rather than Radix. Components live in `src/components/ui/` and are treated
+as protected files:
 
 - Add components with the shadcn CLI rather than writing them by hand.
 - Do not edit generated components to fit one screen. Wrap them in
-  `src/components/` instead.
+  `src/components/` instead. Size and spacing overrides are passed through `className`.
 - Required base components: `button`, `input`, `label`, `form`, `table`, `card`, `dialog`,
   `alert-dialog`, `select`, `badge`, `separator`, `sonner` (toasts), `calendar`, `popover`,
   `tabs`, `sheet` (mobile navigation).
+- Forms use native `<select>` and `<input>` elements inside the generated `Label`/`Input`
+  wrappers so `FormData` submission and no-JavaScript behaviour stay reliable. The shadcn
+  `select` is for non-form controls.
 - Icons: Lucide React, stroke-based only. `h-4 w-4` inline, `h-5 w-5` in buttons,
   `h-6 w-6` in navigation on mobile.
 
