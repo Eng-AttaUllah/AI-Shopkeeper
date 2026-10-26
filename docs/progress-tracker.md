@@ -4,11 +4,11 @@ Update this file after every meaningful implementation change.
 
 ## Current Phase
 
-- Phase 4 — Dashboard and reports: **Not started**
+- Phase 4 — Dashboard and reports: **Complete**
 
 ## Current Goal
 
-- Nothing in progress. Phase 3 is complete and verified end to end.
+- Nothing in progress. Phase 4 is complete and verified end to end.
 
 ## Completed
 
@@ -146,28 +146,61 @@ Update this file after every meaningful implementation change.
   server errors.
 - `npm run typecheck`, `npm run lint`, `npm test`, and `npm run build` all pass.
 
+### Phase 4 — Dashboard and reports (complete)
+
+- No schema change and no migration: reporting reads the existing sale lines and customer
+  balances.
+- `src/lib/dates.ts` — shop-local range helpers: `karachiDateTime`, `startOfKarachiDay`,
+  `startOfKarachiMonth`, `startOfKarachiYear`, `addKarachiDays`, `karachiDayRange`,
+  `karachiMonthRange`, `karachiYearRange`, `karachiDateKeyToDate`, `isoDateKeyInKarachi`,
+  `eachKarachiDay`, and `eachKarachiMonth`. Offsets come from `Intl` rather than a hardcoded
+  +05:00, so a future daylight-saving change cannot shift a boundary (invariant 10).
+- `src/modules/reports/schema.ts` — validates report search params. An unknown period falls
+  back to today; custom dates are checked as real `YYYY-MM-DD` shop dates.
+- `src/modules/reports/queries.ts` — `resolveReportRange`, `salesSummary`, `productSales`,
+  `slowMovingProducts`, `salesSeries`, and `creditOverview`. Revenue is recognised at sale
+  time; voided sales are excluded everywhere; profit uses the line cost snapshots.
+- `/` rebuilt as the dashboard: today's revenue, profit, credit given, and outstanding khata;
+  month-to-date revenue and profit; a 14-day revenue chart; recent sales; low stock and
+  inventory value; and the customers who owe the most.
+- `/reports` — Today / This month / This year / Custom, with a summary (sales, revenue,
+  discounts, gross profit, credit given), a day or month revenue chart, per-product quantity,
+  line sales and profit, best sellers, and slow movers. Custom ranges use real date inputs and
+  reject a start after the end.
+- `src/components/reports/*` — a summary card and a server-rendered bar chart. No chart library
+  was added; the chart is plain markup and carries an accessible table for screen readers.
+- Header navigation includes Reports. On narrow phones the nav row scrolls horizontally
+  instead of growing to a third row, and the page itself never scrolls sideways.
+- Tests: 95 passing across 8 files. They cover Karachi midnight, month and year edges,
+  month-to-date/year-to-date ranges, custom-range validation, profit from cost snapshots after
+  a price change, credit counted once with repayments excluded from revenue, discounts, voided
+  sales, per-product grouping and ranking, slow movers, daily and monthly buckets, and empty
+  periods.
+- Verified against a copy of the dev database: the dashboard showed Rs. 400.00 revenue,
+  Rs. 50.00 profit, Rs. 400.00 credit given, and Rs. 400.00 outstanding. `/reports` showed the
+  same totals for today, 26 daily points for October, 10 monthly points for 2026, a 26-day
+  custom range, zeros for an empty range, and a readable error with a month fallback for an
+  inverted range. No server errors.
+- `npm run typecheck`, `npm run lint`, `npm test`, and `npm run build` all pass.
+
 ## In Progress
 
 - None.
 
 ## Next Up
 
-Phase 4 — Dashboard and reports, in this order:
+Phase 5 — Expenses and hardening, in this order:
 
-1. Decide and record how revenue is recognised for credit sales (at sale time, or when the
-   money is collected). The dashboard and reports must use one definition everywhere.
-2. Add `src/modules/reports/queries.ts` with Asia/Karachi day, month, and year ranges, plus
-   totals for sales count, revenue, profit from the line cost snapshots, discounts, and
-   outstanding credit.
-3. Add per-item reporting (quantity sold, revenue, profit) and a simple daily series for the
-   current month. Reuse the immutable sale lines; never recompute with current product prices.
-4. Rebuild `/` as the dashboard: today's sales and profit, outstanding credit, low-stock
-   items, and recent sales. Keep the current links to the working screens.
-5. Add `/reports` with day, month, and year views and an item breakdown. Keep it tables and
-   cards, readable on a phone, with no chart library unless the spec asks for one.
-6. Tests: range boundaries at Asia/Karachi midnight, month and year edges, profit from
-   snapshots after a price change, credit sales counted once, and empty days returning zero.
-7. Update `docs/progress-tracker.md`, `README.md`, and any decision notes.
+1. Add the `Expense` model and migration, plus expense entry and list screens. Include expense
+   totals and net profit (gross profit minus expenses) in `/reports`.
+2. Add the void workflow: restore stock with matching `StockMovement` rows, exclude the sale
+   from reports and khata, and record who voided it and why.
+3. Add audit log entries for every money and stock change, written in the same transaction.
+4. Add end-of-day cash reconciliation and the backup/restore workflow (daily automatic plus a
+   manual "Back up now" action), then verify a restore.
+5. Confirm when Auth.js sign-in is scheduled. The architecture lists it, but no phase names it
+   and the current app is open to the local network.
+6. Update the docs and run the full gate.
 
 ## Open Questions
 
@@ -182,7 +215,11 @@ Phase 4 — Dashboard and reports, in this order:
 - Which AI provider will be used for the later assistant phase? Deferred, but the adapter
   interface must stay provider-agnostic.
 - Should the shop's day be treated as starting at midnight, or does the shopkeeper consider
-  the business day to end after closing (for example 2 a.m.)? Affects "today" reporting.
+  the business day to end after closing (for example 2 a.m.)? Affects "today" reporting. The
+  current implementation uses midnight.
+- When should Auth.js sign-in be scheduled? `docs/architecture.md` lists it and success
+  criterion 1 mentions a signed-in shopkeeper, but no implementation phase names it and the
+  app is currently open to anyone on the shop's network.
 
 ## Architecture Decisions
 
@@ -260,13 +297,33 @@ Phase 4 — Dashboard and reports, in this order:
 - **WhatsApp statements are plain text built from derived data.** `buildStatementText` formats
   the shop name, balance, and five most recent entries; the detail page opens a `wa.me` link
   with the text encoded. No messaging API, no stored message.
-- **The header wraps instead of scrolling sideways.** With five nav links plus the brand, the
-  header uses `flex-wrap` and `whitespace-nowrap`, so at 360–414px it becomes two rows. The
-  page itself never scrolls horizontally, per `ui-context.md`.
+- **The header keeps two rows on a phone.** The brand sits on its own row and the nav row
+  scrolls horizontally when six links do not fit, so adding Reports did not create a third
+  row. The page itself never scrolls horizontally, per `ui-context.md`.
 - **Native `<select>` for the customer choice.** Consistent with the Phase 2 decision: it
   submits through `FormData` and keeps working without JavaScript.
 - **Duplicate cart lines are merged server-side.** The stock check runs once per product, so
   two lines of the same item cannot each pass separately and oversell.
+- **Revenue is recognised at sale time (accrual).** A non-voided sale counts in revenue and
+  profit on the day it is recorded, including the unpaid part of a credit sale. Repayments
+  settle an existing sale and never add revenue; outstanding khata is reported separately.
+  This matches success criterion 6, which compares totals with the underlying sale records.
+- **Per-product revenue is before the sale-level discount.** A discount applies to the whole
+  sale and is not allocated across lines, which would introduce rounding. The report labels
+  line sales as "before discounts"; the summary subtracts discounts so the totals reconcile.
+- **Best sellers rank by line sales; slow movers are active, stocked products with no sales in
+  the period.** Ranking by quantity would compare kilograms with pieces. Slow movers are
+  ordered by the cost value of the stock sitting still.
+- **"This month" and "this year" are month-to-date and year-to-date.** The range ends at the
+  start of tomorrow, so charts do not show empty future days. Custom ranges include both
+  chosen days.
+- **The dashboard chart is server-rendered markup, not Recharts.** A 14-day bar chart needs no
+  client JavaScript, no extra dependency, and no hydration cost on a cheap phone. Recharts
+  stays listed in the stack for a future chart that genuinely needs interaction; if it is
+  added, the reason must be recorded here.
+- **Report date ranges are validated with Zod.** Search params are external input; impossible
+  dates such as 31 February and inverted ranges are rejected with a readable message and a
+  month fallback.
 
 ## Session Notes
 
@@ -303,7 +360,19 @@ Phase 4 — Dashboard and reports, in this order:
 - Two browser bugs from the first attempt were fixed in the rebuild: the header overflowed on
   360–414px phones, and the customer dropdown on `/sell` stayed stale after a customer was
   created in another tab.
-- The Phase 3 HTTP verification used a copy of `prisma/dev.db`, so the real database still has
-  one product (`Dove Shampo`, 12 pcs) and no test customers, payments, or sales.
+- The Phase 3 HTTP verification used a copy of `prisma/dev.db`. The later phone check created
+  `ali khan` and credit sale `20261026-0001` in the real database, and that data was left in
+  place.
+- Phase 4 added no schema change, so no migration was created and the dev server did not need
+  a Prisma restart for new models.
+- The Phase 4 HTTP verification used a copy of `prisma/dev.db` (`/tmp/opencode/`), so the real
+  database was only read. The dashboard currently shows the Phase 3 phone-check sale.
+- `dateKeyInKarachi` returns `YYYYMMDD` for sale numbers; report date inputs need
+  `YYYY-MM-DD`, so `isoDateKeyInKarachi` was added. Mixing the two produced an "Enter a valid
+  end date" failure during the first test run.
+- `Intl.DateTimeFormat` with `hourCycle: "h23"` is the source of the Karachi offset. The
+  conversion applies the offset twice so it would still settle if the zone ever observed DST.
+- The header nav scrolls horizontally on very narrow phones. This keeps the brand and nav on
+  two rows instead of three now that Reports is a sixth link.
 - Final browser check is done on a phone over the LAN URL printed by `npm run dev` (for
   example `http://192.168.1.17:3000`); the address changes with the network.

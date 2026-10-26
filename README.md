@@ -80,8 +80,9 @@ The specification is the source of truth:
 
 ## Status
 
-Phase 3 — customers and credit complete: credit sales with partial cash, customer records,
-derived khata balances, guarded repayments, merged history, and a WhatsApp statement. Cash
-sales, receipts, and stock movements work as before. 69 tests pass.
+Phase 4 — dashboard and reports complete: today/month/year/custom totals, gross profit from
+cost snapshots, per-product sales and profit, best sellers and slow movers, low stock and
+inventory value, outstanding khata, and a phone-friendly dashboard. Credit sales count as
+revenue when recorded; repayments settle khata. 95 tests pass.
 
-Next: Phase 4 — dashboard and reports.
+Next: Phase 5 — expenses and hardening.
