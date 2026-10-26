@@ -105,6 +105,11 @@ model Sale {
   paymentMethod String @default("CASH")
   note          String?
 
+  /// Set for credit sales. The khata balance is derived from credit sales minus
+  /// payments, never stored on the customer row.
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: Restrict)
+
   /// Set by the void workflow (Phase 5). A voided sale stays in the record.
   voidedAt     DateTime?
   voidedReason String?
@@ -114,6 +119,7 @@ model Sale {
   items SaleItem[]
 
   @@index([createdAt])
+  @@index([customerId, createdAt])
   @@map("sales")
 }
 
@@ -142,4 +148,38 @@ model SaleItem {
   @@index([saleId])
   @@index([productId])
   @@map("sale_items")
+}
+
+/// A person who buys on credit. The outstanding balance is derived from
+/// non-voided credit sales minus recorded payments, never stored here
+/// (invariant 9).
+model Customer {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String?
+  note      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sales    Sale[]
+  payments Payment[]
+
+  @@index([name])
+  @@index([phone])
+  @@map("customers")
+}
+
+/// A repayment against a customer's khata. Positive amount only; the service
+/// rejects payments above the outstanding balance inside the transaction.
+model Payment {
+  id          String   @id @default(cuid())
+  customerId  String
+  amountPaisa Int
+  note        String?
+  createdAt   DateTime @default(now())
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Restrict)
+
+  @@index([customerId, createdAt])
+  @@map("payments")
 }

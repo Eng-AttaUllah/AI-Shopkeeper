@@ -1,5 +1,4 @@
 import { Prisma } from "@/generated/prisma/client";
-import type { Sale, SaleItem } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
 import { dateKeyInKarachi } from "@/lib/dates";
 import { multiplyPaisa, rupeesToPaisa } from "@/lib/money";
@@ -7,9 +6,8 @@ import { formatQuantity, fromMilli, toMilli } from "@/lib/quantity";
 import { fail, ok, type Result } from "@/lib/result";
 import { fieldErrors } from "@/lib/zod";
 
+import type { SaleWithItems } from "./queries";
 import { createSaleSchema } from "./schema";
-
-export type SaleWithItems = Sale & { items: SaleItem[] };
 
 /** An error whose message is safe and useful to show the shopkeeper. */
 class ServiceError extends Error {
@@ -107,9 +105,27 @@ export async function createSale(
 
   const discountPaisa = rupeesToPaisa(data.discount);
   const paidInput = data.paid?.trim();
+  const isCredit = data.paymentMethod === "CREDIT";
+  const customerId = data.customerId ?? null;
+
+  if (isCredit && !customerId) {
+    return fail("Choose a customer for a credit sale.", {
+      customerId: "Required",
+    });
+  }
 
   try {
     const sale = await prisma.$transaction(async (tx) => {
+      if (isCredit && customerId) {
+        const customer = await tx.customer.findUnique({
+          where: { id: customerId },
+        });
+
+        if (!customer) {
+          throw new ServiceError("Customer not found.");
+        }
+      }
+
       const products = await tx.product.findMany({
         where: { id: { in: [...requestedMilli.keys()] } },
       });
@@ -164,9 +180,20 @@ export async function createSale(
       }
 
       const totalPaisa = subtotalPaisa - discountPaisa;
-      const paidPaisa = paidInput ? rupeesToPaisa(paidInput) : totalPaisa;
+      const paidPaisa = paidInput
+        ? rupeesToPaisa(paidInput)
+        : isCredit
+          ? 0
+          : totalPaisa;
 
-      if (paidPaisa < totalPaisa) {
+      if (isCredit) {
+        if (paidPaisa > totalPaisa) {
+          throw new ServiceError(
+            "Cash received is more than the total. Record a cash sale instead.",
+            { paid: "More than the total" },
+          );
+        }
+      } else if (paidPaisa < totalPaisa) {
         throw new ServiceError("Cash received is less than the total.", {
           paid: "Less than the total",
         });
@@ -181,12 +208,16 @@ export async function createSale(
           totalPaisa,
           discountPaisa,
           paidPaisa,
-          changePaisa: paidPaisa - totalPaisa,
-          paymentMethod: "CASH",
+          changePaisa: isCredit ? 0 : paidPaisa - totalPaisa,
+          paymentMethod: data.paymentMethod,
+          customerId: isCredit ? customerId : null,
           note: emptyToNull(data.note),
           items: { create: lines },
         },
-        include: { items: { orderBy: { position: "asc" } } },
+        include: {
+          items: { orderBy: { position: "asc" } },
+          customer: { select: { id: true, name: true, phone: true } },
+        },
       });
 
       for (const line of lines) {
