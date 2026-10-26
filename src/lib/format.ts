@@ -29,6 +29,28 @@ export function formatDate(value: Date): string {
   return DATE_FORMATTER.format(value);
 }
 
+const DAY_MONTH_FORMATTER = new Intl.DateTimeFormat("en-GB", {
+  timeZone: "Asia/Karachi",
+  day: "2-digit",
+  month: "short",
+});
+
+/** Format a day within a report, for example "26 Oct". */
+export function formatDayMonth(value: Date): string {
+  return DAY_MONTH_FORMATTER.format(value);
+}
+
+const MONTH_YEAR_FORMATTER = new Intl.DateTimeFormat("en-GB", {
+  timeZone: "Asia/Karachi",
+  month: "long",
+  year: "numeric",
+});
+
+/** Format a report month, for example "October 2026". */
+export function formatMonthYear(value: Date): string {
+  return MONTH_YEAR_FORMATTER.format(value);
+}
+
 const DATE_TIME_FORMATTER = new Intl.DateTimeFormat("en-GB", {
   timeZone: "Asia/Karachi",
   day: "2-digit",
