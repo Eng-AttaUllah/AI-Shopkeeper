@@ -1,11 +1,15 @@
 import { createSaleAction } from "@/app/sales/actions";
 import { SellScreen } from "@/components/sales/sell-screen";
+import { listCustomerOptions } from "@/modules/customers/queries";
 import { listSellableProducts } from "@/modules/products/queries";
 
 export const dynamic = "force-dynamic";
 
 export default async function SellPage() {
-  const products = await listSellableProducts();
+  const [products, customers] = await Promise.all([
+    listSellableProducts(),
+    listCustomerOptions(),
+  ]);
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-5 px-4 pt-6 pb-28 lg:pb-6">
@@ -16,7 +20,11 @@ export default async function SellPage() {
         </p>
       </div>
 
-      <SellScreen products={products} action={createSaleAction} />
+      <SellScreen
+        products={products}
+        customers={customers}
+        action={createSaleAction}
+      />
     </main>
   );
 }

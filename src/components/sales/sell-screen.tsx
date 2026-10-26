@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useMemo, useState } from "react";
 
@@ -10,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { formatPaisa } from "@/lib/format";
 import { multiplyPaisa, paisaToRupees, rupeesToPaisa } from "@/lib/money";
 import { formatQuantity, fromMilli, toMilli } from "@/lib/quantity";
+import type { CustomerOption } from "@/modules/customers/queries";
 import type { SellableProduct } from "@/modules/products/queries";
 
 type CartLine = {
@@ -21,8 +23,11 @@ type CartLine = {
   quantity: string;
 };
 
+type PaymentMethod = "CASH" | "CREDIT";
+
 type SellScreenProps = {
   products: SellableProduct[];
+  customers: CustomerOption[];
   action: (state: SaleActionState, formData: FormData) => Promise<SaleActionState>;
 };
 
@@ -47,12 +52,14 @@ function parsePaisa(value: string): number | null {
   }
 }
 
-export function SellScreen({ products, action }: SellScreenProps) {
+export function SellScreen({ products, customers, action }: SellScreenProps) {
   const [state, formAction, pending] = useActionState(action, { ok: false });
   const [cart, setCart] = useState<CartLine[]>([]);
   const [search, setSearch] = useState("");
   const [discount, setDiscount] = useState("");
   const [paid, setPaid] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("CASH");
+  const [customerId, setCustomerId] = useState("");
   const router = useRouter();
 
   const error = state.ok ? undefined : state.error;
@@ -65,6 +72,25 @@ export function SellScreen({ products, action }: SellScreenProps) {
       router.refresh();
     }
   }, [state, router]);
+
+  // The "New customer" link opens a separate tab so the cart is kept. When the
+  // shopkeeper comes back, re-fetch the server data so the new customer appears
+  // in the select without a manual reload.
+  useEffect(() => {
+    function refreshOnReturn() {
+      if (document.visibilityState === "visible") {
+        router.refresh();
+      }
+    }
+
+    window.addEventListener("focus", refreshOnReturn);
+    document.addEventListener("visibilitychange", refreshOnReturn);
+
+    return () => {
+      window.removeEventListener("focus", refreshOnReturn);
+      document.removeEventListener("visibilitychange", refreshOnReturn);
+    };
+  }, [router]);
 
   const filteredProducts = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -94,11 +120,20 @@ export function SellScreen({ products, action }: SellScreenProps) {
   const discountPaisa = parsePaisa(discount) ?? 0;
   const totalPaisa = Math.max(0, subtotalPaisa - discountPaisa);
   const paidPaisa = parsePaisa(paid);
+  const isCredit = paymentMethod === "CREDIT";
   const changePaisa = paidPaisa === null ? null : paidPaisa - totalPaisa;
+  const creditDuePaisa =
+    paidPaisa === null ? totalPaisa : Math.max(0, totalPaisa - paidPaisa);
+  const overpaidOnCredit =
+    isCredit && paidPaisa !== null && paidPaisa > totalPaisa;
   const hasInvalidLine = cart.some(
     (line) => parseQuantityMilli(line.quantity) === null,
   );
-  const canSubmit = cart.length > 0 && !hasInvalidLine && !pending;
+  const canSubmit =
+    cart.length > 0 &&
+    !hasInvalidLine &&
+    !pending &&
+    (!isCredit || (Boolean(customerId) && !overpaidOnCredit));
 
   function addProduct(product: SellableProduct) {
     if (product.stockMilli <= 0) {
@@ -176,7 +211,8 @@ export function SellScreen({ products, action }: SellScreenProps) {
     })),
     discount: discount.trim() || "0",
     paid: paid.trim() || undefined,
-    paymentMethod: "CASH",
+    paymentMethod,
+    customerId: isCredit ? customerId || undefined : undefined,
   });
 
   return (
@@ -371,37 +407,169 @@ export function SellScreen({ products, action }: SellScreenProps) {
         </dl>
 
         <div className="flex flex-col gap-2">
-          <Label htmlFor="paid">Cash received (Rs.)</Label>
-          <Input
-            id="paid"
-            value={paid}
-            onChange={(event) => setPaid(event.target.value)}
-            inputMode="decimal"
-            autoComplete="off"
-            placeholder={String(paisaToRupees(totalPaisa))}
-            aria-invalid={Boolean(fieldErrors.paid)}
-            className="h-11 text-base"
-          />
-          <p className="text-sm text-ink-muted">
-            Leave empty when the customer pays the exact total.
-          </p>
-          {fieldErrors.paid ? (
-            <p className="text-sm text-error">{fieldErrors.paid}</p>
-          ) : null}
-          {changePaisa !== null ? (
-            <p
-              className={
-                changePaisa < 0
-                  ? "text-sm font-medium text-error"
-                  : "text-sm text-ink-muted"
-              }
+          <Label>Payment method</Label>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setPaymentMethod("CASH");
+                setPaid("");
+              }}
+              aria-pressed={!isCredit}
+              className={`h-11 rounded-lg border text-base font-medium transition-colors ${
+                isCredit
+                  ? "border-line bg-surface text-ink hover:bg-subtle"
+                  : "border-brand bg-brand-soft font-semibold text-brand"
+              }`}
             >
-              {changePaisa < 0
-                ? `Short by ${formatPaisa(Math.abs(changePaisa))}`
-                : `Change ${formatPaisa(changePaisa)}`}
-            </p>
-          ) : null}
+              Cash
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setPaymentMethod("CREDIT");
+                setPaid("");
+              }}
+              aria-pressed={isCredit}
+              className={`h-11 rounded-lg border text-base font-medium transition-colors ${
+                isCredit
+                  ? "border-brand bg-brand-soft font-semibold text-brand"
+                  : "border-line bg-surface text-ink hover:bg-subtle"
+              }`}
+            >
+              Credit (khata)
+            </button>
+          </div>
         </div>
+
+        {isCredit ? (
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="customer">Customer</Label>
+              <Link
+                href="/customers/new"
+                target="_blank"
+                rel="noreferrer"
+                className="text-xs font-medium text-brand hover:text-brand-hover"
+              >
+                + New customer
+              </Link>
+            </div>
+            <select
+              id="customer"
+              value={customerId}
+              onChange={(event) => setCustomerId(event.target.value)}
+              className="h-11 w-full rounded-lg border border-line bg-surface px-3 text-base outline-none focus-visible:border-brand focus-visible:ring-3 focus-visible:ring-brand/20"
+              aria-invalid={Boolean(fieldErrors.customerId)}
+            >
+              <option value="">Choose a customer…</option>
+              {customers.map((customer) => (
+                <option key={customer.id} value={customer.id}>
+                  {customer.name}
+                  {customer.balancePaisa > 0
+                    ? ` (owes ${formatPaisa(customer.balancePaisa)})`
+                    : ""}
+                </option>
+              ))}
+            </select>
+            {customers.length === 0 ? (
+              <p className="text-xs text-ink-muted">
+                No customers yet.{" "}
+                <Link
+                  href="/customers/new"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-brand underline"
+                >
+                  Create a customer
+                </Link>{" "}
+                first.
+              </p>
+            ) : null}
+            {fieldErrors.customerId ? (
+              <p className="text-sm text-error">{fieldErrors.customerId}</p>
+            ) : null}
+          </div>
+        ) : null}
+
+        {isCredit ? (
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="paid">Cash received now (Rs., optional)</Label>
+            <Input
+              id="paid"
+              value={paid}
+              onChange={(event) => setPaid(event.target.value)}
+              inputMode="decimal"
+              autoComplete="off"
+              placeholder="0"
+              aria-invalid={Boolean(fieldErrors.paid) || overpaidOnCredit}
+              className="h-11 text-base"
+            />
+            <p className="text-sm text-ink-muted">
+              Leave empty (or 0) to put the full amount on credit, or enter what
+              was paid now.
+            </p>
+            {fieldErrors.paid ? (
+              <p className="text-sm text-error">{fieldErrors.paid}</p>
+            ) : null}
+            {overpaidOnCredit ? (
+              <p className="text-sm text-error">
+                Cannot receive more than the total on credit. Record a cash sale
+                instead.
+              </p>
+            ) : (
+              <div className="rounded-lg bg-subtle p-3 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-ink-muted">Added to khata</span>
+                  <span className="font-semibold tabular-nums text-error">
+                    {formatPaisa(creditDuePaisa)}
+                  </span>
+                </div>
+                {paidPaisa !== null && paidPaisa > 0 ? (
+                  <div className="mt-1 flex justify-between text-xs text-ink-muted">
+                    <span>Paid now</span>
+                    <span className="tabular-nums">
+                      {formatPaisa(paidPaisa)}
+                    </span>
+                  </div>
+                ) : null}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="paid">Cash received (Rs.)</Label>
+            <Input
+              id="paid"
+              value={paid}
+              onChange={(event) => setPaid(event.target.value)}
+              inputMode="decimal"
+              autoComplete="off"
+              placeholder={String(paisaToRupees(totalPaisa))}
+              aria-invalid={Boolean(fieldErrors.paid)}
+              className="h-11 text-base"
+            />
+            <p className="text-sm text-ink-muted">
+              Leave empty when the customer pays the exact total.
+            </p>
+            {fieldErrors.paid ? (
+              <p className="text-sm text-error">{fieldErrors.paid}</p>
+            ) : null}
+            {changePaisa !== null ? (
+              <p
+                className={
+                  changePaisa < 0
+                    ? "text-sm font-medium text-error"
+                    : "text-sm text-ink-muted"
+                }
+              >
+                {changePaisa < 0
+                  ? `Short by ${formatPaisa(Math.abs(changePaisa))}`
+                  : `Change ${formatPaisa(changePaisa)}`}
+              </p>
+            ) : null}
+          </div>
+        )}
 
         <div className="hidden lg:block">
           <Button
@@ -411,7 +579,9 @@ export function SellScreen({ products, action }: SellScreenProps) {
           >
             {pending
               ? "Saving…"
-              : `Complete sale · ${formatPaisa(totalPaisa)}`}
+              : isCredit
+                ? `Record credit sale · ${formatPaisa(creditDuePaisa)} on khata`
+                : `Complete sale · ${formatPaisa(totalPaisa)}`}
           </Button>
         </div>
       </aside>
@@ -419,9 +589,15 @@ export function SellScreen({ products, action }: SellScreenProps) {
       <div className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-surface px-4 py-3 lg:hidden">
         <div className="mx-auto flex max-w-6xl items-center gap-3">
           <div className="flex-1">
-            <p className="text-xs text-ink-muted">Total</p>
-            <p className="text-lg font-semibold tabular-nums">
-              {formatPaisa(totalPaisa)}
+            <p className="text-xs text-ink-muted">
+              {isCredit ? "On khata" : "Total"}
+            </p>
+            <p
+              className={`text-lg font-semibold tabular-nums ${
+                isCredit ? "text-error" : ""
+              }`}
+            >
+              {formatPaisa(isCredit ? creditDuePaisa : totalPaisa)}
             </p>
           </div>
           <Button
@@ -429,7 +605,11 @@ export function SellScreen({ products, action }: SellScreenProps) {
             disabled={!canSubmit}
             className="h-12 px-5 text-base"
           >
-            {pending ? "Saving…" : "Complete sale"}
+            {pending
+              ? "Saving…"
+              : isCredit
+                ? "Record credit"
+                : "Complete sale"}
           </Button>
         </div>
       </div>

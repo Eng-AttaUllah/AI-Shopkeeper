@@ -37,6 +37,8 @@ function expectOk<T>(result: Result<T>): T {
 beforeEach(async () => {
   await prisma.saleItem.deleteMany();
   await prisma.sale.deleteMany();
+  await prisma.payment.deleteMany();
+  await prisma.customer.deleteMany();
   await prisma.stockMovement.deleteMany();
   await prisma.productAlias.deleteMany();
   await prisma.product.deleteMany();
