@@ -1,109 +1,301 @@
 import Link from "next/link";
 
+import { SalesBarChart } from "@/components/reports/sales-bar-chart";
+import { StatCard } from "@/components/reports/stat-card";
+import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
-import { formatDate } from "@/lib/format";
+import {
+  addKarachiDays,
+  karachiDayRange,
+  startOfKarachiDay,
+  startOfKarachiMonth,
+} from "@/lib/dates";
 import { prisma } from "@/lib/db";
+import { formatDate, formatDateTime, formatPaisa } from "@/lib/format";
+import { formatQuantity } from "@/lib/quantity";
+import {
+  inventoryValuePaisa,
+  lowStockProducts,
+} from "@/modules/products/queries";
+import {
+  creditOverview,
+  salesSeries,
+  salesSummary,
+} from "@/modules/reports/queries";
+import { listSales } from "@/modules/sales/queries";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const shop = await prisma.shop.findFirst({
-    orderBy: { createdAt: "asc" },
-  });
+  const now = new Date();
+  const todayRange = karachiDayRange(now);
+  const monthRange = {
+    start: startOfKarachiMonth(now),
+    end: todayRange.end,
+  };
+  const seriesRange = {
+    start: startOfKarachiDay(addKarachiDays(now, -13)),
+    end: todayRange.end,
+  };
+
+  const [
+    shop,
+    today,
+    month,
+    series,
+    credit,
+    lowStock,
+    stockValue,
+    recentSales,
+  ] = await Promise.all([
+    prisma.shop.findFirst({ orderBy: { createdAt: "asc" } }),
+    salesSummary(todayRange),
+    salesSummary(monthRange),
+    salesSeries(seriesRange),
+    creditOverview(5),
+    lowStockProducts(),
+    inventoryValuePaisa(),
+    listSales(5),
+  ]);
 
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10">
-      <header>
-        <p className="text-sm font-medium uppercase tracking-wide text-ink-muted">
-          AI Shopkeeper Assistant
-        </p>
-        <h1 className="mt-1 text-3xl font-semibold">Shop overview</h1>
-        <p className="mt-2 text-ink-muted">
-          Record sales, watch stock, keep prices up to date, and track customer
-          credit (khata).
-        </p>
-        <div className="mt-4 flex flex-wrap gap-3">
+    <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-8">
+      <header className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="text-sm font-medium uppercase tracking-wide text-ink-muted">
+            {shop?.name ?? "Your shop"} · {formatDate(now)}
+          </p>
+          <h1 className="mt-1 text-3xl font-semibold">Dashboard</h1>
+          <p className="mt-2 text-sm text-ink-muted">
+            This month:{" "}
+            <span className="font-medium text-ink">
+              {formatPaisa(month.revenuePaisa)}
+            </span>{" "}
+            revenue ·{" "}
+            <span className="font-medium text-ink">
+              {formatPaisa(month.profitPaisa)}
+            </span>{" "}
+            profit ·{" "}
+            <span className="font-medium text-ink">{month.salesCount}</span>{" "}
+            {month.salesCount === 1 ? "sale" : "sales"}
+          </p>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
           <Link
             href="/sell"
-            className={buttonVariants({
-              className: "h-11 px-4 text-base",
-            })}
+            className={buttonVariants({ className: "h-11 px-4 text-base" })}
           >
             Start a sale
           </Link>
           <Link
-            href="/products"
+            href="/reports"
             className={buttonVariants({
               variant: "outline",
               className: "h-11 px-4 text-base",
             })}
           >
-            Products
-          </Link>
-          <Link
-            href="/customers"
-            className={buttonVariants({
-              variant: "outline",
-              className: "h-11 px-4 text-base",
-            })}
-          >
-            Customers
+            Reports
           </Link>
         </div>
       </header>
 
-      <section className="rounded-xl border border-line bg-surface p-5">
-        <h2 className="text-lg font-semibold">Database</h2>
-
-        {shop ? (
-          <dl className="mt-4 grid gap-3 sm:grid-cols-2">
-            <div>
-              <dt className="text-sm text-ink-muted">Shop</dt>
-              <dd className="font-medium">{shop.name}</dd>
-            </div>
-            <div>
-              <dt className="text-sm text-ink-muted">Currency</dt>
-              <dd className="font-medium">{shop.currency}</dd>
-            </div>
-            <div>
-              <dt className="text-sm text-ink-muted">Timezone</dt>
-              <dd className="font-medium">{shop.timezone}</dd>
-            </div>
-            <div>
-              <dt className="text-sm text-ink-muted">Created</dt>
-              <dd className="font-medium">{formatDate(shop.createdAt)}</dd>
-            </div>
-          </dl>
-        ) : (
-          <p className="mt-3 rounded-md border border-warning/30 bg-warning/5 p-3 text-sm">
-            No shop record found. Run{" "}
-            <code className="font-mono text-sm">npm run db:seed</code> to create
-            one.
-          </p>
-        )}
+      <section aria-label="Today" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <StatCard
+          label="Today's revenue"
+          value={formatPaisa(today.revenuePaisa)}
+          hint={`${today.salesCount} ${today.salesCount === 1 ? "sale" : "sales"}`}
+        />
+        <StatCard
+          label="Today's profit"
+          value={formatPaisa(today.profitPaisa)}
+          hint={`Cost of goods ${formatPaisa(today.costPaisa)}`}
+        />
+        <StatCard
+          label="Credit given today"
+          value={formatPaisa(today.creditGivenPaisa)}
+          hint="New khata"
+          tone={today.creditGivenPaisa > 0 ? "error" : "default"}
+        />
+        <StatCard
+          label="Outstanding credit"
+          value={formatPaisa(credit.totalPaisa)}
+          hint={
+            credit.customerCount === 0
+              ? "No one owes"
+              : `${credit.customerCount} ${
+                  credit.customerCount === 1 ? "customer owes" : "customers owe"
+                }`
+          }
+          tone={credit.totalPaisa > 0 ? "error" : "default"}
+        />
       </section>
 
       <section className="rounded-xl border border-line bg-surface p-5">
-        <h2 className="text-lg font-semibold">Checks</h2>
-        <ul className="mt-3 space-y-2 text-sm">
-          <li className="flex items-center gap-2">
-            <span aria-hidden className="size-2 rounded-full bg-success" />
-            Next.js app is serving this page
-          </li>
-          <li className="flex items-center gap-2">
-            <span aria-hidden className="size-2 rounded-full bg-success" />
-            Prisma is connected to SQLite
-          </li>
-          <li className="flex items-center gap-2">
-            <span aria-hidden className="size-2 rounded-full bg-success" />
-            The Shop model is migrated and readable
-          </li>
-        </ul>
+        <div className="flex flex-wrap items-end justify-between gap-2">
+          <div>
+            <h2 className="text-lg font-semibold">Sales, last 14 days</h2>
+            <p className="text-sm text-ink-muted">
+              Daily revenue in Asia/Karachi time.
+            </p>
+          </div>
+          <Link
+            href="/reports?period=month"
+            className="text-sm font-medium text-brand hover:text-brand-hover"
+          >
+            Monthly report
+          </Link>
+        </div>
+
+        <div className="mt-4">
+          <SalesBarChart
+            points={series.points}
+            label="Daily revenue for the last 14 days"
+          />
+        </div>
+      </section>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <section className="rounded-xl border border-line bg-surface p-5">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-lg font-semibold">Recent sales</h2>
+            <Link
+              href="/sales"
+              className="text-sm font-medium text-brand hover:text-brand-hover"
+            >
+              View all
+            </Link>
+          </div>
+
+          {recentSales.length === 0 ? (
+            <p className="mt-3 rounded-md bg-subtle px-3 py-2 text-sm text-ink-muted">
+              No sales yet.{" "}
+              <Link href="/sell" className="text-brand underline">
+                Start a sale
+              </Link>
+              .
+            </p>
+          ) : (
+            <ul className="mt-3 divide-y divide-line">
+              {recentSales.map((sale) => (
+                <li
+                  key={sale.id}
+                  className="flex items-start justify-between gap-3 py-3 first:pt-0 last:pb-0"
+                >
+                  <div>
+                    <p className="font-medium">
+                      <Link
+                        href={`/sales/${sale.id}`}
+                        className="hover:text-brand"
+                      >
+                        {sale.number}
+                      </Link>
+                    </p>
+                    <p className="text-sm text-ink-muted">
+                      {formatDateTime(sale.createdAt)}
+                      {sale.customer ? ` · ${sale.customer.name}` : ""}
+                    </p>
+                  </div>
+                  <p className="shrink-0 font-medium tabular-nums">
+                    {formatPaisa(sale.totalPaisa)}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        <section className="rounded-xl border border-line bg-surface p-5">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-lg font-semibold">Low stock</h2>
+            <Link
+              href="/products"
+              className="text-sm font-medium text-brand hover:text-brand-hover"
+            >
+              View products
+            </Link>
+          </div>
+          <p className="mt-1 text-sm text-ink-muted">
+            Inventory value {formatPaisa(stockValue)}.
+          </p>
+
+          {lowStock.length === 0 ? (
+            <p className="mt-3 rounded-md bg-subtle px-3 py-2 text-sm text-ink-muted">
+              Everything is above its low-stock level.
+            </p>
+          ) : (
+            <ul className="mt-3 divide-y divide-line">
+              {lowStock.slice(0, 5).map((product) => (
+                <li
+                  key={product.id}
+                  className="flex items-start justify-between gap-3 py-3 first:pt-0 last:pb-0"
+                >
+                  <div>
+                    <p className="font-medium">{product.name}</p>
+                    <p className="text-sm text-ink-muted">
+                      {product.category ?? "No category"}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <Badge variant="secondary">Low</Badge>
+                    <p className="mt-1 text-sm tabular-nums text-warning">
+                      {formatQuantity(product.stockMilli, product.unit)}
+                    </p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      </div>
+
+      <section className="rounded-xl border border-line bg-surface p-5">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold">Customers who owe</h2>
+          <Link
+            href="/customers"
+            className="text-sm font-medium text-brand hover:text-brand-hover"
+          >
+            View customers
+          </Link>
+        </div>
+
+        {credit.topCustomers.length === 0 ? (
+          <p className="mt-3 rounded-md bg-subtle px-3 py-2 text-sm text-ink-muted">
+            No customer owes money.
+          </p>
+        ) : (
+          <ul className="mt-3 divide-y divide-line">
+            {credit.topCustomers.map((customer) => (
+              <li
+                key={customer.id}
+                className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
+              >
+                <div>
+                  <p className="font-medium">
+                    <Link
+                      href={`/customers/${customer.id}`}
+                      className="hover:text-brand"
+                    >
+                      {customer.name}
+                    </Link>
+                  </p>
+                  {customer.phone ? (
+                    <p className="text-sm text-ink-muted">{customer.phone}</p>
+                  ) : null}
+                </div>
+                <p className="shrink-0 font-medium tabular-nums text-error">
+                  {formatPaisa(customer.balancePaisa)}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
 
       <footer className="text-sm text-ink-muted">
         Specification: <code className="font-mono">docs/</code> · Next step:
-        Phase 4 — dashboard and reports.
+        Phase 5 — expenses and hardening.
       </footer>
     </main>
   );

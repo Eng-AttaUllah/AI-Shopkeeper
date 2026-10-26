@@ -37,7 +37,7 @@ export default function RootLayout({
             </Link>
             <nav
               aria-label="Main"
-              className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm"
+              className="flex w-full items-center gap-x-4 overflow-x-auto text-sm [scrollbar-width:none] sm:w-auto sm:overflow-visible [&::-webkit-scrollbar]:hidden"
             >
               <Link
                 href="/"
@@ -68,6 +68,12 @@ export default function RootLayout({
                 className="whitespace-nowrap text-ink-muted transition-colors hover:text-ink"
               >
                 Customers
+              </Link>
+              <Link
+                href="/reports"
+                className="whitespace-nowrap text-ink-muted transition-colors hover:text-ink"
+              >
+                Reports
               </Link>
             </nav>
           </div>
