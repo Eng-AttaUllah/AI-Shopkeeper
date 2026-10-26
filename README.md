@@ -80,8 +80,8 @@ The specification is the source of truth:
 
 ## Status
 
-Phase 2 — sales complete: a touch-friendly sell screen with search and aliases, cart and
-quantity editing, discounts, cash and change, a receipt view, and stock movements written in
-the same transaction. 53 tests pass.
+Phase 3 — customers and credit complete: credit sales with partial cash, customer records,
+derived khata balances, guarded repayments, merged history, and a WhatsApp statement. Cash
+sales, receipts, and stock movements work as before. 69 tests pass.
 
-Next: Phase 3 — customers and credit.
+Next: Phase 4 — dashboard and reports.

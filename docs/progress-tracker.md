@@ -4,11 +4,11 @@ Update this file after every meaningful implementation change.
 
 ## Current Phase
 
-- Phase 3 — Customers and credit: **Not started**
+- Phase 4 — Dashboard and reports: **Not started**
 
 ## Current Goal
 
-- Nothing in progress. Phase 2 is complete and verified end to end.
+- Nothing in progress. Phase 3 is complete and verified end to end.
 
 ## Completed
 
@@ -101,28 +101,73 @@ Update this file after every meaningful implementation change.
   nothing. Test records were removed from `prisma/dev.db` afterwards.
 - `npm run typecheck`, `npm run lint`, `npm test`, and `npm run build` all pass.
 
+### Phase 3 — Customers and credit (complete)
+
+- `Customer` and `Payment` models plus a nullable `Sale.customerId` with migration
+  `20261026062624_add_customers_and_credit`. Credit sales and repayments are separate rows;
+  the balance is always derived, never stored (invariant 9).
+- `src/modules/customers/balance.ts` — `outstandingPaisa(db, customerId)` returns unpaid
+  amounts on non-voided credit sales minus recorded payments. It accepts a transaction client
+  so a sale or payment can check the balance inside the transaction that writes it.
+- `src/modules/customers/schema.ts` — Zod schemas for customer details and repayments (name
+  length, phone character set, rupee amount with at most two decimals).
+- `src/modules/customers/service.ts` — `createCustomer`, `updateCustomer`, and
+  `recordPayment`. A repayment reads the balance inside one transaction and rejects an amount
+  above it, so no customer can ever be owed money by the shop.
+- `src/modules/customers/queries.ts` — search by name or phone, per-customer and total
+  outstanding balances, customer options for the sell screen, a merged sale/payment history,
+  and `buildStatementText` for the WhatsApp message. Voided sales are excluded.
+- `src/modules/sales/*` — `createSale` now accepts `CREDIT`. A credit sale requires an
+  existing customer, allows a partial cash amount up to the total, rejects overpayment, and
+  records `changePaisa = 0`; the unpaid amount becomes the khata balance. Stock and money
+  writes stay in the same transaction (invariants 2, 3, 5, 6). A customer on a cash sale is
+  ignored.
+- `/customers` — totals (customers, owing, total outstanding), search, and responsive table
+  and cards. `/customers/new`, `/customers/[id]/edit` — details forms. `/customers/[id]` —
+  derived balance, merged history, repayment form (only while something is owed), and a
+  WhatsApp statement link.
+- `/sell` — Cash / Credit (khata) toggle, customer select showing each balance, optional cash
+  received on a credit sale, and a live "Added to khata" amount. **New customer** opens in a
+  new tab so the cart is kept; the sell screen re-fetches server data when the tab regains
+  focus or visibility, so the new customer appears without a manual reload.
+- Receipt and sales list show the credit customer and the khata amount; cash receipts keep the
+  cash/change rows.
+- Header navigation now includes Customers and wraps onto a second row on narrow phones
+  instead of overflowing; the page never scrolls horizontally.
+- Tests: 69 passing across 7 files. They cover credit balance math, partial cash, missing or
+  unknown customer, credit overpayment, cash sales leaving balances untouched, repayment
+  limits, merged history, statement text, and the FK-safe cleanup order.
+- Verified end to end against a copy of the dev database: customer creation (303 redirect),
+  a credit sale of 2 × Dove Shampo at Rs. 400 with Rs. 300 paid (balance Rs. 500.00, stock
+  12 → 10, `changePaisa` 0), a Rs. 200 repayment (balance Rs. 300.00), overpayment rejected
+  with "Only Rs. 300.00 is outstanding.", zero and invalid amounts rejected, a cash sale
+  unaffected, a credit sale without a customer rejected, and a credit overpayment rejected.
+  Receipts, sales list, customer list, history, and edit page all render correctly with no
+  server errors.
+- `npm run typecheck`, `npm run lint`, `npm test`, and `npm run build` all pass.
+
 ## In Progress
 
 - None.
 
 ## Next Up
 
-Phase 3 — Customers and credit, in this order:
+Phase 4 — Dashboard and reports, in this order:
 
-1. Add `Customer` and `Payment` models, add a nullable `customerId` to `Sale`, and create one
-   migration. A credit sale needs the unpaid amount to be derivable from the sale and its
-   payments, never stored twice.
-2. Add `src/modules/customers/schema.ts` for customer details and repayment input.
-3. Add `src/modules/customers/service.ts`: create/update a customer, record a repayment in one
-   transaction, and reject overpayment. Extend `createSale` to accept `CREDIT` with a customer
-   and a partial payment, keeping the stock and money writes atomic (invariant 2).
-4. Add `src/modules/customers/queries.ts`: search by name or phone, balance per customer
-   (credit sales minus payments), and transaction history.
-5. Build the customer list, customer detail with history, repayment form, and the Cash/Credit
-   choice on the sell screen. Credit sales require choosing or creating a customer.
-6. Tests: a credit sale raises the balance by exactly the unpaid amount, a repayment lowers it
-   by exactly the amount paid, overpayment is rejected, cash sales leave balances untouched,
-   and a failed credit sale writes nothing.
+1. Decide and record how revenue is recognised for credit sales (at sale time, or when the
+   money is collected). The dashboard and reports must use one definition everywhere.
+2. Add `src/modules/reports/queries.ts` with Asia/Karachi day, month, and year ranges, plus
+   totals for sales count, revenue, profit from the line cost snapshots, discounts, and
+   outstanding credit.
+3. Add per-item reporting (quantity sold, revenue, profit) and a simple daily series for the
+   current month. Reuse the immutable sale lines; never recompute with current product prices.
+4. Rebuild `/` as the dashboard: today's sales and profit, outstanding credit, low-stock
+   items, and recent sales. Keep the current links to the working screens.
+5. Add `/reports` with day, month, and year views and an item breakdown. Keep it tables and
+   cards, readable on a phone, with no chart library unless the spec asks for one.
+6. Tests: range boundaries at Asia/Karachi midnight, month and year edges, profit from
+   snapshots after a price change, credit sales counted once, and empty days returning zero.
+7. Update `docs/progress-tracker.md`, `README.md`, and any decision notes.
 
 ## Open Questions
 
@@ -198,9 +243,28 @@ Phase 3 — Customers and credit, in this order:
 - **Sale totals are stored; derived sums are not.** `totalPaisa`, `discountPaisa`, `paidPaisa`,
   and `changePaisa` are records. Subtotal and profit are computed from the immutable lines, so
   there is no second source of truth to keep in sync.
-- **Cash only until Phase 3.** `paidPaisa`, `changePaisa`, and `paymentMethod` are already in
-  the schema. Credit is additive: a nullable `customerId`, a relaxed paid check, and the
-  customer balance in the same transaction.
+- **Khata balance is derived, never stored.** `outstandingPaisa` subtracts recorded payments
+  from the unpaid amounts of non-voided credit sales. A stored balance would be a second
+  source of truth that could drift after a void or a failed write.
+- **Repayments are guarded inside their transaction.** `recordPayment` reads the balance and
+  inserts the payment in one `$transaction`, so two simultaneous repayments cannot overpay and
+  a customer can never be owed money by the shop.
+- **A credit sale may take partial cash.** `paidPaisa` is at most the total, `changePaisa`
+  stays 0 on credit, and the remainder becomes the khata balance. Cash sales still require
+  full payment.
+- **A credit sale requires an existing customer.** The sell screen links to a new tab for
+  creating one instead of embedding a second form, so the cart is never lost. The sell screen
+  refreshes on focus and visibility so the new customer appears without a manual reload.
+- **Voided sales are excluded from credit.** Phase 5 will set `voidedAt`; every customer query
+  already filters `voidedAt: null` so a future void cannot leave a phantom balance.
+- **WhatsApp statements are plain text built from derived data.** `buildStatementText` formats
+  the shop name, balance, and five most recent entries; the detail page opens a `wa.me` link
+  with the text encoded. No messaging API, no stored message.
+- **The header wraps instead of scrolling sideways.** With five nav links plus the brand, the
+  header uses `flex-wrap` and `whitespace-nowrap`, so at 360–414px it becomes two rows. The
+  page itself never scrolls horizontally, per `ui-context.md`.
+- **Native `<select>` for the customer choice.** Consistent with the Phase 2 decision: it
+  submits through `FormData` and keeps working without JavaScript.
 - **Duplicate cart lines are merged server-side.** The stock check runs once per product, so
   two lines of the same item cannot each pass separately and oversell.
 
@@ -231,3 +295,15 @@ Phase 3 — Customers and credit, in this order:
   here, so run `npx prisma generate --config prisma7.config.ts` afterwards.
 - Server actions were exercised directly over HTTP during Phases 1 and 2 (progressive-
   enhancement form posts), which verified the action wiring as well as the service layer.
+- Phase 3 was rebuilt from the Phase 2 base `9674905` rather than patching the first attempt.
+  The first attempt is preserved on `backup/phase3-first-attempt` (`061e1d8`) on GitHub. Its
+  migration `20261025104027_add_customers_and_credit` was reversed in `prisma/dev.db` (tables
+  dropped, `sales` rebuilt without `customerId`, migration row deleted) with the product and
+  its opening movement preserved. The rebuild uses `20261026062624_add_customers_and_credit`.
+- Two browser bugs from the first attempt were fixed in the rebuild: the header overflowed on
+  360–414px phones, and the customer dropdown on `/sell` stayed stale after a customer was
+  created in another tab.
+- The Phase 3 HTTP verification used a copy of `prisma/dev.db`, so the real database still has
+  one product (`Dove Shampo`, 12 pcs) and no test customers, payments, or sales.
+- Final browser check is done on a phone over the LAN URL printed by `npm run dev` (for
+  example `http://192.168.1.17:3000`); the address changes with the network.
