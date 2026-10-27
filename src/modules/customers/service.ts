@@ -1,5 +1,6 @@
 import { Prisma } from "@/generated/prisma/client";
 import type { Customer, Payment } from "@/generated/prisma/client";
+import { writeAudit } from "@/lib/audit";
 import { prisma } from "@/lib/db";
 import { formatPaisa } from "@/lib/format";
 import { rupeesToPaisa } from "@/lib/money";
@@ -142,13 +143,29 @@ export async function recordPayment(
         );
       }
 
-      return tx.payment.create({
+      const payment = await tx.payment.create({
         data: {
           customerId: data.customerId,
           amountPaisa,
           note: emptyToNull(data.note),
         },
       });
+
+      await writeAudit(tx, {
+        action: "PAYMENT_RECORDED",
+        entityType: "Payment",
+        entityId: payment.id,
+        summary: `Repayment ${formatPaisa(amountPaisa)} from ${customer.name}`,
+        before: { balancePaisa: outstanding },
+        after: { balancePaisa: outstanding - amountPaisa },
+        details: {
+          customerId: data.customerId,
+          amountPaisa,
+          note: emptyToNull(data.note),
+        },
+      });
+
+      return payment;
     });
 
     return ok(payment);

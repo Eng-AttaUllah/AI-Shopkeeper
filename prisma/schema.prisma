@@ -183,3 +183,59 @@ model Payment {
   @@index([customerId, createdAt])
   @@map("payments")
 }
+
+/// A shop expense. Append-only: expenses feed net profit and are never edited.
+model Expense {
+  id          String   @id @default(cuid())
+  /// RENT | ELECTRICITY | SALARIES | TRANSPORT | OTHER
+  category    String
+  amountPaisa Int
+  /// Shop-local midnight of the day the expense belongs to.
+  spentAt     DateTime
+  note        String?
+  createdAt   DateTime @default(now())
+
+  @@index([spentAt])
+  @@map("expenses")
+}
+
+/// An append-only trail of money and stock changes. Written in the same
+/// transaction as the change it describes, so a change cannot exist without
+/// its audit row (or the reverse).
+model AuditLog {
+  id         String   @id @default(cuid())
+  /// "local" until Auth.js is scheduled; then the signed-in user id.
+  actor      String   @default("local")
+  /// For example SALE_CREATED, SALE_VOIDED, PAYMENT_RECORDED.
+  action     String
+  entityType String
+  entityId   String
+  summary    String
+  /// JSON text of the state before the change; null for a create.
+  before     String?
+  /// JSON text of the state after the change.
+  after      String?
+  /// Extra context such as a note or restored stock lines.
+  details    String?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([entityType, entityId])
+  @@map("audit_logs")
+}
+
+/// The counted cash for one shop day, compared with the expected cash.
+/// One record per day; re-running the check updates the same row.
+model CashReconciliation {
+  id              String   @id @default(cuid())
+  /// Shop-local midnight of the reconciled day.
+  businessDate    DateTime @unique
+  expectedPaisa   Int
+  countedPaisa    Int
+  differencePaisa Int
+  note            String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("cash_reconciliations")
+}

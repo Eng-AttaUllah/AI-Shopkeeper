@@ -4,6 +4,7 @@ import { SalesBarChart } from "@/components/reports/sales-bar-chart";
 import { StatCard } from "@/components/reports/stat-card";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
+import { ensureDailyBackup } from "@/lib/backup";
 import {
   addKarachiDays,
   karachiDayRange,
@@ -19,6 +20,7 @@ import {
 } from "@/modules/products/queries";
 import {
   creditOverview,
+  periodSummary,
   salesSeries,
   salesSummary,
 } from "@/modules/reports/queries";
@@ -38,6 +40,10 @@ export default async function Home() {
     end: todayRange.end,
   };
 
+  await ensureDailyBackup().catch((error) => {
+    console.error("Daily backup failed:", error);
+  });
+
   const [
     shop,
     today,
@@ -50,7 +56,7 @@ export default async function Home() {
   ] = await Promise.all([
     prisma.shop.findFirst({ orderBy: { createdAt: "asc" } }),
     salesSummary(todayRange),
-    salesSummary(monthRange),
+    periodSummary(monthRange),
     salesSeries(seriesRange),
     creditOverview(5),
     lowStockProducts(),
@@ -75,7 +81,15 @@ export default async function Home() {
             <span className="font-medium text-ink">
               {formatPaisa(month.profitPaisa)}
             </span>{" "}
-            profit ·{" "}
+            gross profit ·{" "}
+            <span className="font-medium text-ink">
+              {formatPaisa(month.expensePaisa)}
+            </span>{" "}
+            expenses ·{" "}
+            <span className="font-medium text-ink">
+              {formatPaisa(month.netProfitPaisa)}
+            </span>{" "}
+            net profit ·{" "}
             <span className="font-medium text-ink">{month.salesCount}</span>{" "}
             {month.salesCount === 1 ? "sale" : "sales"}
           </p>
@@ -97,6 +111,15 @@ export default async function Home() {
           >
             Reports
           </Link>
+          <Link
+            href="/day-close"
+            className={buttonVariants({
+              variant: "outline",
+              className: "h-11 px-4 text-base",
+            })}
+          >
+            Day close
+          </Link>
         </div>
       </header>
 
@@ -109,7 +132,7 @@ export default async function Home() {
         <StatCard
           label="Today's profit"
           value={formatPaisa(today.profitPaisa)}
-          hint={`Cost of goods ${formatPaisa(today.costPaisa)}`}
+          hint={`Before expenses · Cost ${formatPaisa(today.costPaisa)}`}
         />
         <StatCard
           label="Credit given today"
@@ -294,8 +317,8 @@ export default async function Home() {
       </section>
 
       <footer className="text-sm text-ink-muted">
-        Specification: <code className="font-mono">docs/</code> · Next step:
-        Phase 5 — expenses and hardening.
+        Specification: <code className="font-mono">docs/</code> · Expenses,
+        voiding, audit log, and backups are included.
       </footer>
     </main>
   );

@@ -8,12 +8,14 @@ import {
 import { prisma } from "@/lib/db";
 import type { Result } from "@/lib/result";
 import { createCustomer, recordPayment } from "@/modules/customers/service";
+import { createExpense } from "@/modules/expenses/service";
 import {
   createProduct,
   setProductActive,
   updateProduct,
 } from "@/modules/products/service";
 import {
+  periodSummary,
   productSales,
   resolveReportRange,
   salesSeries,
@@ -94,6 +96,8 @@ async function saleAt(
 }
 
 beforeEach(async () => {
+  await prisma.auditLog.deleteMany();
+  await prisma.expense.deleteMany();
   await prisma.saleItem.deleteMany();
   await prisma.sale.deleteMany();
   await prisma.payment.deleteMany();
@@ -105,6 +109,45 @@ beforeEach(async () => {
 
 afterAll(async () => {
   await prisma.$disconnect();
+});
+
+describe("periodSummary", () => {
+  it("subtracts expenses from gross profit for net profit", async () => {
+    const product = expectOk(await createProduct(sugar));
+
+    await saleAt(product.id, "2", new Date("2026-10-26T10:00:00Z"));
+    expectOk(
+      await createExpense({
+        category: "RENT",
+        amount: "100",
+        date: "2026-10-26",
+      }),
+    );
+
+    const summary = await periodSummary(dayRange(2026, 10, 26));
+
+    expect(summary.profitPaisa).toBe(4000);
+    expect(summary.expensePaisa).toBe(10000);
+    expect(summary.netProfitPaisa).toBe(-6000);
+  });
+
+  it("ignores expenses outside the range", async () => {
+    const product = expectOk(await createProduct(sugar));
+
+    await saleAt(product.id, "2", new Date("2026-10-26T10:00:00Z"));
+    expectOk(
+      await createExpense({
+        category: "RENT",
+        amount: "100",
+        date: "2026-10-25",
+      }),
+    );
+
+    const summary = await periodSummary(dayRange(2026, 10, 26));
+
+    expect(summary.expensePaisa).toBe(0);
+    expect(summary.netProfitPaisa).toBe(4000);
+  });
 });
 
 describe("salesSummary", () => {

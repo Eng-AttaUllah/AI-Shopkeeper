@@ -1,5 +1,6 @@
 import { Prisma } from "@/generated/prisma/client";
 import type { Product } from "@/generated/prisma/client";
+import { writeAudit } from "@/lib/audit";
 import { prisma } from "@/lib/db";
 import { rupeesToPaisa } from "@/lib/money";
 import { formatQuantity, toMilli } from "@/lib/quantity";
@@ -121,6 +122,25 @@ export async function createProduct(input: unknown): Promise<Result<Product>> {
         });
       }
 
+      await writeAudit(tx, {
+        action: "PRODUCT_CREATED",
+        entityType: "Product",
+        entityId: created.id,
+        summary: `Product ${created.name} created`,
+        before: null,
+        after: {
+          name: created.name,
+          unit: created.unit,
+          costPricePaisa: created.costPricePaisa,
+          salePricePaisa: created.salePricePaisa,
+          openingMilli,
+        },
+        details: {
+          category: created.category,
+          barcode: created.barcode,
+        },
+      });
+
       return created;
     });
 
@@ -178,7 +198,7 @@ export async function updateProduct(
 
       await tx.productAlias.deleteMany({ where: { productId: id } });
 
-      return tx.product.update({
+      const updated = await tx.product.update({
         where: { id },
         data: {
           name: data.name,
@@ -194,6 +214,30 @@ export async function updateProduct(
           },
         },
       });
+
+      await writeAudit(tx, {
+        action: "PRODUCT_UPDATED",
+        entityType: "Product",
+        entityId: updated.id,
+        summary: `Product ${updated.name} updated`,
+        before: {
+          name: existing.name,
+          costPricePaisa: existing.costPricePaisa,
+          salePricePaisa: existing.salePricePaisa,
+        },
+        after: {
+          name: updated.name,
+          costPricePaisa: updated.costPricePaisa,
+          salePricePaisa: updated.salePricePaisa,
+        },
+        details: {
+          unit: updated.unit,
+          category: updated.category,
+          barcode: updated.barcode,
+        },
+      });
+
+      return updated;
     });
 
     return ok(product);
@@ -274,6 +318,20 @@ export async function adjustStock(input: unknown): Promise<Result<Product>> {
         data: {
           productId,
           quantityMilli: deltaMilli,
+          reason,
+          note: emptyToNull(note),
+        },
+      });
+
+      await writeAudit(tx, {
+        action: "STOCK_ADJUSTED",
+        entityType: "Product",
+        entityId: updated.id,
+        summary: `Stock ${deltaMilli > 0 ? "+" : ""}${formatQuantity(deltaMilli, updated.unit)} for ${updated.name}`,
+        before: { stockMilli: existing.stockMilli },
+        after: { stockMilli: newStock },
+        details: {
+          deltaMilli,
           reason,
           note: emptyToNull(note),
         },

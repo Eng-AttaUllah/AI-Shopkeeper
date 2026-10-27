@@ -4,11 +4,12 @@ Update this file after every meaningful implementation change.
 
 ## Current Phase
 
-- Phase 4 — Dashboard and reports: **Complete**
+- Phase 5 — Expenses and hardening: **Complete**
 
 ## Current Goal
 
-- Nothing in progress. Phase 4 is complete and verified end to end.
+- Nothing in progress. Phase 5 is complete and verified end to end. Auth.js remains
+  unscheduled, and the app is still open to the shop's local network.
 
 ## Completed
 
@@ -183,24 +184,67 @@ Update this file after every meaningful implementation change.
   inverted range. No server errors.
 - `npm run typecheck`, `npm run lint`, `npm test`, and `npm run build` all pass.
 
+### Phase 5 — Expenses and hardening (complete)
+
+- Migration `20261026184011_add_expenses_audit_and_cash_reconciliation` adds `Expense`,
+  `AuditLog`, and `CashReconciliation`. Migration `20261026185725_add_audit_actor_and_state`
+  adds the audit `actor`, `before`, and `after` fields, so invariant 7 is satisfied rather
+  than deferred.
+- `src/lib/audit.ts` — `writeAudit` writes inside the caller's transaction and
+  `listAuditLogs` reads newest first. Every money or stock mutation now records actor
+  (`local` until sign-in exists), action, entity type/id, summary, and before/after JSON. A
+  failed transaction leaves neither the change nor its audit row.
+- `src/modules/expenses/*` — Zod-validated categories (RENT, ELECTRICITY, SALARIES,
+  TRANSPORT, OTHER), rupee-to-paisa conversion, and a shop-local midnight `spentAt`. Expenses
+  are append-only; a correction is a new expense. `/expenses` records an expense, lists the
+  last 50, and shows the month-to-date total.
+- `/reports` now shows six cards: sales, revenue, gross profit, expenses, net profit, and
+  credit given. Net profit is gross profit minus expenses in the selected range. The dashboard
+  month strip adds expenses and net profit, and the dashboard links to `/day-close`.
+- Void workflow: `voidSale` requires a reason, refuses an already-voided sale, restores every
+  line with a `VOID` `StockMovement`, sets `voidedAt` / `voidedReason`, and writes a
+  `SALE_VOIDED` audit row in the same transaction. A credit sale with repayments applied
+  cannot be voided because the derived khata balance would go negative; refunds are not
+  implemented. A credit sale with only counter cash can be voided. Reports and khata already
+  exclude voided sales. The receipt page shows the void form and a voided banner.
+- Cash reconciliation: `src/modules/cash/*` computes expected cash as cash sales + cash paid
+  on credit sales + repayments − expenses, excluding voided sales. `/day-close` shows today's
+  breakdown, saves a counted-cash check per shop day (re-running updates that day), and lists
+  the last 14 checks. Expenses are assumed paid from the drawer. A saved check is a snapshot;
+  a later void changes the live breakdown but does not rewrite the saved check. A cash refund
+  for a voided sale is not recorded; the void simply removes the sale from expected cash.
+- Backups: `src/lib/backup.ts` uses SQLite's online backup API through `better-sqlite3`, so a
+  copy is consistent while the app is running. The dashboard and `/backups` ensure one daily
+  backup per shop day; the last 30 daily files are kept; manual backups are kept until
+  deleted. `/backups` lists files and documents restore as a file copy with the app stopped.
+  A backup was opened with `better-sqlite3` and its tables were read to verify it restores.
+- `/audit` lists the last 100 entries with actor, action, time, and expandable before/after
+  JSON. `/more` groups Expenses, Day close, Backups, and Audit log; the header nav adds More.
+- `better-sqlite3@12.11.1` is now a direct dependency (it was already the Prisma adapter
+  driver) and `@types/better-sqlite3` is a dev dependency, solely for the backup API.
+- Tests: 116 passing across 13 files. New tests cover expense validation and range totals,
+  void stock/khata/audit behavior, the repayment guard, audit before/after and rollback, cash
+  math and day upsert, net profit, daily backup idempotency, simultaneous daily-backup
+  sharing, 30-file retention, and opening a backup.
+- Verified on a copy of the dev database: recorded a Rs. 100 expense, a Rs. 400 cash sale, and
+  a counted-cash check of Rs. 300 (expected Rs. 300, balanced); voided the sale and saw stock
+  11 → 11, the saved check stay at Rs. 300, the live expected cash drop to −Rs. 100 (the
+  expense), net profit −Rs. 100, four audit rows with before/after, and a manual backup
+  containing the expense, sale, audit rows, and cash check. The real database was not changed.
+- `npm run typecheck`, `npm run lint`, `npm test`, and `npm run build` all pass. The build has
+  no dynamic-filesystem warning; the DB path is marked `/*turbopackIgnore: true*/`.
+
 ## In Progress
 
 - None.
 
 ## Next Up
 
-Phase 5 — Expenses and hardening, in this order:
-
-1. Add the `Expense` model and migration, plus expense entry and list screens. Include expense
-   totals and net profit (gross profit minus expenses) in `/reports`.
-2. Add the void workflow: restore stock with matching `StockMovement` rows, exclude the sale
-   from reports and khata, and record who voided it and why.
-3. Add audit log entries for every money and stock change, written in the same transaction.
-4. Add end-of-day cash reconciliation and the backup/restore workflow (daily automatic plus a
-   manual "Back up now" action), then verify a restore.
-5. Confirm when Auth.js sign-in is scheduled. The architecture lists it, but no phase names it
-   and the current app is open to the local network.
-6. Update the docs and run the full gate.
+Phase 6 — Assistant (read-only), after the auth question is settled. The assistant must call
+the same `src/modules` queries and services the screens call; it must not write money or stock
+directly. Before starting, decide when Auth.js sign-in is scheduled and whether the assistant
+may answer questions about the whole shop or only the signed-in user's data. Phases 0–5, the
+sellable v1, are complete.
 
 ## Open Questions
 
@@ -220,6 +264,13 @@ Phase 5 — Expenses and hardening, in this order:
 - When should Auth.js sign-in be scheduled? `docs/architecture.md` lists it and success
   criterion 1 mentions a signed-in shopkeeper, but no implementation phase names it and the
   app is currently open to anyone on the shop's network.
+- How should a credit sale with repayments already applied be corrected? The current void
+  guard refuses it because removing the unpaid amount would make the derived khata balance
+  negative, and there is no refund or payment-reversal record yet. Options: add a refund record
+  that reduces the customer's payments, or allow the void and carry a credit balance owed by
+  the shop. Until one is chosen, the shopkeeper must correct it outside the app. A cash refund
+  for a voided cash sale is also unrecorded: the void removes the sale from expected cash, so
+  the refund is handled outside the app.
 
 ## Architecture Decisions
 
@@ -324,6 +375,35 @@ Phase 5 — Expenses and hardening, in this order:
 - **Report date ranges are validated with Zod.** Search params are external input; impossible
   dates such as 31 February and inverted ranges are rejected with a readable message and a
   month fallback.
+- **Expenses are append-only and dated at shop-local midnight.** No edit or delete; a correction
+  is a new expense. Net profit is gross profit minus expenses in the same report range.
+- **Voiding is a reversal, not an edit.** A void requires a reason, restores every line with a
+  `VOID` stock movement, sets `voidedAt` / `voidedReason`, and writes the audit row in the same
+  transaction. A credit sale with repayments applied is refused because the derived khata
+  balance would go negative; a refund record is a future decision. No actor beyond `local` is
+  recorded until sign-in exists.
+- **The audit log is written in the change's transaction.** It records actor, action, entity
+  type/id, summary, and before/after JSON. The actor is the single local user (`local`) until
+  Auth.js is scheduled; it is not authenticated attribution yet. The audit page shows the
+  before/after state so a shopkeeper can see what changed.
+- **Expected cash is cash sales + counter cash on credit sales + repayments − expenses.**
+  Voided sales are excluded and expenses are assumed paid from the drawer. A cash check is a
+  per-shop-day snapshot: a later void changes the live breakdown but never rewrites a saved
+  check.
+- **Backups use SQLite's online backup API, not a raw file copy.** `better-sqlite3` is a direct
+  dependency because it was already the Prisma adapter driver and exposes the online backup
+  call. The dashboard and `/backups` make one daily backup per shop day; the last 30 daily files
+  are kept and manual backups are kept until deleted. Restore is a documented file copy with
+  the app stopped, verified by opening a backup and reading its tables.
+- **Audit and backup infrastructure live in `src/lib`; cash reconciliation is a domain.**
+  Audit is cross-domain infrastructure and backup is filesystem infrastructure, so neither
+  belongs in a single feature module. Cash reconciliation has its own schema, service, and
+  queries under `src/modules/cash`.
+- **The reports summary has six cards.** Sales, revenue, gross profit, expenses, net profit, and
+  credit given. The dashboard keeps its four today cards and adds expenses and net profit to the
+  month strip, so the landing screen stays scannable.
+- **`/more` groups the less frequent tools.** Expenses, Day close, Backups, and Audit log sit
+  behind one nav link instead of making the phone header longer.
 
 ## Session Notes
 
@@ -376,3 +456,28 @@ Phase 5 — Expenses and hardening, in this order:
   two rows instead of three now that Reports is a sixth link.
 - Final browser check is done on a phone over the LAN URL printed by `npm run dev` (for
   example `http://192.168.1.17:3000`); the address changes with the network.
+- Phase 5 added two migrations: `20261026184011_add_expenses_audit_and_cash_reconciliation`
+  and `20261026185725_add_audit_actor_and_state`. The second was added after noticing that
+  invariant 7 requires an actor and before/after values; the first version of `AuditLog` only
+  had `details`. Both are applied to `prisma/dev.db`, and the client was regenerated.
+- The audit page on the real database is empty until a new money or stock change is made,
+  because the Phase 3 data predates the audit log. The Phase 5 verification used a copy of a
+  daily backup, so it did not add demo expenses or a voided sale to the shop's real data.
+- The Phase 5 mutation check recorded an expense, a cash sale, a cash check, a void, and a
+  manual backup on the copy. It confirmed stock restoration, the saved check staying at its
+  original snapshot, the live expected cash excluding the voided sale, net profit, four audit
+  rows with before/after, and a readable backup file.
+- The dashboard and `/backups` created `daily-20261026-234819498.db` and
+  `daily-20261027-001026096.db` in `backups/` during the page checks. `backups/` is ignored by
+  git.
+- The dev server's LAN address changed to `http://192.168.1.105:3000` during this session. It
+  is printed at start-up and changes with the network.
+- `better-sqlite3` was already present as the Prisma driver; adding it as a direct dependency
+  makes the online backup API explicit. `@types/better-sqlite3` is pinned separately and may
+  lag the runtime version, but the backup calls typecheck.
+- Turbopack warned that `path.resolve(process.cwd(), raw)` traced the whole project. The
+  database path is dynamic, so the call is marked `/*turbopackIgnore: true*/`; the warning is
+  gone and the build output is smaller.
+- The void guard blocks a credit sale once any repayment is applied. The UI message now says
+  refunds are not supported yet, and the gap is listed under Open Questions rather than
+  pretending the shopkeeper can settle it in the app.

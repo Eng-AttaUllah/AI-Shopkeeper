@@ -1,13 +1,16 @@
 import { Prisma } from "@/generated/prisma/client";
+import { writeAudit } from "@/lib/audit";
 import { prisma } from "@/lib/db";
 import { dateKeyInKarachi } from "@/lib/dates";
+import { formatPaisa } from "@/lib/format";
 import { multiplyPaisa, rupeesToPaisa } from "@/lib/money";
 import { formatQuantity, fromMilli, toMilli } from "@/lib/quantity";
 import { fail, ok, type Result } from "@/lib/result";
 import { fieldErrors } from "@/lib/zod";
+import { outstandingPaisa } from "@/modules/customers/balance";
 
 import type { SaleWithItems } from "./queries";
-import { createSaleSchema } from "./schema";
+import { createSaleSchema, voidSaleSchema } from "./schema";
 
 /** An error whose message is safe and useful to show the shopkeeper. */
 class ServiceError extends Error {
@@ -116,6 +119,8 @@ export async function createSale(
 
   try {
     const sale = await prisma.$transaction(async (tx) => {
+      let khataBalanceBeforePaisa: number | null = null;
+
       if (isCredit && customerId) {
         const customer = await tx.customer.findUnique({
           where: { id: customerId },
@@ -124,6 +129,8 @@ export async function createSale(
         if (!customer) {
           throw new ServiceError("Customer not found.");
         }
+
+        khataBalanceBeforePaisa = await outstandingPaisa(tx, customerId);
       }
 
       const products = await tx.product.findMany({
@@ -236,7 +243,184 @@ export async function createSale(
         });
       }
 
+      const stockChanges = lines.map((line) => {
+        const product = productsById.get(line.productId);
+        const stockBeforeMilli = product?.stockMilli ?? 0;
+
+        return {
+          productId: line.productId,
+          quantityMilli: line.quantityMilli,
+          stockBeforeMilli,
+          stockAfterMilli: stockBeforeMilli - line.quantityMilli,
+        };
+      });
+
+      const khataBalanceAfterPaisa =
+        isCredit && customerId
+          ? await outstandingPaisa(tx, customerId)
+          : null;
+
+      await writeAudit(tx, {
+        action: "SALE_CREATED",
+        entityType: "Sale",
+        entityId: created.id,
+        summary: `Sale ${created.number} · ${formatPaisa(created.totalPaisa)}`,
+        before: null,
+        after: {
+          number: created.number,
+          totalPaisa: created.totalPaisa,
+          discountPaisa: created.discountPaisa,
+          paidPaisa: created.paidPaisa,
+          changePaisa: created.changePaisa,
+          paymentMethod: created.paymentMethod,
+          customerId: created.customerId,
+          khataBalanceBeforePaisa,
+          khataBalanceAfterPaisa,
+        },
+        details: { itemCount: lines.length, stockChanges },
+      });
+
       return created;
+    });
+
+    return ok(sale);
+  } catch (error) {
+    return handleError(error);
+  }
+}
+
+/**
+ * Void a sale: restore its stock and mark it voided, never edit it.
+ *
+ * One transaction restores every line with a VOID stock movement, sets
+ * `voidedAt` / `voidedReason`, and writes an audit entry. Credit balances are
+ * derived, so excluding the voided sale restores the customer's balance. A
+ * credit sale that already has repayments applied cannot be voided, because
+ * removing its unpaid amount would leave the customer owed money by the shop.
+ */
+export async function voidSale(
+  saleId: string,
+  input: unknown,
+): Promise<Result<SaleWithItems>> {
+  const parsed = voidSaleSchema.safeParse(input);
+
+  if (!parsed.success) {
+    return fail(
+      "Please give a reason for voiding this sale.",
+      fieldErrors(parsed.error),
+    );
+  }
+
+  try {
+    const sale = await prisma.$transaction(async (tx) => {
+      const existing = await tx.sale.findUnique({
+        where: { id: saleId },
+        include: { items: true },
+      });
+
+      if (!existing) {
+        throw new ServiceError("Sale not found.");
+      }
+
+      if (existing.voidedAt) {
+        throw new ServiceError("This sale is already voided.");
+      }
+
+      let khataBalanceBeforePaisa: number | null = null;
+
+      if (existing.paymentMethod === "CREDIT" && existing.customerId) {
+        const outstanding = await outstandingPaisa(tx, existing.customerId);
+        const unpaidPaisa = existing.totalPaisa - existing.paidPaisa;
+
+        if (outstanding < unpaidPaisa) {
+          throw new ServiceError(
+            "This credit sale has repayments applied, so voiding it would make the khata balance negative. Refunds are not supported yet.",
+          );
+        }
+
+        khataBalanceBeforePaisa = outstanding;
+      }
+
+      const products = await tx.product.findMany({
+        where: {
+          id: { in: existing.items.map((item) => item.productId) },
+        },
+      });
+      const productsById = new Map(
+        products.map((product) => [product.id, product]),
+      );
+      const stockChanges = existing.items.map((item) => {
+        const product = productsById.get(item.productId);
+        const stockBeforeMilli = product?.stockMilli ?? 0;
+
+        return {
+          productId: item.productId,
+          quantityMilli: item.quantityMilli,
+          stockBeforeMilli,
+          stockAfterMilli: stockBeforeMilli + item.quantityMilli,
+        };
+      });
+
+      for (const item of existing.items) {
+        await tx.product.update({
+          where: { id: item.productId },
+          data: { stockMilli: { increment: item.quantityMilli } },
+        });
+
+        await tx.stockMovement.create({
+          data: {
+            productId: item.productId,
+            quantityMilli: item.quantityMilli,
+            reason: "VOID",
+            reference: existing.id,
+            note: parsed.data.reason,
+          },
+        });
+      }
+
+      const voidedAt = new Date();
+
+      const updated = await tx.sale.update({
+        where: { id: saleId },
+        data: {
+          voidedAt,
+          voidedReason: parsed.data.reason,
+        },
+        include: {
+          items: { orderBy: { position: "asc" } },
+          customer: { select: { id: true, name: true, phone: true } },
+        },
+      });
+
+      const khataBalanceAfterPaisa =
+        existing.paymentMethod === "CREDIT" && existing.customerId
+          ? await outstandingPaisa(tx, existing.customerId)
+          : null;
+
+      await writeAudit(tx, {
+        action: "SALE_VOIDED",
+        entityType: "Sale",
+        entityId: existing.id,
+        summary: `Voided sale ${existing.number} · ${formatPaisa(existing.totalPaisa)}`,
+        before: {
+          voidedAt: null,
+          totalPaisa: existing.totalPaisa,
+          paidPaisa: existing.paidPaisa,
+          khataBalancePaisa: khataBalanceBeforePaisa,
+        },
+        after: {
+          voidedAt: voidedAt.toISOString(),
+          voidedReason: parsed.data.reason,
+          totalPaisa: existing.totalPaisa,
+          khataBalancePaisa: khataBalanceAfterPaisa,
+        },
+        details: {
+          number: existing.number,
+          stockChanges,
+        },
+      });
+
+      return updated;
     });
 
     return ok(sale);

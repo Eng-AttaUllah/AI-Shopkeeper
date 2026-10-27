@@ -20,6 +20,7 @@ import {
   listCustomersWithBalances,
   type CustomerWithBalance,
 } from "@/modules/customers/queries";
+import { expenseTotalPaisa } from "@/modules/expenses/queries";
 
 import type { ReportPeriod, ReportQuery } from "./schema";
 
@@ -44,6 +45,12 @@ export type SalesSummary = {
   costPaisa: number;
   profitPaisa: number;
   creditGivenPaisa: number;
+};
+
+/** Sales plus expenses, the figures behind net profit. */
+export type PeriodSummary = SalesSummary & {
+  expensePaisa: number;
+  netProfitPaisa: number;
 };
 
 export type ProductSalesRow = {
@@ -207,6 +214,23 @@ export async function salesSummary(range: DateRange): Promise<SalesSummary> {
     profitPaisa: revenuePaisa - costPaisa,
     creditGivenPaisa:
       (credit._sum.totalPaisa ?? 0) - (credit._sum.paidPaisa ?? 0),
+  };
+}
+
+/**
+ * Sales plus the expenses recorded in the same range, and net profit
+ * (gross profit minus expenses). This is the figure the reports page shows.
+ */
+export async function periodSummary(range: DateRange): Promise<PeriodSummary> {
+  const [sales, expensePaisa] = await Promise.all([
+    salesSummary(range),
+    expenseTotalPaisa(prisma, range),
+  ]);
+
+  return {
+    ...sales,
+    expensePaisa,
+    netProfitPaisa: sales.profitPaisa - expensePaisa,
   };
 }
 

@@ -80,9 +80,25 @@ The specification is the source of truth:
 
 ## Status
 
-Phase 4 — dashboard and reports complete: today/month/year/custom totals, gross profit from
-cost snapshots, per-product sales and profit, best sellers and slow movers, low stock and
-inventory value, outstanding khata, and a phone-friendly dashboard. Credit sales count as
-revenue when recorded; repayments settle khata. 95 tests pass.
+Phases 0–5 (the sellable v1) are complete: products and stock, sales, customers and credit,
+dashboard and reports, expenses and net profit, voiding, an audit log, end-of-day cash
+reconciliation, and backups. 116 tests pass.
 
-Next: Phase 5 — expenses and hardening.
+The app is still open to anyone on the local network; Auth.js sign-in is not scheduled yet.
+Next: Phase 6 — read-only assistant, after the auth question is settled.
+
+## Backups
+
+The app makes one daily backup the first time the dashboard or `/backups` is opened each shop
+day. **Back up now** on `/backups` makes an extra copy. Files live in `backups/` next to the
+project. The last 30 daily backups are kept; manual backups are kept until you delete them.
+Backups use SQLite's online backup API, so they are consistent while the app is running.
+
+To restore:
+
+1. Stop the app.
+2. Copy the chosen `backups/*.db` file over `prisma/dev.db`.
+3. Start the app and check the dashboard.
+
+A backup on the same laptop does not survive theft or disk failure. Copy one to a USB drive or
+another computer regularly.

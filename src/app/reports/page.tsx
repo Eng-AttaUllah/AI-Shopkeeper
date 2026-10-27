@@ -16,10 +16,10 @@ import {
 import { formatPaisa } from "@/lib/format";
 import { formatQuantity } from "@/lib/quantity";
 import {
+  periodSummary,
   productSales,
   resolveReportRange,
   salesSeries,
-  salesSummary,
   slowMovingProducts,
 } from "@/modules/reports/queries";
 import { reportQuerySchema, type ReportPeriod } from "@/modules/reports/schema";
@@ -75,7 +75,7 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
   const { period, range, fromKey, toKey, label } = active.data;
 
   const [summary, products, series, slowMoving] = await Promise.all([
-    salesSummary(range),
+    periodSummary(range),
     productSales(range),
     salesSeries(range),
     slowMovingProducts(range, 5),
@@ -89,15 +89,26 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
           <h1 className="text-3xl font-semibold">Reports</h1>
           <p className="mt-1 text-sm text-ink-muted">{label}</p>
         </div>
-        <Link
-          href="/"
-          className={buttonVariants({
-            variant: "outline",
-            className: "h-11 px-4 text-base",
-          })}
-        >
-          Dashboard
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href="/expenses"
+            className={buttonVariants({
+              variant: "outline",
+              className: "h-11 px-4 text-base",
+            })}
+          >
+            Expenses
+          </Link>
+          <Link
+            href="/"
+            className={buttonVariants({
+              variant: "outline",
+              className: "h-11 px-4 text-base",
+            })}
+          >
+            Dashboard
+          </Link>
+        </div>
       </header>
 
       {!resolved.ok ? (
@@ -166,7 +177,7 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
 
       <section
         aria-label="Summary"
-        className="grid grid-cols-2 gap-3 lg:grid-cols-4"
+        className="grid grid-cols-2 gap-3 lg:grid-cols-3"
       >
         <StatCard
           label="Sales"
@@ -184,6 +195,17 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
           hint={`Cost of goods ${formatPaisa(summary.costPaisa)}`}
         />
         <StatCard
+          label="Expenses"
+          value={formatPaisa(summary.expensePaisa)}
+          hint="Recorded in this period"
+        />
+        <StatCard
+          label="Net profit"
+          value={formatPaisa(summary.netProfitPaisa)}
+          hint="Gross profit minus expenses"
+          tone={summary.netProfitPaisa < 0 ? "error" : "default"}
+        />
+        <StatCard
           label="Credit given"
           value={formatPaisa(summary.creditGivenPaisa)}
           hint="New khata in this period"
@@ -194,7 +216,8 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
       <p className="text-xs text-ink-muted">
         Revenue counts a sale when it is recorded, including the unpaid part of
         a credit sale. Repayments reduce khata but do not add revenue. Gross
-        profit uses the cost price stored on each sale line.
+        profit uses the cost price stored on each sale line. Net profit
+        subtracts expenses recorded in the period.
       </p>
 
       {period !== "today" && series.points.length > 1 ? (

@@ -42,3 +42,13 @@ export const createSaleSchema = z.object({
 
 export type CreateSaleInput = z.infer<typeof createSaleSchema>;
 export type SaleItemInput = z.infer<typeof saleItemInputSchema>;
+
+export const voidSaleSchema = z.object({
+  reason: z
+    .string()
+    .trim()
+    .min(3, "Say why this sale is being voided")
+    .max(200, "Use at most 200 characters"),
+});
+
+export type VoidSaleInput = z.infer<typeof voidSaleSchema>;

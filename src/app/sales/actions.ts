@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { createSale } from "@/modules/sales/service";
+import { createSale, voidSale } from "@/modules/sales/service";
 
 export type SaleActionState =
   | { ok: true }
@@ -41,4 +41,36 @@ export async function createSaleAction(
   revalidatePath("/sales");
 
   redirect(`/sales/${result.data.id}`);
+}
+
+export async function voidSaleAction(
+  _previousState: SaleActionState,
+  formData: FormData,
+): Promise<SaleActionState> {
+  const saleId = String(formData.get("saleId") ?? "");
+  const reason = formData.get("reason");
+
+  if (!saleId) {
+    return { ok: false, error: "The sale could not be found." };
+  }
+
+  const result = await voidSale(saleId, {
+    reason: typeof reason === "string" ? reason : "",
+  });
+
+  if (!result.ok) {
+    return { ok: false, error: result.error, fieldErrors: result.fieldErrors };
+  }
+
+  revalidatePath("/");
+  revalidatePath("/sales");
+  revalidatePath(`/sales/${saleId}`);
+  revalidatePath("/reports");
+  revalidatePath("/customers");
+
+  if (result.data.customerId) {
+    revalidatePath(`/customers/${result.data.customerId}`);
+  }
+
+  return { ok: true };
 }

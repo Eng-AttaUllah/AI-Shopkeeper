@@ -75,6 +75,12 @@ export default function RootLayout({
               >
                 Reports
               </Link>
+              <Link
+                href="/more"
+                className="whitespace-nowrap text-ink-muted transition-colors hover:text-ink"
+              >
+                More
+              </Link>
             </nav>
           </div>
         </header>

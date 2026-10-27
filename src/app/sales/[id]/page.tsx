@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { voidSaleAction } from "@/app/sales/actions";
+import { VoidSaleForm } from "@/components/sales/void-sale-form";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { formatDateTime, formatPaisa } from "@/lib/format";
@@ -149,6 +151,19 @@ export default async function SaleReceiptPage({
           All sales
         </Link>
       </div>
+
+      {!sale.voidedAt ? (
+        <section className="rounded-xl border border-error/30 bg-error/5 p-5">
+          <h2 className="text-lg font-semibold text-error">Void this sale</h2>
+          <p className="mt-1 text-sm text-ink-muted">
+            Use this when the sale was entered by mistake. The receipt stays
+            visible, but the sale stops counting in reports and khata.
+          </p>
+          <div className="mt-4">
+            <VoidSaleForm saleId={sale.id} action={voidSaleAction} />
+          </div>
+        </section>
+      ) : null}
     </main>
   );
 }
