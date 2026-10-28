@@ -12,8 +12,9 @@ Version 1 is **English-only** and runs entirely on one laptop on the shop's loca
 No internet connection and no paid cloud service are required. Customers, products, sales,
 credit, and reports all live in a single local database that is backed up daily.
 
-Phase 6 adds a read-only English assistant that answers shop questions from real database
-figures. Later phases add assistant actions, Pashto language support, voice input, and
+Phase 6 adds an English assistant that answers shop questions from real database figures.
+Phase 7 lets it prepare a sale proposal; the proposal is saved only when the shopkeeper
+explicitly confirms it. Later phases add Pashto language support, voice input, and
 camera-based suspicious-activity alerts. Those are explicitly out of scope for v1 and must
 not be built early `(see Scope)`.
 
@@ -106,7 +107,8 @@ not be built early `(see Scope)`.
 ### Future Phases (not in v1)
 
 - Read-only English assistant (Phase 6, complete).
-- Conversational transaction entry with explicit shopkeeper confirmation (Phase 7).
+- Conversational sale entry with explicit shopkeeper confirmation (Phase 7, sale proposals
+  complete; other record types not built).
 - Conversational assistant in Pashto (Phase 8).
 - Voice input.
 - Camera-based suspicious-activity alerts.
@@ -128,8 +130,8 @@ not be built early `(see Scope)`.
 
 - Pashto or any non-English interface, right-to-left layout, and translation layers.
 - Voice input and speech recognition.
-- The AI assistant and all conversational features in v1. The read-only English assistant is
-  a separate post-v1 phase (Phase 6).
+- The AI assistant and all conversational features in v1. The read-only English assistant
+  (Phase 6) and sale proposals (Phase 7) are separate post-v1 phases.
 - Camera, video processing, theft or suspicious-activity detection, and face recognition.
 - Supplier management, purchase orders, and goods returns.
 - Multi-shop, multi-branch, or multi-device cloud synchronisation.
@@ -185,13 +187,51 @@ questions about the shop using the same database the screens read.
    me the most?", "What was my net profit this month?", and "How much cash should be in the
    drawer today?" and receives figures that match the dashboard, reports, and day-close
    screens.
-2. The assistant cannot create, edit, void, or delete a record. Every tool is read-only, and
-   unknown tools or invalid arguments are rejected before execution.
+2. The Phase 6 assistant cannot create, edit, void, or delete a record. Every tool is
+   read-only, and unknown tools or invalid arguments are rejected before execution. (Phase 7
+   adds a separately confirmed sale proposal; it does not weaken this rule.)
 3. Answers quote the formatted figures returned by the tools. If the data is missing, the
    assistant says so instead of estimating.
 4. With no provider configured, `/assistant` shows setup instructions and the rest of the app
    works normally. A provider failure shows a readable message and never a stack trace.
 5. `npm run typecheck`, `npm run lint`, `npm test`, and `npm run build` pass.
+
+## Phase 7 — Assistant sale proposals
+
+Phase 7 lets the signed-in owner ask the assistant to prepare a sale in plain English. The
+assistant prepares a priced, signed proposal; nothing is saved until the owner presses
+**Confirm sale**.
+
+### Scope
+
+- A `propose_sale` tool, separate from the read-only registry, that resolves product names,
+  aliases, and barcodes plus a customer name or phone for credit sales.
+- A proposal card in the assistant chat showing the lines, unit prices, subtotal, discount,
+  total, payment method, customer, cash received, change, and expiry. The card is labelled
+  "Proposed sale — not saved yet".
+- A **Confirm sale** button that calls a separate server action. The action verifies a signed,
+  user-bound, 15-minute token; re-prices the draft inside one transaction; rejects a stale
+  price or stock change; and writes the sale with the existing sale service.
+- Idempotent confirmation: a nullable, unique `Sale.proposalId` makes a replay return the
+  existing sale instead of creating a second one.
+- An audit entry with the signed-in actor and `details.source = "assistant_proposal"`.
+- Other record types (expenses, payments, customer creation, product changes, stock
+  adjustments) are not proposed in this phase.
+
+### Acceptance Criteria
+
+1. Asking "Sell 2 kg of sugar for cash" prepares a proposal with the current product price and
+   total; the product stock and sale count do not change before confirmation.
+2. The proposal is bound to the signed-in user and expires after 15 minutes. A tampered,
+   expired, or wrong-user token is rejected without writing.
+3. Pressing **Confirm sale** writes exactly the preview the owner saw: sale, lines, stock
+   movements, decrements, audit row, and khata effect in one transaction. A price or stock
+   change after the proposal is rejected with a readable message.
+4. Confirming the same proposal twice returns the same sale and does not change stock twice.
+5. The model cannot write or confirm a sale; it can only prepare a proposal. Unknown products,
+   ambiguous names, missing customers for credit, and insufficient stock produce a readable
+   error or a clarifying question.
+6. `npm run typecheck`, `npm run lint`, `npm test`, and `npm run build` pass.
 
 ## Implementation Phases
 
@@ -205,7 +245,7 @@ questions about the shop using the same database the screens read.
 | 5 | Expenses and hardening | Net profit, voiding, audit log, and backups are complete |
 | 5.5 | Sign-in | Username/password sign-in, sessions, route protection, and audit attribution |
 | 6 | Assistant (read-only) | Shop questions in English are answered from real database figures |
-| 7 | Assistant actions | Proposed sales and records require explicit confirmation |
+| 7 | Assistant sale proposals | A signed sale proposal is written only after the shopkeeper confirms it |
 | 8 | Pashto support | Pashto interface, product aliases, and Pashto input handling |
 | 9 | Voice input | Spoken commands, after testing on real Pashto speakers |
 | 10 | Camera alerts | Suspicious-activity alerts with a saved clip, never automatic accusation |

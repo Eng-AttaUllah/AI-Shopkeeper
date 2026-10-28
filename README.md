@@ -8,7 +8,8 @@ connection required.
 
 Version 1 is English-only and covers products and stock, sales, customers and
 credit (khata), expenses, reports, and backups. Phase 6 adds an optional
-read-only assistant that answers questions about the shop's real figures.
+assistant that answers questions about the shop's real figures. Phase 7 lets it
+prepare a sale proposal; nothing is saved until the shopkeeper confirms it.
 
 ## Requirements
 
@@ -124,10 +125,10 @@ The specification is the source of truth:
 Phases 0–5.5 (the sellable v1) are complete: products and stock, sales, customers and credit,
 dashboard and reports, expenses and net profit, voiding, an audit log, end-of-day cash
 reconciliation, backups, and username/password sign-in. Phase 6 adds the read-only assistant.
-154 tests pass.
+Phase 7 adds signed sale proposals with explicit shopkeeper confirmation. 175 tests pass.
 
 Sign-in is required, and every money or stock change records the signed-in owner as the audit
-actor. Next: Phase 7 — assistant actions.
+actor. Next: Phase 8 — Pashto support, unless Phase 7 is extended to other record types first.
 
 ## Sign-in and passwords
 
@@ -145,7 +146,10 @@ signed out. There is no in-app password screen yet; this needs access to the lap
 
 Open **Assistant** from the dashboard or the **More** page. It answers English questions
 about sales, stock, credit, expenses, profit, and expected cash using the shop's real
-database figures. It is read-only: it cannot create, edit, void, or delete anything.
+database figures. It can also prepare a sale in plain English, for example "Sell 2 kg of
+sugar for cash" or "Sell 1 soap to Ali on credit". A proposal card shows the lines, total,
+customer, and cash change; nothing is saved until the shopkeeper presses **Confirm sale**.
+The assistant cannot create, edit, void, or delete anything directly.
 
 The assistant needs an OpenAI-compatible chat-completions endpoint. Add these to `.env` and
 restart the app:
@@ -179,13 +183,22 @@ Use a model that supports tool calling. OpenRouter, Groq, LM Studio, and other
 OpenAI-compatible endpoints work the same way. If the three values are blank, the rest of the
 app works normally and `/assistant` shows setup instructions.
 
-The model never sees SQL and cannot call arbitrary functions. It can only use the approved,
-Zod-validated read-only tools in `src/modules/assistant/tools.ts`. Each question is limited to
-500 characters, four model turns, and eight tool calls.
+The model never sees SQL and cannot call arbitrary functions. Read-only questions use the
+approved, Zod-validated tools in `src/modules/assistant/tools.ts`. Sale proposals use a
+separate `propose_sale` tool in `src/modules/assistant/sale-proposal.ts`, which only reads and
+signs a proposal. Each question is limited to 500 characters, four model turns, and eight tool
+calls.
+
+A proposal is signed, bound to the signed-in owner, and expires after 15 minutes. Confirming
+it re-prices the sale in one transaction and refuses to write if prices or stock changed, so
+the recorded sale matches the card. A repeated confirmation returns the same sale instead of
+creating a duplicate. Only sales are proposed in Phase 7; expenses, payments, customer
+creation, product changes, and stock adjustments are not.
 
 **Privacy:** the question and the shop figures needed to answer it are sent to the configured
 provider. Use a local Ollama model if the shop data must stay on the laptop. Chat history is
-kept in the browser for the current page only; it is not saved to the database.
+kept in the browser for the current page only; it is not saved to the database. Only the
+confirmed sale stores a proposal id; unconfirmed proposals are not stored.
 
 ## Backups
 
