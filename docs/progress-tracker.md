@@ -4,12 +4,13 @@ Update this file after every meaningful implementation change.
 
 ## Current Phase
 
-- Phase 5 — Expenses and hardening: **Complete**
+- Phase 5.5 — Sign-in (Auth.js): **Complete**
 
 ## Current Goal
 
-- Nothing in progress. Phase 5 is complete and verified end to end. Auth.js remains
-  unscheduled, and the app is still open to the shop's local network.
+- Nothing in progress. Phase 5.5 is complete and verified end to end. The app now requires
+  sign-in, the single owner is seeded from `.env`, and the audit actor is the signed-in
+  username. Next is Phase 6.
 
 ## Completed
 
@@ -192,8 +193,9 @@ Update this file after every meaningful implementation change.
   than deferred.
 - `src/lib/audit.ts` — `writeAudit` writes inside the caller's transaction and
   `listAuditLogs` reads newest first. Every money or stock mutation now records actor
-  (`local` until sign-in exists), action, entity type/id, summary, and before/after JSON. A
-  failed transaction leaves neither the change nor its audit row.
+  (the signed-in username since Phase 5.5; Phase 5 rows use `local`), action, entity type/id,
+  summary, and before/after JSON. A failed transaction leaves neither the change nor its audit
+  row.
 - `src/modules/expenses/*` — Zod-validated categories (RENT, ELECTRICITY, SALARIES,
   TRANSPORT, OTHER), rupee-to-paisa conversion, and a shop-local midnight `spentAt`. Expenses
   are append-only; a correction is a new expense. `/expenses` records an expense, lists the
@@ -234,17 +236,51 @@ Update this file after every meaningful implementation change.
 - `npm run typecheck`, `npm run lint`, `npm test`, and `npm run build` all pass. The build has
   no dynamic-filesystem warning; the DB path is marked `/*turbopackIgnore: true*/`.
 
+### Phase 5.5 — Sign-in (Auth.js) (complete)
+
+- Migration `20261028020154_add_users_and_auth` adds the `User` model: unique lowercased
+  `username`, optional `name`, bcrypt `passwordHash`, `role` (`OWNER` | `CASHIER`), and
+  `tokenVersion`. The real `prisma/dev.db` has the migration applied and the single owner
+  seeded.
+- `src/lib/credentials.ts` — Zod `loginSchema` and `ownerSchema`, `verifyCredentials` (the
+  same null result for an unknown user or a wrong password), and `ensureOwner`. The owner
+  seed is idempotent; changing `OWNER_PASSWORD` updates the hash and increments
+  `tokenVersion`, which invalidates existing sessions.
+- `src/lib/auth.ts` — Auth.js v5 Credentials provider, JWT sessions (8-hour lifetime, 1-hour
+  refresh), `trustHost` for LAN access, a same-origin redirect callback, and a JWT callback
+  that re-reads the user so a deleted user or changed `tokenVersion` signs out. `AUTH_SECRET`
+  is required and the `.env.example` placeholder is rejected.
+- `src/proxy.ts` — Next.js 16 renamed `middleware.ts` to `proxy.ts`; it protects every route
+  except `/login`, `/api/auth`, and static assets, and redirects to `/login?from=...`.
+- `/login` — username/password card, inline field and credential errors, pending state, and
+  a safe redirect back to `from`. The header shows the signed-in username and a sign-out
+  button on every protected page; sign-out clears the session and returns to `/login`.
+- Audit attribution is real: every server action calls `requireUser()` and passes
+  `session.user.username` to the service. Service functions accept an optional actor and
+  default to `local` for tests and seed data. Invariant 7 now records the signed-in user.
+- `.env.example` and the README document `AUTH_SECRET`, `OWNER_USERNAME`, `OWNER_PASSWORD`,
+  and `OWNER_NAME`. The owner password is changed by editing `.env` and running
+  `npm run db:seed`; there is no in-app password screen yet.
+- Tests: 123 passing across 14 files. New tests cover owner creation/hashing, seed
+  idempotency, password changes and `tokenVersion`, username normalization, malformed and
+  unknown credentials, and the audit actor.
+- Verified against the running app: unauthenticated `/` redirects to `/login?from=%2F`; a
+  wrong password leaves the session null; the owner signs in and sees the dashboard with
+  `owner` and **Sign out**; sign-out returns the session to null; bumping `tokenVersion`
+  rejects the old cookie and a fresh sign-in works. `npm run typecheck`, `npm run lint`,
+  `npm test`, and `npm run build` pass.
+
 ## In Progress
 
 - None.
 
 ## Next Up
 
-Phase 6 — Assistant (read-only), after the auth question is settled. The assistant must call
-the same `src/modules` queries and services the screens call; it must not write money or stock
-directly. Before starting, decide when Auth.js sign-in is scheduled and whether the assistant
-may answer questions about the whole shop or only the signed-in user's data. Phases 0–5, the
-sellable v1, are complete.
+Phase 6 — Assistant (read-only). Auth is complete, so the assistant can rely on the signed-in
+session and call the same `src/modules` queries and services the screens call; it must not
+write money or stock directly. The shop is single-tenant, so the owner sees the whole shop.
+Decide which AI provider to use before implementing. Phases 0–5.5, the sellable v1, are
+complete.
 
 ## Open Questions
 
@@ -261,9 +297,9 @@ sellable v1, are complete.
 - Should the shop's day be treated as starting at midnight, or does the shopkeeper consider
   the business day to end after closing (for example 2 a.m.)? Affects "today" reporting. The
   current implementation uses midnight.
-- When should Auth.js sign-in be scheduled? `docs/architecture.md` lists it and success
-  criterion 1 mentions a signed-in shopkeeper, but no implementation phase names it and the
-  app is currently open to anyone on the shop's network.
+- Should the owner be able to change their password inside the app? Today the password is
+  set by `OWNER_PASSWORD` in `.env` and `npm run db:seed`, which requires access to the
+  laptop. A small change-password screen would remove that dependency.
 - How should a credit sale with repayments already applied be corrected? The current void
   guard refuses it because removing the unpaid amount would make the derived khata balance
   negative, and there is no refund or payment-reversal record yet. Options: add a refund record
@@ -279,9 +315,25 @@ sellable v1, are complete.
   revisited only if multiple devices or shops must share data.
 - **Money stored as integer paisa.** Avoids floating-point rounding errors in every total,
   and removes the need for a decimal type that SQLite does not provide.
-- **Auth.js (NextAuth) v5 with the Credentials provider and JWT sessions.** Chosen by the
-  user. The Credentials provider requires JWT sessions, so sessions are signed cookies rather
-  than database rows; a `tokenVersion` field supports invalidation after a password change.
+- **Auth.js (NextAuth) v5 with the Credentials provider and JWT sessions.** Implemented in
+  Phase 5.5. The Credentials provider requires JWT sessions, so sessions are signed cookies
+  rather than database rows; a `tokenVersion` field invalidates them after a password change.
+  `next-auth@5.0.0-beta.32` is the current v5 release and supports Next 16.
+- **Username, not email, is the login identifier.** A single shop does not need email
+  verification or password-reset email; the owner account is seeded from `.env`.
+- **The proxy is an optimistic gate; server actions enforce the session.** `src/proxy.ts`
+  (Next 16's name for middleware) redirects signed-out requests, and every mutation calls
+  `requireUser()` before touching data. The proxy also re-reads the user so `tokenVersion`
+  invalidation applies to page reads.
+- **The audit actor is the signed-in username.** It is human-readable on `/audit` and stays
+  stable for historical rows; services default to `local` outside a request so tests and seed
+  code remain simple.
+- **Auth configuration and credential rules live in `src/lib`.** Auth is cross-cutting
+  infrastructure, not a business domain, so `src/lib/auth.ts` and `src/lib/credentials.ts`
+  own it and `src/modules` stays free of Auth.js imports.
+- **The owner password is configured in `.env`.** `npm run db:seed` creates or updates the
+  owner and increments `tokenVersion` when the password changes. This is a laptop-only
+  operation until an in-app password screen is scheduled.
 - **No cloud auth or cloud database.** Clerk and hosted Postgres were rejected because the
   shop must keep working without internet.
 - **Single tenant, single shop.** One installation serves one shop. Ownership is implicit, and
@@ -380,12 +432,12 @@ sellable v1, are complete.
 - **Voiding is a reversal, not an edit.** A void requires a reason, restores every line with a
   `VOID` stock movement, sets `voidedAt` / `voidedReason`, and writes the audit row in the same
   transaction. A credit sale with repayments applied is refused because the derived khata
-  balance would go negative; a refund record is a future decision. No actor beyond `local` is
-  recorded until sign-in exists.
+  balance would go negative; a refund record is a future decision. Phase 5.5 records the
+  signed-in username as the actor.
 - **The audit log is written in the change's transaction.** It records actor, action, entity
-  type/id, summary, and before/after JSON. The actor is the single local user (`local`) until
-  Auth.js is scheduled; it is not authenticated attribution yet. The audit page shows the
-  before/after state so a shopkeeper can see what changed.
+  type/id, summary, and before/after JSON. Phase 5.5 records the signed-in username; rows
+  written before sign-in use `local`. The audit page shows the before/after state so a
+  shopkeeper can see what changed.
 - **Expected cash is cash sales + counter cash on credit sales + repayments − expenses.**
   Voided sales are excluded and expenses are assumed paid from the drawer. A cash check is a
   per-shop-day snapshot: a later void changes the live breakdown but never rewrites a saved
@@ -481,3 +533,20 @@ sellable v1, are complete.
 - The void guard blocks a credit sale once any repayment is applied. The UI message now says
   refunds are not supported yet, and the gap is listed under Open Questions rather than
   pretending the shopkeeper can settle it in the app.
+- Phase 5.5 installed `next-auth@5.0.0-beta.32` and `bcryptjs@3.0.3`. Auth.js v5 is still a
+  beta release; it declares Next 16 support in its peer dependencies. `bcryptjs` ships its
+  own types, so no `@types` package was added.
+- Next.js 16 renamed the `middleware.ts` convention to `proxy.ts`; `middleware.ts` is
+  deprecated. The route gate lives in `src/proxy.ts`.
+- The `auth` wrapper in the proxy runs the JWT callback, which re-reads the `User` row. This
+  costs one small SQLite read per protected request. For a single local shop that is
+  acceptable; if it ever becomes a bottleneck, use `getToken` in the proxy and keep
+  `requireUser()` as the authoritative check.
+- The real database now has the owner `owner` (id `cmvrgygsp0000uarxr2j76ddh`) and
+  `tokenVersion` 1 after the invalidation check. The owner password is in `.env`; change it
+  there and run `npm run db:seed` to update it.
+- The login flow was verified through the Auth.js CSRF callback endpoint, not the browser
+  form. The phone check should confirm the `/login` form, the header username, and sign-out.
+- The test database is rebuilt with `prisma migrate deploy`; the new `users` table has no
+  foreign keys, so the existing cleanup order is unchanged. The auth test deletes users in
+  its own `beforeEach`.

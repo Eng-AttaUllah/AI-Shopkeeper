@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { requireUser } from "@/lib/require-user";
 import { createSale, voidSale } from "@/modules/sales/service";
 
 export type SaleActionState =
@@ -16,6 +17,7 @@ export async function createSaleAction(
   _previousState: SaleActionState,
   formData: FormData,
 ): Promise<SaleActionState> {
+  const user = await requireUser();
   const payload = formData.get("payload");
 
   if (typeof payload !== "string" || payload.length === 0) {
@@ -30,7 +32,7 @@ export async function createSaleAction(
     return { ok: false, error: UNREADABLE_CART };
   }
 
-  const result = await createSale(parsed);
+  const result = await createSale(parsed, user.username);
 
   if (!result.ok) {
     return { ok: false, error: result.error, fieldErrors: result.fieldErrors };
@@ -47,6 +49,7 @@ export async function voidSaleAction(
   _previousState: SaleActionState,
   formData: FormData,
 ): Promise<SaleActionState> {
+  const user = await requireUser();
   const saleId = String(formData.get("saleId") ?? "");
   const reason = formData.get("reason");
 
@@ -54,9 +57,13 @@ export async function voidSaleAction(
     return { ok: false, error: "The sale could not be found." };
   }
 
-  const result = await voidSale(saleId, {
-    reason: typeof reason === "string" ? reason : "",
-  });
+  const result = await voidSale(
+    saleId,
+    {
+      reason: typeof reason === "string" ? reason : "",
+    },
+    user.username,
+  );
 
   if (!result.ok) {
     return { ok: false, error: result.error, fieldErrors: result.fieldErrors };

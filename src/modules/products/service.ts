@@ -1,6 +1,6 @@
 import { Prisma } from "@/generated/prisma/client";
 import type { Product } from "@/generated/prisma/client";
-import { writeAudit } from "@/lib/audit";
+import { LOCAL_ACTOR, writeAudit } from "@/lib/audit";
 import { prisma } from "@/lib/db";
 import { rupeesToPaisa } from "@/lib/money";
 import { formatQuantity, toMilli } from "@/lib/quantity";
@@ -56,7 +56,10 @@ function handleError(error: unknown): Result<never> {
  * The product row and the OPENING stock movement are written in one
  * transaction so stock can never exist without a movement (invariant 6).
  */
-export async function createProduct(input: unknown): Promise<Result<Product>> {
+export async function createProduct(
+  input: unknown,
+  actor: string = LOCAL_ACTOR,
+): Promise<Result<Product>> {
   const parsed = createProductSchema.safeParse(input);
 
   if (!parsed.success) {
@@ -123,6 +126,7 @@ export async function createProduct(input: unknown): Promise<Result<Product>> {
       }
 
       await writeAudit(tx, {
+        actor,
         action: "PRODUCT_CREATED",
         entityType: "Product",
         entityId: created.id,
@@ -154,6 +158,7 @@ export async function createProduct(input: unknown): Promise<Result<Product>> {
 export async function updateProduct(
   id: string,
   input: unknown,
+  actor: string = LOCAL_ACTOR,
 ): Promise<Result<Product>> {
   const parsed = updateProductSchema.safeParse(input);
 
@@ -216,6 +221,7 @@ export async function updateProduct(
       });
 
       await writeAudit(tx, {
+        actor,
         action: "PRODUCT_UPDATED",
         entityType: "Product",
         entityId: updated.id,
@@ -276,7 +282,10 @@ export async function setProductActive(
  * Refuses to take stock below zero (invariant 3) and always writes a matching
  * movement row (invariant 6).
  */
-export async function adjustStock(input: unknown): Promise<Result<Product>> {
+export async function adjustStock(
+  input: unknown,
+  actor: string = LOCAL_ACTOR,
+): Promise<Result<Product>> {
   const parsed = adjustStockSchema.safeParse(input);
 
   if (!parsed.success) {
@@ -324,6 +333,7 @@ export async function adjustStock(input: unknown): Promise<Result<Product>> {
       });
 
       await writeAudit(tx, {
+        actor,
         action: "STOCK_ADJUSTED",
         entityType: "Product",
         entityId: updated.id,

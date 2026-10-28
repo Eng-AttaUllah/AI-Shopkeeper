@@ -116,8 +116,8 @@ not be built early `(see Scope)`.
 
 ### In Scope
 
-- Phases 0 to 5 of the implementation plan: environment, products and stock, sales,
-  customers and credit, dashboard and reports, expenses and hardening.
+- Phases 0 to 5.5 of the implementation plan: environment, products and stock, sales,
+  customers and credit, dashboard and reports, expenses and hardening, and sign-in.
 - Single shop, single installation, single local database.
 - English user interface.
 - Laptop as the application host, phone browser as the primary client over local Wi-Fi.
@@ -165,6 +165,7 @@ not be built early `(see Scope)`.
 | 3 | Customers and credit | Credit sales, repayments, balances, and statements work |
 | 4 | Dashboard and reports | Daily, monthly, yearly, per-item, and profit reporting works |
 | 5 | Expenses and hardening | Net profit, voiding, audit log, and backups are complete |
+| 5.5 | Sign-in | Username/password sign-in, sessions, route protection, and audit attribution |
 | 6 | Assistant (read-only) | Shop questions in English are answered from real database figures |
 | 7 | Assistant actions | Proposed sales and records require explicit confirmation |
 | 8 | Pashto support | Pashto interface, product aliases, and Pashto input handling |
@@ -172,5 +173,5 @@ not be built early `(see Scope)`.
 | 10 | Camera alerts | Suspicious-activity alerts with a saved clip, never automatic accusation |
 | 11 | Face recognition | Optional, consent-based research feature |
 
-Phases 0 to 5 constitute the sellable v1. Every later phase must be able to reuse the
-business logic built in phases 0 to 5 without rewriting it.
+Phases 0 to 5.5 constitute the sellable v1. Every later phase must be able to reuse the
+business logic built in phases 0 to 5.5 without rewriting it.

@@ -1,5 +1,5 @@
 import type { Expense } from "@/generated/prisma/client";
-import { writeAudit } from "@/lib/audit";
+import { LOCAL_ACTOR, writeAudit } from "@/lib/audit";
 import { karachiDateKeyToDate } from "@/lib/dates";
 import { prisma } from "@/lib/db";
 import { formatPaisa } from "@/lib/format";
@@ -20,7 +20,10 @@ function emptyToNull(value: string | undefined): string | null {
  * The expense and its audit row are written in one transaction. The date is
  * stored as shop-local midnight so it falls in exactly one report day.
  */
-export async function createExpense(input: unknown): Promise<Result<Expense>> {
+export async function createExpense(
+  input: unknown,
+  actor: string = LOCAL_ACTOR,
+): Promise<Result<Expense>> {
   const parsed = expenseSchema.safeParse(input);
 
   if (!parsed.success) {
@@ -54,6 +57,7 @@ export async function createExpense(input: unknown): Promise<Result<Expense>> {
       });
 
       await writeAudit(tx, {
+        actor,
         action: "EXPENSE_RECORDED",
         entityType: "Expense",
         entityId: created.id,

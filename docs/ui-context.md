@@ -105,6 +105,9 @@ as protected files:
   primary data.
 - **Forms:** one column, labels above inputs, inline field errors, and a single primary submit
   button at the bottom.
+- **Sign-in:** a centered single-column card on the page background with the brand, username,
+  password, and one primary **Sign in** button. Errors are inline. No app navigation is shown
+  until the shopkeeper is signed in.
 - **Modals:** centered overlay with a dimmed backdrop. Use `alert-dialog` for destructive
   confirmations (voiding a sale) and `dialog` for editing.
 - **Empty states:** every list has a short explanation and the action that fills it ("No
@@ -117,4 +120,5 @@ as protected files:
 - Loading uses skeletons for lists and cards, not full-page spinners.
 - Errors are written in plain language, not codes: "Only 3 kg of Sugar are in stock" rather
   than "VALIDATION_ERROR".
+- Sign-in errors say "Wrong username or password." and never reveal which field was wrong.
 - Destructive actions require confirmation and name the record being affected.

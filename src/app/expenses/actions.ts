@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
+import { requireUser } from "@/lib/require-user";
 import { createExpense } from "@/modules/expenses/service";
 
 export type ExpenseActionState =
@@ -24,7 +25,11 @@ export async function createExpenseAction(
   _previousState: ExpenseActionState,
   formData: FormData,
 ): Promise<ExpenseActionState> {
-  const result = await createExpense(formDataToObject(formData));
+  const user = await requireUser();
+  const result = await createExpense(
+    formDataToObject(formData),
+    user.username,
+  );
 
   if (!result.ok) {
     return { ok: false, error: result.error, fieldErrors: result.fieldErrors };

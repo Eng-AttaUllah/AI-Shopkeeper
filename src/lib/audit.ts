@@ -10,7 +10,7 @@ import { prisma } from "@/lib/db";
  */
 
 export type AuditEntry = {
-  /** Defaults to "local" until Auth.js is scheduled. */
+  /** Signed-in username; defaults to "local" for tests and seed data. */
   actor?: string;
   /** Machine-readable action, for example SALE_CREATED or STOCK_ADJUSTED. */
   action: string;
@@ -26,7 +26,7 @@ export type AuditEntry = {
   details?: Record<string, unknown>;
 };
 
-/** The only local user until sign-in exists. */
+/** Fallback actor for tests and seed data that run outside a session. */
 export const LOCAL_ACTOR = "local";
 
 export async function writeAudit(

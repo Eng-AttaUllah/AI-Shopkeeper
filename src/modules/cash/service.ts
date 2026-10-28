@@ -1,5 +1,5 @@
 import type { CashReconciliation } from "@/generated/prisma/client";
-import { writeAudit } from "@/lib/audit";
+import { LOCAL_ACTOR, writeAudit } from "@/lib/audit";
 import { addKarachiDays, karachiDateKeyToDate } from "@/lib/dates";
 import { prisma } from "@/lib/db";
 import { formatDate, formatPaisa } from "@/lib/format";
@@ -24,6 +24,7 @@ function emptyToNull(value: string | undefined): string | null {
  */
 export async function recordReconciliation(
   input: unknown,
+  actor: string = LOCAL_ACTOR,
 ): Promise<Result<CashReconciliation>> {
   const parsed = cashReconciliationSchema.safeParse(input);
 
@@ -72,6 +73,7 @@ export async function recordReconciliation(
       });
 
       await writeAudit(tx, {
+        actor,
         action: "CASH_RECONCILED",
         entityType: "CashReconciliation",
         entityId: saved.id,

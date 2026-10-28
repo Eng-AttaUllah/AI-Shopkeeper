@@ -1,6 +1,6 @@
 import { Prisma } from "@/generated/prisma/client";
 import type { Customer, Payment } from "@/generated/prisma/client";
-import { writeAudit } from "@/lib/audit";
+import { LOCAL_ACTOR, writeAudit } from "@/lib/audit";
 import { prisma } from "@/lib/db";
 import { formatPaisa } from "@/lib/format";
 import { rupeesToPaisa } from "@/lib/money";
@@ -104,6 +104,7 @@ export async function updateCustomer(
  */
 export async function recordPayment(
   input: unknown,
+  actor: string = LOCAL_ACTOR,
 ): Promise<Result<Payment>> {
   const parsed = paymentSchema.safeParse(input);
 
@@ -152,6 +153,7 @@ export async function recordPayment(
       });
 
       await writeAudit(tx, {
+        actor,
         action: "PAYMENT_RECORDED",
         entityType: "Payment",
         entityId: payment.id,

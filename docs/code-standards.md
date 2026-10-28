@@ -36,8 +36,8 @@
   component.
 - Use `revalidatePath` after a successful mutation so server-rendered data stays correct.
 - Handle loading and error states explicitly. No blank screens on failure.
-- All pages that read business data must be protected by middleware and re-check the session
-  server-side before mutating.
+- All pages that read business data must be protected by `src/proxy.ts` and re-check the
+  session server-side before mutating.
 
 ## Styling
 
@@ -53,7 +53,9 @@
 ## API Routes and Server Actions
 
 - Parse and validate input with Zod before any logic runs.
-- Enforce the session check and authorisation before any mutation.
+- Enforce the session check and authorisation before any mutation. Call `requireUser()` at
+  the top of every server action and pass `session.user.username` to services that write
+  audit entries.
 - Return consistent, predictable response shapes; never leak stack traces or raw Prisma
   messages to the client.
 - Convert known database errors into user-readable messages (for example, insufficient stock

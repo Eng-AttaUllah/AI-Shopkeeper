@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { createBackup } from "@/lib/backup";
+import { requireUser } from "@/lib/require-user";
 
 export type BackupActionState =
   | { ok: true; name: string }
@@ -13,6 +14,7 @@ export async function createBackupAction(
   formData: FormData,
 ): Promise<BackupActionState> {
   void formData;
+  await requireUser();
 
   try {
     const backup = await createBackup("manual");

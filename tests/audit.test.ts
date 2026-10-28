@@ -156,6 +156,24 @@ describe("audit log", () => {
     });
   });
 
+  it("records the signed-in username when one is supplied", async () => {
+    const expense = expectOk(
+      await createExpense(
+        {
+          category: "OTHER",
+          amount: "25",
+          date: isoDateKeyInKarachi(new Date()),
+        },
+        "owner",
+      ),
+    );
+    const audit = await prisma.auditLog.findFirst({
+      where: { action: "EXPENSE_RECORDED", entityId: expense.id },
+    });
+
+    expect(audit?.actor).toBe("owner");
+  });
+
   it("writes nothing when a change is rejected", async () => {
     const product = expectOk(await createProduct(sugar));
 

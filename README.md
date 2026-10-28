@@ -17,12 +17,16 @@ No database server is needed: the application uses a local SQLite file.
 ## Setup
 
 ```bash
-cp .env.example .env     # database location
+cp .env.example .env     # database location, auth secret, owner password
+# edit .env: set AUTH_SECRET (openssl rand -hex 32) and OWNER_PASSWORD
 npm install              # also generates Prisma Client
 npm run db:migrate       # create the SQLite database and tables
-npm run db:seed          # add the demo shop record
+npm run db:seed          # add the shop and the single owner account
 npm run dev              # http://localhost:3000
 ```
+
+Open `/login` and sign in with `OWNER_USERNAME` and `OWNER_PASSWORD` from `.env`. The
+default username is `owner`.
 
 To open the app from a phone on the same Wi-Fi, start the server bound to the
 network and use the laptop's local IP address:
@@ -58,7 +62,8 @@ npm run dev -- --hostname 0.0.0.0
 ```
 src/app/          routes and screens (server components by default)
 src/modules/      business logic, one folder per domain
-src/lib/          database client, money and date helpers, shared utilities
+src/lib/          database client, auth config, money and date helpers, shared utilities
+src/proxy.ts      route protection (Next 16's proxy, formerly middleware)
 src/components/   reusable UI components
 src/generated/    Prisma Client output (generated, never edited)
 prisma/           schema, migrations, seed script
@@ -80,12 +85,24 @@ The specification is the source of truth:
 
 ## Status
 
-Phases 0–5 (the sellable v1) are complete: products and stock, sales, customers and credit,
+Phases 0–5.5 (the sellable v1) are complete: products and stock, sales, customers and credit,
 dashboard and reports, expenses and net profit, voiding, an audit log, end-of-day cash
-reconciliation, and backups. 116 tests pass.
+reconciliation, backups, and username/password sign-in. 123 tests pass.
 
-The app is still open to anyone on the local network; Auth.js sign-in is not scheduled yet.
-Next: Phase 6 — read-only assistant, after the auth question is settled.
+Sign-in is required, and every money or stock change records the signed-in owner as the audit
+actor. Next: Phase 6 — read-only assistant.
+
+## Sign-in and passwords
+
+The seed creates one `OWNER` account from `.env`:
+
+- `OWNER_USERNAME` (default `owner`)
+- `OWNER_PASSWORD` (at least 8 characters)
+- `OWNER_NAME` (display name, default `Shopkeeper`)
+
+To change the owner password, edit `OWNER_PASSWORD` in `.env` and run `npm run db:seed` again.
+The seed updates the hash and increments the user's `tokenVersion`, so existing sessions are
+signed out. There is no in-app password screen yet; this needs access to the laptop.
 
 ## Backups
 

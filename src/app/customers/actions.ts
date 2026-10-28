@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { requireUser } from "@/lib/require-user";
 import {
   createCustomer,
   recordPayment,
@@ -29,6 +30,7 @@ export async function createCustomerAction(
   _previousState: CustomerActionState,
   formData: FormData,
 ): Promise<CustomerActionState> {
+  await requireUser();
   const result = await createCustomer(formDataToObject(formData));
 
   if (!result.ok) {
@@ -44,6 +46,7 @@ export async function updateCustomerAction(
   _previousState: CustomerActionState,
   formData: FormData,
 ): Promise<CustomerActionState> {
+  await requireUser();
   const id = String(formData.get("customerId") ?? "");
   const result = await updateCustomer(id, formDataToObject(formData));
 
@@ -61,8 +64,12 @@ export async function recordPaymentAction(
   _previousState: CustomerActionState,
   formData: FormData,
 ): Promise<CustomerActionState> {
+  const user = await requireUser();
   const customerId = String(formData.get("customerId") ?? "");
-  const result = await recordPayment(formDataToObject(formData));
+  const result = await recordPayment(
+    formDataToObject(formData),
+    user.username,
+  );
 
   if (!result.ok) {
     return { ok: false, error: result.error, fieldErrors: result.fieldErrors };

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { requireUser } from "@/lib/require-user";
 import {
   adjustStock,
   createProduct,
@@ -30,7 +31,11 @@ export async function createProductAction(
   _previousState: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  const result = await createProduct(formDataToObject(formData));
+  const user = await requireUser();
+  const result = await createProduct(
+    formDataToObject(formData),
+    user.username,
+  );
 
   if (!result.ok) {
     return { ok: false, error: result.error, fieldErrors: result.fieldErrors };
@@ -44,8 +49,13 @@ export async function updateProductAction(
   _previousState: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
+  const user = await requireUser();
   const id = String(formData.get("productId") ?? "");
-  const result = await updateProduct(id, formDataToObject(formData));
+  const result = await updateProduct(
+    id,
+    formDataToObject(formData),
+    user.username,
+  );
 
   if (!result.ok) {
     return { ok: false, error: result.error, fieldErrors: result.fieldErrors };
@@ -60,8 +70,12 @@ export async function adjustStockAction(
   _previousState: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
+  const user = await requireUser();
   const productId = String(formData.get("productId") ?? "");
-  const result = await adjustStock(formDataToObject(formData));
+  const result = await adjustStock(
+    formDataToObject(formData),
+    user.username,
+  );
 
   if (!result.ok) {
     return { ok: false, error: result.error, fieldErrors: result.fieldErrors };
@@ -76,6 +90,7 @@ export async function adjustStockAction(
 export async function toggleProductActiveAction(
   formData: FormData,
 ): Promise<void> {
+  await requireUser();
   const id = String(formData.get("productId") ?? "");
   const isActive = formData.get("isActive") === "true";
 

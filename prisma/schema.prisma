@@ -13,6 +13,24 @@ datasource db {
   provider = "sqlite"
 }
 
+/// A shop user. v1 seeds one OWNER. Cashiers are a later phase.
+model User {
+  id           String   @id @default(cuid())
+  /// Lowercased login name, unique across the installation.
+  username     String   @unique
+  name         String?
+  /// bcrypt hash; the plain password is never stored.
+  passwordHash String
+  /// OWNER | CASHIER
+  role         String   @default("OWNER")
+  /// Incremented when the password changes, invalidating existing sessions.
+  tokenVersion Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("users")
+}
+
 /// The single shop this installation serves.
 model Shop {
   id        String   @id @default(cuid())
@@ -204,7 +222,7 @@ model Expense {
 /// its audit row (or the reverse).
 model AuditLog {
   id         String   @id @default(cuid())
-  /// "local" until Auth.js is scheduled; then the signed-in user id.
+  /// Signed-in username; legacy rows recorded before sign-in use "local".
   actor      String   @default("local")
   /// For example SALE_CREATED, SALE_VOIDED, PAYMENT_RECORDED.
   action     String

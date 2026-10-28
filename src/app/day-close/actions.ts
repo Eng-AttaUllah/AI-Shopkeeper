@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { formatDate } from "@/lib/format";
+import { requireUser } from "@/lib/require-user";
 import { recordReconciliation } from "@/modules/cash/service";
 
 export type CashCheckState =
@@ -31,7 +32,11 @@ export async function recordCashCheckAction(
   _previousState: CashCheckState,
   formData: FormData,
 ): Promise<CashCheckState> {
-  const result = await recordReconciliation(formDataToObject(formData));
+  const user = await requireUser();
+  const result = await recordReconciliation(
+    formDataToObject(formData),
+    user.username,
+  );
 
   if (!result.ok) {
     return { ok: false, error: result.error, fieldErrors: result.fieldErrors };

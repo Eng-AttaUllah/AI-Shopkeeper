@@ -1,5 +1,5 @@
 import { Prisma } from "@/generated/prisma/client";
-import { writeAudit } from "@/lib/audit";
+import { LOCAL_ACTOR, writeAudit } from "@/lib/audit";
 import { prisma } from "@/lib/db";
 import { dateKeyInKarachi } from "@/lib/dates";
 import { formatPaisa } from "@/lib/format";
@@ -79,6 +79,7 @@ async function nextSaleNumber(
  */
 export async function createSale(
   input: unknown,
+  actor: string = LOCAL_ACTOR,
 ): Promise<Result<SaleWithItems>> {
   const parsed = createSaleSchema.safeParse(input);
 
@@ -261,6 +262,7 @@ export async function createSale(
           : null;
 
       await writeAudit(tx, {
+        actor,
         action: "SALE_CREATED",
         entityType: "Sale",
         entityId: created.id,
@@ -301,6 +303,7 @@ export async function createSale(
 export async function voidSale(
   saleId: string,
   input: unknown,
+  actor: string = LOCAL_ACTOR,
 ): Promise<Result<SaleWithItems>> {
   const parsed = voidSaleSchema.safeParse(input);
 
@@ -398,6 +401,7 @@ export async function voidSale(
           : null;
 
       await writeAudit(tx, {
+        actor,
         action: "SALE_VOIDED",
         entityType: "Sale",
         entityId: existing.id,
