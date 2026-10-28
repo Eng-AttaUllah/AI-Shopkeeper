@@ -162,3 +162,10 @@ jobs:
 
           echo "::error::Health check failed after 60 seconds."
           exit 1
+
+      - name: Report a failed deployment
+        if: failure()
+        run: |
+          echo "::warning::Deployment failed. Check the failing step above."
+          echo "::warning::The pre-deploy database backup, if one was made, is in ${DEPLOY_PATH:-the live checkout}/backups."
+          echo "::warning::If the service is down, check: sudo systemctl status $SERVICE_NAME"
