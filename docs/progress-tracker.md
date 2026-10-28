@@ -13,6 +13,9 @@ Update this file after every meaningful implementation change.
   confirm it. Next is Phase 8 — Pashto support, unless the owner first asks to extend Phase 7
   to expenses, payments, customer creation, or stock adjustments; each needs its own
   confirmation design.
+- Open follow-up: pull request #1 is green in CI, but the Vercel preview is blocked on missing
+  repository and Vercel environment values, not on code. See the Phase 7 session notes for the
+  exact failure and prerequisites.
 
 ## Completed
 
@@ -733,7 +736,14 @@ stay read-only.
   confirmed a Rs. 25.00 sale for a seeded item: stock 5 → 4, audit actor `live-owner`,
   `details.source = "assistant_proposal"`. The next test run's global setup deletes that test
   database and rebuilds it.
-- Phase 7 work is on branch `phase-7-assistant-sale-proposals`. The branch is committed and
-  pushed; the pull request is the next step so the Vercel preview workflow can run. The local
-  environment has no `gh` binary or GitHub token, so the PR must be opened from the compare
-  link in the report unless one is provided.
+- Phase 7 work is on branch `phase-7-assistant-sale-proposals`, pushed in commits `c0d423a`,
+  `e5d525d`, and `442da3b`. Pull request #1 is open:
+  https://github.com/Eng-AttaUllah/AI-Shopkeeper/pull/1. CI passed (typecheck, lint, test,
+  build). The Vercel Preview Actions workflow failed at the deploy step because the
+  `VERCEL_TOKEN` repository secret is not set; the Vercel Git integration deployment also
+  failed, likely because the Vercel Preview environment lacks `DATABASE_URL` and
+  `AUTH_SECRET`. No preview URL exists yet. The repository variables `VERCEL_ORG_ID` and
+  `VERCEL_PROJECT_ID` are now set from the existing Vercel project; only the `VERCEL_TOKEN`
+  secret and the Vercel Preview environment values remain. Add them, then rerun the workflow
+  or push a commit. The local environment has a GitHub credential but no `gh` binary; the PR
+  was created through the GitHub API.
