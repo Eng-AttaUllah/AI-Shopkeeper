@@ -9,6 +9,13 @@ import { prisma } from "@/lib/db";
 import { formatDate } from "@/lib/format";
 import { fail, ok, type Result } from "@/lib/result";
 
+import type { SaleProposal } from "./proposal-schema";
+import {
+  PROPOSAL_TOOL_LABEL,
+  PROPOSAL_TOOL_NAME,
+  proposalToolDefinitions,
+  runProposeSaleTool,
+} from "./sale-proposal";
 import {
   assistantRequestSchema,
   type AssistantHistoryTurn,
@@ -25,8 +32,10 @@ const MAX_TOOL_CALLS = 8;
 
 export type AssistantAnswer = {
   answer: string;
-  /** Human-readable names of the read-only checks used, for the UI. */
+  /** Human-readable names of the checks used, for the UI. */
   tools: string[];
+  /** A prepared sale that only the shopkeeper can confirm. */
+  proposal?: SaleProposal;
 };
 
 export type AssistantServiceInput = {
@@ -34,6 +43,8 @@ export type AssistantServiceInput = {
   history?: AssistantHistoryTurn[];
   provider: ChatProvider;
   now?: Date;
+  /** The signed-in user id; required before a proposal can be prepared. */
+  userId?: string;
 };
 
 function systemPrompt(shopName: string, now: Date): string {
@@ -43,7 +54,10 @@ function systemPrompt(shopName: string, now: Date): string {
     "Answer in English. The currency is PKR; money figures returned by tools are already formatted.",
     "Use only the provided tools for shop figures. Never guess, estimate, or invent a number. If a tool returns no data, say so plainly.",
     "If a question is ambiguous, ask one short clarifying question instead of guessing.",
-    "You are read-only. You cannot create, edit, void, or delete records. If asked to change something, say the assistant is read-only and point to the relevant screen.",
+    "You cannot create, edit, void, or delete records directly. You may prepare a sale proposal with propose_sale, but nothing is saved until the shopkeeper presses Confirm sale on screen.",
+    "Use propose_sale only when the shopkeeper clearly asks to record a sale and the items, quantities, payment method, and (for credit) customer are known. If anything is missing, ask one short question. Never invent a product, customer, quantity, price, or payment.",
+    "After propose_sale returns, tell the shopkeeper to review the card and press Confirm sale. Never say the sale is recorded, saved, or completed. Do not call propose_sale for questions that only ask for information.",
+    "If a proposal tool reports an ambiguous or missing product or customer, relay the choices and ask which one.",
     "Use the smallest set of tools needed. Answer in plain text, at most six short lines or a short bullet list. Quote the formatted figures exactly.",
     "Do not mention tool names, JSON, or internal details.",
   ].join("\n");
@@ -85,9 +99,13 @@ export async function answerShopQuestion(
     { role: "user", content: parsed.data.question },
   ];
 
-  const tools: ToolDefinition[] = assistantToolDefinitions();
+  const tools: ToolDefinition[] = [
+    ...assistantToolDefinitions(),
+    ...proposalToolDefinitions(),
+  ];
   const usedTools = new Set<string>();
   let toolCallCount = 0;
+  let proposal: SaleProposal | undefined;
 
   for (let round = 0; round < MAX_ROUNDS; round += 1) {
     let turn: AssistantTurn;
@@ -111,7 +129,7 @@ export async function answerShopQuestion(
         );
       }
 
-      return ok({ answer, tools: [...usedTools] });
+      return ok({ answer, tools: [...usedTools], proposal });
     }
 
     messages.push({
@@ -127,6 +145,55 @@ export async function answerShopQuestion(
         return fail(
           "The assistant needed too many steps. Try a simpler question.",
         );
+      }
+
+      if (call.name === PROPOSAL_TOOL_NAME) {
+        if (proposal) {
+          messages.push({
+            role: "tool",
+            toolCallId: call.id,
+            content: JSON.stringify({
+              error:
+                "A sale proposal was already prepared. Ask the shopkeeper to confirm or discard it before preparing another.",
+            }),
+          });
+          continue;
+        }
+
+        if (!input.userId) {
+          messages.push({
+            role: "tool",
+            toolCallId: call.id,
+            content: JSON.stringify({
+              error:
+                "The assistant cannot prepare a proposal for this sign-in.",
+            }),
+          });
+          continue;
+        }
+
+        const proposalResult = await runProposeSaleTool(call.arguments, {
+          userId: input.userId,
+          now,
+        });
+
+        if (proposalResult.ok) {
+          proposal = proposalResult.data.proposal;
+          usedTools.add(PROPOSAL_TOOL_LABEL);
+          messages.push({
+            role: "tool",
+            toolCallId: call.id,
+            content: JSON.stringify(proposalResult.data.model),
+          });
+        } else {
+          messages.push({
+            role: "tool",
+            toolCallId: call.id,
+            content: JSON.stringify({ error: proposalResult.error }),
+          });
+        }
+
+        continue;
       }
 
       const result = await runAssistantTool(call.name, call.arguments, {

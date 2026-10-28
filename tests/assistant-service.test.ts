@@ -1,4 +1,4 @@
-import { afterAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import type {
   AssistantTurn,
@@ -81,7 +81,19 @@ beforeEach(async () => {
   await prisma.product.deleteMany();
 });
 
+const originalSecret = process.env.AUTH_SECRET;
+
+beforeAll(() => {
+  process.env.AUTH_SECRET = "test-secret-for-sale-proposals-0123456789";
+});
+
 afterAll(async () => {
+  if (originalSecret === undefined) {
+    delete process.env.AUTH_SECRET;
+  } else {
+    process.env.AUTH_SECRET = originalSecret;
+  }
+
   await prisma.$disconnect();
 });
 
@@ -294,5 +306,62 @@ describe("answerShopQuestion", () => {
     if (!invalid.ok) {
       expect(invalid.error).toContain("at least 2");
     }
+  });
+
+  it("prepares a signed sale proposal without writing or exposing the token to the model", async () => {
+    const product = expectOk(await createProduct(sugar));
+    const provider = new FakeProvider([
+      {
+        content: null,
+        toolCalls: [
+          {
+            id: "call-1",
+            name: "propose_sale",
+            arguments: JSON.stringify({
+              items: [{ product: "Sugar", quantity: "2" }],
+              paymentMethod: "CASH",
+              paid: "400",
+            }),
+          },
+        ],
+      },
+      {
+        content: "Review the proposal and press Confirm sale.",
+        toolCalls: [],
+      },
+    ]);
+
+    const answer = expectOk(
+      await answerShopQuestion({
+        question: "Sell 2 kg of sugar for cash.",
+        provider,
+        userId: "user-1",
+      }),
+    );
+
+    expect(answer.answer).toContain("Confirm sale");
+    expect(answer.tools).toContain("Sale proposal");
+    expect(answer.proposal?.preview.lines[0]?.productId).toBe(product.id);
+    expect(answer.proposal?.preview.totalPaisa).toBe(32000);
+    expect(await prisma.sale.count()).toBe(0);
+
+    const stored = await prisma.product.findUnique({
+      where: { id: product.id },
+    });
+
+    expect(stored?.stockMilli).toBe(10000);
+
+    const toolMessage = provider.requests[1]?.messages.find(
+      (message) => message.role === "tool",
+    );
+
+    expect(toolMessage?.content).toContain("Nothing has been saved");
+    expect(toolMessage?.content).not.toContain(answer.proposal?.token);
+
+    const systemPrompt = provider.requests[0]?.messages.find(
+      (message) => message.role === "system",
+    );
+
+    expect(systemPrompt?.content).toContain("Confirm sale");
   });
 });
