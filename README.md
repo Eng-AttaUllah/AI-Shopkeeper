@@ -100,8 +100,8 @@ it after closing time.
 Vercel preview prerequisites:
 
 - `VERCEL_TOKEN` repository secret
-- `VERCEL_ORG_ID` and `VERCEL_PROJECT_ID` repository variables (required, so the CLI links to
-  the existing Vercel project instead of creating a new one)
+- `VERCEL_ORG_ID` and `VERCEL_PROJECT_ID` repository variables or secrets (required, so the CLI
+  links to the existing Vercel project instead of creating a new one)
 - `DATABASE_URL` and `AUTH_SECRET` in the Vercel project environment
 - The app uses SQLite today, so a Vercel preview can build but data-backed screens will not
   work until a hosted database is added. Use previews for UI review.
