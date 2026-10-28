@@ -627,6 +627,11 @@ write tool to `src/modules/assistant/tools.ts` before that design is documented.
   their low-stock level." Gemini's endpoint rejects the follow-up turn unless the
   `thought_signature` from each tool call is echoed back; the adapter preserves it as opaque
   `extra_content`. The configured `/assistant` page renders the chat (HTTP 200) after sign-in.
+- Added `.github/workflows/ci.yml` (typecheck, lint, test, build on pushes, pull requests, and
+  `v*` tags) and `.github/workflows/cd.yml` (manual/tag deployment to the shop laptop through
+  a self-hosted runner; verifies, builds, backs up the SQLite database, migrates, restarts,
+  and health-checks). Both pass `actionlint` 1.7.12. The CI build was reproduced locally with
+  CI-only `DATABASE_URL` and `AUTH_SECRET` values.
 - The Phase 6 verification used a production `next start` on port 3001 with the mock provider
   environment, while the normal dev server stayed on 3000. The mock server and the 3001
   process were stopped afterward; `.env` was not changed.

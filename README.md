@@ -1,5 +1,7 @@
 # AI Shopkeeper Assistant
 
+[![CI](https://github.com/Eng-AttaUllah/AI-Shopkeeper/actions/workflows/ci.yml/badge.svg)](https://github.com/Eng-AttaUllah/AI-Shopkeeper/actions/workflows/ci.yml)
+
 Offline-first shop management for a single small retail shop. Runs on a laptop
 and is used from a phone browser on the shop's local network — no internet
 connection required.
@@ -72,6 +74,26 @@ tests/            unit and integration tests
 docs/             the specification — read this before changing behaviour
 backups/          local database backups (not committed)
 ```
+
+## CI and CD
+
+- `.github/workflows/ci.yml` runs typecheck, lint, the test suite, and a production build on
+  every push to `main`, every pull request, and every `v*` tag.
+- `.github/workflows/cd.yml` is a manual (or `v*` tag) deployment to the shop laptop through a
+  self-hosted GitHub Actions runner. It verifies the release, builds, backs up the SQLite
+  database, applies migrations, restarts the systemd service, and health-checks `/login`.
+
+CD prerequisites:
+
+- a self-hosted runner with labels `self-hosted`, `linux`, and `shop-laptop`
+- repository variable `DEPLOY_PATH` pointing at the live git checkout
+- `.env` in that checkout with `DATABASE_URL` and `AUTH_SECRET`
+- a systemd service named `ai-shopkeeper` (override with the `SERVICE_NAME` variable)
+- passwordless sudo for `systemctl restart ai-shopkeeper`
+- `curl` on the runner
+
+The CD job is manual by default, so a shop laptop never redeploys while the shop is open. Run
+it after closing time.
 
 ## Documentation
 

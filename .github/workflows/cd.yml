@@ -1,0 +1,164 @@
+# Continuous delivery to the shop laptop.
+#
+# The app is local-first: the live database, .env, and backups stay on the
+# laptop, not in GitHub. This workflow therefore deploys through a self-hosted
+# runner on that laptop instead of a cloud host.
+#
+# Prerequisites:
+# - A self-hosted runner with labels: self-hosted, linux, shop-laptop
+# - Repository variable DEPLOY_PATH: absolute path to the live git checkout
+# - .env in DEPLOY_PATH with DATABASE_URL and AUTH_SECRET
+# - systemd service `ai-shopkeeper` (override with the SERVICE_NAME variable)
+# - passwordless sudo for `systemctl restart ai-shopkeeper`
+# - curl on the runner
+#
+# The deploy discards local tracked changes in DEPLOY_PATH. Ignored files
+# (.env, SQLite databases, backups) are preserved, and the database is backed
+# up before migrations. Run it after closing time, because the service is
+# briefly unavailable while dependencies are installed and the app is rebuilt.
+
+name: CD
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Branch or tag to deploy
+        required: true
+        default: main
+        type: string
+  push:
+    tags:
+      - "v*"
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
+  SERVICE_NAME: ${{ vars.SERVICE_NAME || 'ai-shopkeeper' }}
+  SERVICE_PORT: ${{ vars.SERVICE_PORT || '3000' }}
+  NEXT_TELEMETRY_DISABLED: "1"
+
+jobs:
+  deploy:
+    name: Deploy to the shop laptop
+    runs-on: [self-hosted, linux, shop-laptop]
+    environment: production
+    timeout-minutes: 30
+
+    steps:
+      - name: Check the deployment prerequisites
+        run: |
+          set -euo pipefail
+
+          if [ -z "${DEPLOY_PATH:-}" ]; then
+            echo "::error::Set the DEPLOY_PATH repository variable to the live app directory."
+            exit 1
+          fi
+
+          if [ ! -d "$DEPLOY_PATH/.git" ]; then
+            echo "::error::$DEPLOY_PATH is not a git checkout."
+            exit 1
+          fi
+
+          if [ ! -f "$DEPLOY_PATH/.env" ]; then
+            echo "::error::$DEPLOY_PATH/.env is missing."
+            exit 1
+          fi
+
+      - name: Update the checkout
+        env:
+          REF: ${{ inputs.ref || github.ref_name }}
+        run: |
+          set -euo pipefail
+          cd "$DEPLOY_PATH"
+
+          git fetch --prune --tags origin
+
+          if git rev-parse --verify --quiet "origin/$REF" >/dev/null; then
+            git checkout --force -B "$REF" "origin/$REF"
+          else
+            git checkout --force "$REF"
+          fi
+
+          git log -1 --oneline
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: |
+          set -euo pipefail
+          cd "$DEPLOY_PATH"
+          npm ci
+
+      - name: Verify the release
+        run: |
+          set -euo pipefail
+          cd "$DEPLOY_PATH"
+          npm run typecheck
+          npm run lint
+          npm test
+
+      - name: Build
+        run: |
+          set -euo pipefail
+          cd "$DEPLOY_PATH"
+          npm run build
+
+      - name: Back up the database
+        run: |
+          set -euo pipefail
+          cd "$DEPLOY_PATH"
+
+          DB_PATH=$(node -e "require('dotenv').config({ quiet: true }); const url = process.env.DATABASE_URL || ''; process.stdout.write(url.replace(/^file:/, ''));")
+          DB_PATH="${DB_PATH%%\?*}"
+
+          if [ -z "$DB_PATH" ]; then
+            echo "::error::DATABASE_URL is missing from .env."
+            exit 1
+          fi
+
+          if [ ! -f "$DB_PATH" ]; then
+            echo "No database at $DB_PATH yet; skipping the pre-deploy backup."
+            exit 0
+          fi
+
+          mkdir -p backups
+          stamp=$(date +%Y%m%d-%H%M%S)
+          cp "$DB_PATH" "backups/pre-deploy-$stamp.db"
+          echo "Backed up $DB_PATH to backups/pre-deploy-$stamp.db"
+
+      - name: Apply database migrations
+        run: |
+          set -euo pipefail
+          cd "$DEPLOY_PATH"
+          npx prisma migrate deploy
+
+      - name: Restart the service
+        run: |
+          set -euo pipefail
+          sudo systemctl restart "$SERVICE_NAME"
+
+      - name: Wait for the service to become healthy
+        run: |
+          set -euo pipefail
+
+          for attempt in $(seq 1 30); do
+            if curl -fsS "http://127.0.0.1:${SERVICE_PORT}/login" >/dev/null; then
+              echo "Service is healthy after $attempt attempt(s)."
+              exit 0
+            fi
+
+            sleep 2
+          done
+
+          echo "::error::Health check failed after 60 seconds."
+          exit 1

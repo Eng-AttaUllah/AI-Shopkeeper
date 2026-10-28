@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NEXT_TELEMETRY_DISABLED: "1"
+  # CI-only values. The real secrets live in .env on the shop laptop and are
+  # never committed. AUTH_SECRET only has to be a non-placeholder value here
+  # because the production build imports the auth configuration.
+  DATABASE_URL: "file:./prisma/ci.db"
+  AUTH_SECRET: "ci-only-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+
+jobs:
+  verify:
+    name: Typecheck, lint, test, and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build

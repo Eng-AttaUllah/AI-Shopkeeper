@@ -1,0 +1,4 @@
+# Custom labels used by the self-hosted shop-laptop runner.
+self-hosted-runner:
+  labels:
+    - shop-laptop
