@@ -133,7 +133,9 @@ about the shop and cannot create, edit, void, or delete a record.
   `src/lib/ai/openai-compatible.ts`. Configuration is `AI_BASE_URL`, `AI_API_KEY` (optional
   for local models), and `AI_MODEL`. There is no vendor SDK and no provider-specific code in
   the domain modules. If the endpoint is not configured, `/assistant` shows setup
-  instructions and the rest of the app works normally.
+  instructions and the rest of the app works normally. Provider metadata attached to a tool
+  call (for example Gemini's `thought_signature`) is treated as opaque and echoed back
+  unchanged on the next turn; it is never executed or shown.
 - **No text-to-SQL and no arbitrary functions.** The model receives a closed list of tool
   definitions generated from Zod schemas with `z.toJSONSchema`. The registry lives in
   `src/modules/assistant/tools.ts`; an unknown tool name or invalid arguments are rejected

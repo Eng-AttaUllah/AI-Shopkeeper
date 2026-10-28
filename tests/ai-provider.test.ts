@@ -165,6 +165,87 @@ describe("OpenAI-compatible provider", () => {
     );
   });
 
+  it("round-trips provider-specific tool-call metadata", async () => {
+    const extraContent = {
+      google: { thought_signature: "sig-123" },
+    };
+
+    const firstFetch: typeof fetch = async () =>
+      jsonResponse({
+        choices: [
+          {
+            message: {
+              content: null,
+              tool_calls: [
+                {
+                  id: "call-1",
+                  type: "function",
+                  extra_content: extraContent,
+                  function: {
+                    name: "sales_summary",
+                    arguments: "{}",
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      });
+
+    const provider = createOpenAiCompatibleProvider({
+      baseUrl: "https://example.test/v1",
+      model: "test-model",
+      fetchImpl: firstFetch,
+      timeoutMs: 1000,
+    });
+
+    const turn = await provider.complete({
+      messages: [{ role: "user", content: "Today?" }],
+      tools,
+    });
+
+    expect(turn.toolCalls[0]?.extraContent).toEqual(extraContent);
+
+    let capturedInit: RequestInit | undefined;
+    const echoFetch: typeof fetch = async (_input, init) => {
+      capturedInit = init;
+
+      return jsonResponse({
+        choices: [{ message: { content: "Done", tool_calls: null } }],
+      });
+    };
+
+    const echoProvider = createOpenAiCompatibleProvider({
+      baseUrl: "https://example.test/v1",
+      model: "test-model",
+      fetchImpl: echoFetch,
+      timeoutMs: 1000,
+    });
+
+    await echoProvider.complete({
+      messages: [
+        { role: "user", content: "Today?" },
+        {
+          role: "assistant",
+          content: null,
+          toolCalls: turn.toolCalls,
+        },
+        { role: "tool", toolCallId: "call-1", content: "{}" },
+      ],
+      tools,
+    });
+
+    const body = JSON.parse(String(capturedInit?.body)) as {
+      messages: Array<{
+        tool_calls?: Array<{ extra_content?: unknown }>;
+      }>;
+    };
+
+    expect(body.messages[1]?.tool_calls?.[0]?.extra_content).toEqual(
+      extraContent,
+    );
+  });
+
   it("throws a safe ProviderError on an error response", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
 

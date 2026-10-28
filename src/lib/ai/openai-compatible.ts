@@ -32,6 +32,8 @@ type OpenAiToolCall = {
     name: string;
     arguments: string;
   };
+  /** Gemini returns a thought signature here; it must be sent back unchanged. */
+  extra_content?: Record<string, unknown>;
 };
 
 type OpenAiMessage =
@@ -46,6 +48,7 @@ type OpenAiMessage =
 const toolCallSchema = z.object({
   id: z.string().optional(),
   type: z.literal("function").optional(),
+  extra_content: z.record(z.string(), z.unknown()).optional(),
   function: z.object({
     name: z.string().min(1),
     arguments: z
@@ -93,6 +96,9 @@ function toOpenAiMessage(message: ChatMessage): OpenAiMessage {
                 name: call.name,
                 arguments: call.arguments,
               },
+              ...(call.extraContent
+                ? { extra_content: call.extraContent }
+                : {}),
             })),
           }
         : {}),
@@ -189,6 +195,9 @@ export function createOpenAiCompatibleProvider(
         id: call.id || randomUUID(),
         name: call.function.name,
         arguments: call.function.arguments,
+        ...(call.extra_content
+          ? { extraContent: call.extra_content }
+          : {}),
       }));
 
       return {

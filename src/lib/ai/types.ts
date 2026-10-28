@@ -11,6 +11,11 @@ export type ToolCall = {
   name: string;
   /** JSON text exactly as returned by the model. Validated before execution. */
   arguments: string;
+  /**
+   * Provider-specific metadata that must be echoed back with the call, such as
+   * Gemini's `thought_signature`. Opaque to the app; never executed.
+   */
+  extraContent?: Record<string, unknown>;
 };
 
 export type ToolDefinition = {

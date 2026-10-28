@@ -65,6 +65,17 @@ AI_MODEL="gpt-4o-mini"`}</code>
           above, with your key.
         </p>
         <p>
+          <span className="font-medium text-ink">Gemini:</span>{" "}
+          <code className="rounded bg-subtle px-1.5 py-0.5 font-mono">
+            AI_BASE_URL=&quot;https://generativelanguage.googleapis.com/v1beta/openai&quot;
+          </code>{" "}
+          and{" "}
+          <code className="rounded bg-subtle px-1.5 py-0.5 font-mono">
+            AI_MODEL=&quot;gemini-3.5-flash-lite&quot;
+          </code>
+          , with your key.
+        </p>
+        <p>
           <span className="font-medium text-ink">Ollama (local):</span>{" "}
           <code className="rounded bg-subtle px-1.5 py-0.5 font-mono">
             AI_BASE_URL=&quot;http://localhost:11434/v1&quot;

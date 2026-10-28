@@ -89,7 +89,7 @@ The specification is the source of truth:
 Phases 0–5.5 (the sellable v1) are complete: products and stock, sales, customers and credit,
 dashboard and reports, expenses and net profit, voiding, an audit log, end-of-day cash
 reconciliation, backups, and username/password sign-in. Phase 6 adds the read-only assistant.
-153 tests pass.
+154 tests pass.
 
 Sign-in is required, and every money or stock change records the signed-in owner as the audit
 actor. Next: Phase 7 — assistant actions.
@@ -120,6 +120,18 @@ AI_BASE_URL="https://api.openai.com/v1"
 AI_API_KEY="your-key"
 AI_MODEL="gpt-4o-mini"
 ```
+
+For Google Gemini's OpenAI-compatible endpoint:
+
+```bash
+AI_BASE_URL="https://generativelanguage.googleapis.com/v1beta/openai"
+AI_API_KEY="your-key"
+AI_MODEL="gemini-3.5-flash-lite"
+```
+
+Gemini returns a `thought_signature` with each tool call; the adapter sends it back unchanged so
+multi-step tool use works. Free-tier Gemini models can be busy, so a lite model is a good
+default.
 
 For a fully local setup with [Ollama](https://ollama.com), no API key is needed:
 

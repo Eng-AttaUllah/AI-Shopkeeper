@@ -293,9 +293,13 @@ Update this file after every meaningful implementation change.
 - The server action calls `requireUser()` and re-validates with Zod; it performs no writes and
   no `revalidatePath`.
 - `.env.example` and the README document the optional assistant configuration.
-- Tests: 153 passing across 18 files. New tests cover ranges, every tool, the tool guard,
+- Configured against Google Gemini's OpenAI-compatible endpoint with `gemini-3.5-flash-lite`
+  (values live in the gitignored `.env`). The adapter round-trips Gemini's `thought_signature`
+  tool-call metadata, which the endpoint requires on the next model turn; without it Gemini
+  returns HTTP 400.
+- Tests: 154 passing across 18 files. New tests cover ranges, every tool, the tool guard,
   service orchestration with a fake provider, history, round limits, and the adapter's
-  request, response, and error handling.
+  request, response, error handling, and provider-specific tool-call metadata.
 - Verified: the unconfigured `/assistant` renders the setup notice; the configured page
   renders the chat; the service and adapter loop answered a real question against a mock
   OpenAI-compatible server and the dev database. `npm run typecheck`, `npm run lint`,
@@ -322,10 +326,6 @@ write tool to `src/modules/assistant/tools.ts` before that design is documented.
   audit attribution matter.
 - Where should backups be stored besides the laptop (external drive, second machine, phone)?
   Local-only backups do not protect against disk failure or theft.
-- Which OpenAI-compatible provider and model will the shop use? The code is provider-agnostic
-  and no endpoint is configured yet. A local Ollama model keeps shop data on the laptop; a
-  hosted model sends the question and the figures needed to answer it off the laptop. The
-  owner should choose before the assistant is used on real data.
 - Should the assistant be available to cashiers when roles are added? Today only the owner
   signs in.
 - Should assistant answers be saved for review? Phase 6 deliberately keeps history in the
@@ -501,6 +501,11 @@ write tool to `src/modules/assistant/tools.ts` before that design is documented.
   `src/lib/ai/openai-compatible.ts` works with OpenAI, OpenRouter, Groq, LM Studio, Ollama,
   and similar services. Configuration is `AI_BASE_URL`, `AI_API_KEY`, and `AI_MODEL`; no
   provider-specific code leaks into the domain modules.
+- **Google Gemini is the current configured provider.** It uses the OpenAI-compatible endpoint
+  with `gemini-3.5-flash-lite`. Questions and the figures needed to answer them leave the
+  laptop. Switching to local Ollama is an `.env` change, not a code change. Gemini returns a
+  `thought_signature` with each tool call; the adapter echoes it back because Gemini rejects
+  the follow-up model turn without it.
 - **The assistant is optional and the rest of the app stays offline-first.** If the endpoint
   is not configured, `/assistant` shows setup instructions and every other screen works. No
   part of the sale, credit, report, backup, or sign-in path calls the provider.
@@ -616,6 +621,12 @@ write tool to `src/modules/assistant/tools.ts` before that design is documented.
   schemas. The `$schema` key is removed before the definitions are sent.
 - The assistant configuration is read at request time, but Next loads `.env` at startup, so
   changing `AI_BASE_URL`, `AI_API_KEY`, or `AI_MODEL` requires a server restart.
+- The assistant is now configured against Google Gemini's OpenAI-compatible endpoint with
+  `gemini-3.5-flash-lite`. A real question — "Who owes me money, and which products are low on
+  stock?" — answered "ali khan owes Rs. 400.00" and "No products are currently at or below
+  their low-stock level." Gemini's endpoint rejects the follow-up turn unless the
+  `thought_signature` from each tool call is echoed back; the adapter preserves it as opaque
+  `extra_content`. The configured `/assistant` page renders the chat (HTTP 200) after sign-in.
 - The Phase 6 verification used a production `next start` on port 3001 with the mock provider
   environment, while the normal dev server stayed on 3000. The mock server and the 3001
   process were stopped afterward; `.env` was not changed.
