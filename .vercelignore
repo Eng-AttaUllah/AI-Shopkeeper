@@ -1,0 +1,11 @@
+# Never upload local secrets or shop data to a Vercel deployment.
+.env*
+prisma/*.db
+prisma/*.db-*
+backups/
+
+# Not needed at runtime.
+tests/
+docs/
+.github/
+coverage/

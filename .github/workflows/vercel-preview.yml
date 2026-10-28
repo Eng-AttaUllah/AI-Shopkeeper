@@ -1,0 +1,102 @@
+# Deploy a Vercel preview for each pull request and keep one comment updated
+# with the preview URL.
+#
+# Prerequisites:
+# - VERCEL_TOKEN repository secret
+# - VERCEL_ORG_ID and VERCEL_PROJECT_ID repository variables (required, so the
+#   CLI links to the existing Vercel project instead of creating a new one)
+# - DATABASE_URL and AUTH_SECRET in the Vercel project environment
+#
+# Note: the app currently uses SQLite on the shop laptop. A Vercel preview can
+# build, but data-backed screens will not work until the app uses a hosted
+# database. Treat previews as UI review until that changes.
+
+name: Vercel Preview
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+concurrency:
+  group: vercel-preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+env:
+  NEXT_TELEMETRY_DISABLED: "1"
+  VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+  VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+
+jobs:
+  preview:
+    name: Deploy preview and comment on PR
+    # Do not expose the Vercel token to pull requests from forks.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Vercel CLI
+        run: npm install -g vercel@latest
+
+      - name: Deploy preview to Vercel
+        id: deploy
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${VERCEL_TOKEN:-}" ]; then
+            echo "::error::Add the VERCEL_TOKEN repository secret."
+            exit 1
+          fi
+
+          if [ -z "${VERCEL_ORG_ID:-}" ] || [ -z "${VERCEL_PROJECT_ID:-}" ]; then
+            echo "::error::Set the VERCEL_ORG_ID and VERCEL_PROJECT_ID repository variables."
+            exit 1
+          fi
+
+          OUTPUT=$(vercel deploy --token "$VERCEL_TOKEN" --yes)
+          echo "$OUTPUT"
+
+          PREVIEW_URL=$(echo "$OUTPUT" | grep -oE 'https://[a-zA-Z0-9-]+\.vercel\.app' | head -1)
+          if [ -z "$PREVIEW_URL" ]; then
+            echo "::error::Could not extract the Vercel preview URL from the deployment output."
+            exit 1
+          fi
+
+          echo "preview_url=$PREVIEW_URL" >> "$GITHUB_OUTPUT"
+
+      - name: Create or update the preview comment
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PREVIEW_URL: ${{ steps.deploy.outputs.preview_url }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+
+          BODY=$(printf '<!-- vercel-preview -->\n🚀 **Vercel preview:** %s' "$PREVIEW_URL")
+          COMMENTS_URL="repos/${{ github.repository }}/issues/${PR_NUMBER}/comments"
+
+          COMMENT_ID=$(gh api "$COMMENTS_URL" --paginate \
+            --jq '.[] | select(.body | contains("<!-- vercel-preview -->")) | .id' \
+            | awk 'NR == 1 { print }')
+
+          if [ -n "$COMMENT_ID" ]; then
+            gh api -X PATCH "repos/${{ github.repository }}/issues/comments/${COMMENT_ID}" \
+              -f body="$BODY"
+          else
+            gh api -X POST "$COMMENTS_URL" -f body="$BODY"
+          fi

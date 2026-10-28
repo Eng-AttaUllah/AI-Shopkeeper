@@ -632,6 +632,11 @@ write tool to `src/modules/assistant/tools.ts` before that design is documented.
   a self-hosted runner; verifies, builds, backs up the SQLite database, migrates, restarts,
   and health-checks). Both pass `actionlint` 1.7.12. The CI build was reproduced locally with
   CI-only `DATABASE_URL` and `AUTH_SECRET` values.
+- Added `.github/workflows/vercel-preview.yml`: deploys a Vercel preview for each pull request
+  and keeps one sticky PR comment updated with the link. Fork PRs are skipped so the token is
+  not exposed. It needs `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`, and the Vercel
+  project environment. Because the app still uses SQLite, previews are UI-only until a hosted
+  database is added.
 - The Phase 6 verification used a production `next start` on port 3001 with the mock provider
   environment, while the normal dev server stayed on 3000. The mock server and the 3001
   process were stopped afterward; `.env` was not changed.

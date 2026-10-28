@@ -82,6 +82,8 @@ backups/          local database backups (not committed)
 - `.github/workflows/cd.yml` is a manual (or `v*` tag) deployment to the shop laptop through a
   self-hosted GitHub Actions runner. It verifies the release, builds, backs up the SQLite
   database, applies migrations, restarts the systemd service, and health-checks `/login`.
+- `.github/workflows/vercel-preview.yml` deploys a Vercel preview for each pull request and
+  keeps one PR comment updated with the link. Fork PRs are skipped so the token is not exposed.
 
 CD prerequisites:
 
@@ -94,6 +96,17 @@ CD prerequisites:
 
 The CD job is manual by default, so a shop laptop never redeploys while the shop is open. Run
 it after closing time.
+
+Vercel preview prerequisites:
+
+- `VERCEL_TOKEN` repository secret
+- `VERCEL_ORG_ID` and `VERCEL_PROJECT_ID` repository variables (required, so the CLI links to
+  the existing Vercel project instead of creating a new one)
+- `DATABASE_URL` and `AUTH_SECRET` in the Vercel project environment
+- The app uses SQLite today, so a Vercel preview can build but data-backed screens will not
+  work until a hosted database is added. Use previews for UI review.
+- `.vercelignore` keeps `.env`, SQLite files, backups, tests, docs, and `.github` out of
+  deployments.
 
 ## Documentation
 
