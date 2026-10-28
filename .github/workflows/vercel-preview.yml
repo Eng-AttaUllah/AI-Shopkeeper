@@ -82,6 +82,16 @@ jobs:
 
           echo "preview_url=$PREVIEW_URL" >> "$GITHUB_OUTPUT"
 
+      - name: Add the preview link to the job summary
+        env:
+          PREVIEW_URL: ${{ steps.deploy.outputs.preview_url }}
+        run: |
+          {
+            echo "### Vercel preview"
+            echo ""
+            echo "[$PREVIEW_URL]($PREVIEW_URL)"
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Create or update the preview comment
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
