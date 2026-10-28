@@ -64,7 +64,7 @@ npx prisma studio        # inspect the database
 
 ## Current state
 
-Phase 5.5 — sign-in is complete. Phase 6 — read-only assistant is next. See
+Phase 6 — the read-only assistant is complete. Phase 7 — assistant actions is next. See
 `docs/progress-tracker.md` for the live task list.
 
 <!-- BEGIN:nextjs-agent-rules -->

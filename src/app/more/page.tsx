@@ -2,6 +2,12 @@ import Link from "next/link";
 
 const TOOLS = [
   {
+    href: "/assistant",
+    title: "Assistant",
+    description:
+      "Ask about sales, stock, credit, expenses, and cash. Read-only.",
+  },
+  {
     href: "/expenses",
     title: "Expenses",
     description: "Record rent, bills, salaries, and other shop costs.",

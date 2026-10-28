@@ -112,6 +112,15 @@ export default async function Home() {
             Reports
           </Link>
           <Link
+            href="/assistant"
+            className={buttonVariants({
+              variant: "outline",
+              className: "h-11 px-4 text-base",
+            })}
+          >
+            Ask assistant
+          </Link>
+          <Link
             href="/day-close"
             className={buttonVariants({
               variant: "outline",

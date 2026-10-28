@@ -63,6 +63,28 @@
 - Any handler that touches both money and stock must call a single service function that owns
   the transaction. Handlers never open their own transactions.
 
+## AI and the Assistant
+
+- The assistant is **read-only**. No tool may create, update, void, or delete a record, and
+  assistant code must not call a service that writes. Write actions are a separate phase and
+  need an explicit-confirmation design first.
+- Every tool lives in `src/modules/assistant/tools.ts`, has a Zod input schema, and is
+  registered explicitly. Unknown tool names and invalid arguments are rejected before
+  execution. Never let the model call an arbitrary function or generate SQL.
+- Tool results are derived from the same `src/modules` queries the screens use and formatted
+  with `src/lib/format.ts`. The model quotes those figures; it never calculates money.
+- Provider calls stay behind the `ChatProvider` interface in `src/lib/ai/`. Domain modules
+  receive the interface, not a vendor SDK. The adapter is configured by environment variables,
+  and the API key never reaches the browser.
+- Validate the question, history, and every tool argument with Zod on the server. The
+  assistant server action also calls `requireUser()`.
+- Never log secrets, API keys, full prompts, or shop figures. Log a provider failure on the
+  server and return a short, safe message to the UI.
+- Chat history is not persisted in Phase 6. Saving it later requires a documented retention
+  and privacy decision.
+- Tests use a fake `ChatProvider`; no test may call a real AI endpoint. A provider or model
+  change is configuration, not a code change, and `.env.example` stays blank by default.
+
 ## Data and Storage
 
 - Business and metadata belong in the database.
@@ -78,8 +100,9 @@
 
 - `src/app/` — routes, layouts, and page-level composition only.
 - `src/modules/` — domain logic: `schema.ts`, `service.ts`, `queries.ts`, plus domain-only
-  helpers.
-- `src/lib/` — cross-domain infrastructure: db, auth, money, dates, formatting, results.
+  helpers. The assistant module also owns its read-only tool registry and range resolver.
+- `src/lib/` — cross-domain infrastructure: db, auth, AI provider adapter and config, money,
+  dates, formatting, results.
 - `src/components/` — reusable UI; `src/components/ui/` is shadcn-generated and protected.
 - `prisma/` — schema, migrations, seed.
 - `tests/` — unit and integration tests mirroring the module structure.

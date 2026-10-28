@@ -12,7 +12,8 @@ Version 1 is **English-only** and runs entirely on one laptop on the shop's loca
 No internet connection and no paid cloud service are required. Customers, products, sales,
 credit, and reports all live in a single local database that is backed up daily.
 
-Later phases add a conversational assistant, Pashto language support, voice input, and
+Phase 6 adds a read-only English assistant that answers shop questions from real database
+figures. Later phases add assistant actions, Pashto language support, voice input, and
 camera-based suspicious-activity alerts. Those are explicitly out of scope for v1 and must
 not be built early `(see Scope)`.
 
@@ -104,8 +105,9 @@ not be built early `(see Scope)`.
 
 ### Future Phases (not in v1)
 
-- AI assistant that answers shop questions in English, then Pashto.
-- Conversational transaction entry with explicit shopkeeper confirmation.
+- Read-only English assistant (Phase 6, complete).
+- Conversational transaction entry with explicit shopkeeper confirmation (Phase 7).
+- Conversational assistant in Pashto (Phase 8).
 - Voice input.
 - Camera-based suspicious-activity alerts.
 - Pashto user interface and right-to-left layout.
@@ -126,7 +128,8 @@ not be built early `(see Scope)`.
 
 - Pashto or any non-English interface, right-to-left layout, and translation layers.
 - Voice input and speech recognition.
-- The AI assistant and all conversational features.
+- The AI assistant and all conversational features in v1. The read-only English assistant is
+  a separate post-v1 phase (Phase 6).
 - Camera, video processing, theft or suspicious-activity detection, and face recognition.
 - Supplier management, purchase orders, and goods returns.
 - Multi-shop, multi-branch, or multi-device cloud synchronisation.
@@ -154,6 +157,41 @@ not be built early `(see Scope)`.
    is displayed.
 9. A backup file is produced and can be restored to a working database.
 10. `npm run build` and `npm test` pass on a clean checkout.
+
+## Phase 6 — Assistant (read-only)
+
+The assistant is an optional, post-v1 feature for the signed-in owner. It answers English
+questions about the shop using the same database the screens read.
+
+### Scope
+
+- A `/assistant` chat screen, reachable from the dashboard and the **More** page. The main
+  navigation is unchanged.
+- Questions about sales, revenue, gross and net profit, expenses, stock, low stock,
+  inventory value, slow-moving stock, customer balances, outstanding khata, recent sales,
+  and expected cash.
+- A provider-agnostic adapter for any OpenAI-compatible chat-completions endpoint,
+  configured with `AI_BASE_URL`, `AI_API_KEY` (optional), and `AI_MODEL`. No vendor SDK and
+  no cloud account are required by the code.
+- An approved list of read-only tools in `src/modules/assistant/tools.ts`. The model never
+  generates SQL and never calls an unregistered function.
+- A short, in-browser conversation history. Chat messages are not stored in the database.
+- A clear setup notice and a plain-language error when the provider is not configured or is
+  unreachable. The rest of the app continues to work offline.
+
+### Acceptance Criteria
+
+1. A signed-in owner can ask "How much did I sell today?", "What is low in stock?", "Who owes
+   me the most?", "What was my net profit this month?", and "How much cash should be in the
+   drawer today?" and receives figures that match the dashboard, reports, and day-close
+   screens.
+2. The assistant cannot create, edit, void, or delete a record. Every tool is read-only, and
+   unknown tools or invalid arguments are rejected before execution.
+3. Answers quote the formatted figures returned by the tools. If the data is missing, the
+   assistant says so instead of estimating.
+4. With no provider configured, `/assistant` shows setup instructions and the rest of the app
+   works normally. A provider failure shows a readable message and never a stack trace.
+5. `npm run typecheck`, `npm run lint`, `npm test`, and `npm run build` pass.
 
 ## Implementation Phases
 

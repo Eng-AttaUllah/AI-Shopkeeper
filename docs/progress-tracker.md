@@ -4,13 +4,13 @@ Update this file after every meaningful implementation change.
 
 ## Current Phase
 
-- Phase 5.5 — Sign-in (Auth.js): **Complete**
+- Phase 6 — Assistant (read-only): **Complete**
 
 ## Current Goal
 
-- Nothing in progress. Phase 5.5 is complete and verified end to end. The app now requires
-  sign-in, the single owner is seeded from `.env`, and the audit actor is the signed-in
-  username. Next is Phase 6.
+- Nothing in progress. Phase 6 is complete and verified end to end. The read-only assistant
+  answers shop questions from the real database through an approved tool registry. Next is
+  Phase 7 — assistant actions.
 
 ## Completed
 
@@ -270,17 +270,47 @@ Update this file after every meaningful implementation change.
   rejects the old cookie and a fresh sign-in works. `npm run typecheck`, `npm run lint`,
   `npm test`, and `npm run build` pass.
 
+### Phase 6 — Assistant (read-only) (complete)
+
+- No schema change and no migration: chat history is client state, not stored.
+- `src/lib/ai/` — provider-agnostic types, an OpenAI-compatible `/chat/completions` adapter
+  (`fetch`, no vendor SDK), and config (`AI_BASE_URL`, `AI_API_KEY`, `AI_MODEL`,
+  `isAssistantConfigured()`).
+- `src/modules/assistant/` — `schema.ts` (question, history, and range validation),
+  `range.ts` (today, yesterday, this month, last month, this year, custom), `tools.ts`
+  (11 read-only tools with Zod schemas converted by `z.toJSONSchema`), and `service.ts`
+  (system prompt, history, at most four model rounds and eight tool calls).
+- Tools: sales summary, top products, product sales, low stock, outstanding credit, customer
+  balance, inventory value, slow moving, recent sales, expenses by category, and expected
+  cash. Unknown tools and invalid arguments are rejected before execution.
+- `src/modules/expenses/queries.ts` — `expenseSummaryByCategory` for the expenses tool.
+- `/assistant` — read-only badge, suggestions, transcript, "Checked:" tool labels, pending
+  state, and readable errors. Reachable from the dashboard **Ask assistant** button and the
+  **More** page. The main navigation is unchanged.
+- A setup notice appears when the provider is unconfigured and the rest of the app works.
+  The privacy note explains that the question and needed figures go to the provider; a local
+  Ollama model is documented.
+- The server action calls `requireUser()` and re-validates with Zod; it performs no writes and
+  no `revalidatePath`.
+- `.env.example` and the README document the optional assistant configuration.
+- Tests: 153 passing across 18 files. New tests cover ranges, every tool, the tool guard,
+  service orchestration with a fake provider, history, round limits, and the adapter's
+  request, response, and error handling.
+- Verified: the unconfigured `/assistant` renders the setup notice; the configured page
+  renders the chat; the service and adapter loop answered a real question against a mock
+  OpenAI-compatible server and the dev database. `npm run typecheck`, `npm run lint`,
+  `npm test`, and `npm run build` pass.
+
 ## In Progress
 
 - None.
 
 ## Next Up
 
-Phase 6 — Assistant (read-only). Auth is complete, so the assistant can rely on the signed-in
-session and call the same `src/modules` queries and services the screens call; it must not
-write money or stock directly. The shop is single-tenant, so the owner sees the whole shop.
-Decide which AI provider to use before implementing. Phases 0–5.5, the sellable v1, are
-complete.
+Phase 7 — Assistant actions. The read-only assistant is complete; Phases 0–5.5 remain the
+sellable v1 and Phase 6 is the first post-v1 feature. Phase 7 may add write proposals only
+with an explicit-confirmation design, separate from the read-only tool registry. Do not add a
+write tool to `src/modules/assistant/tools.ts` before that design is documented.
 
 ## Open Questions
 
@@ -292,8 +322,14 @@ complete.
   audit attribution matter.
 - Where should backups be stored besides the laptop (external drive, second machine, phone)?
   Local-only backups do not protect against disk failure or theft.
-- Which AI provider will be used for the later assistant phase? Deferred, but the adapter
-  interface must stay provider-agnostic.
+- Which OpenAI-compatible provider and model will the shop use? The code is provider-agnostic
+  and no endpoint is configured yet. A local Ollama model keeps shop data on the laptop; a
+  hosted model sends the question and the figures needed to answer it off the laptop. The
+  owner should choose before the assistant is used on real data.
+- Should the assistant be available to cashiers when roles are added? Today only the owner
+  signs in.
+- Should assistant answers be saved for review? Phase 6 deliberately keeps history in the
+  browser only; a saved transcript would need a retention and privacy decision.
 - Should the shop's day be treated as starting at midnight, or does the shopkeeper consider
   the business day to end after closing (for example 2 a.m.)? Affects "today" reporting. The
   current implementation uses midnight.
@@ -457,6 +493,31 @@ complete.
 - **`/more` groups the less frequent tools.** Expenses, Day close, Backups, and Audit log sit
   behind one nav link instead of making the phone header longer.
 
+- **The assistant is read-only and tool-based, not text-to-SQL.** The model receives a closed
+  list of typed tools generated from Zod schemas. It never sees SQL or the database and cannot
+  write. Unknown tools and invalid arguments are rejected before execution. This keeps the
+  invariants enforceable even when the model is wrong.
+- **The AI provider is an OpenAI-compatible HTTP endpoint, not a vendor SDK.** One adapter in
+  `src/lib/ai/openai-compatible.ts` works with OpenAI, OpenRouter, Groq, LM Studio, Ollama,
+  and similar services. Configuration is `AI_BASE_URL`, `AI_API_KEY`, and `AI_MODEL`; no
+  provider-specific code leaks into the domain modules.
+- **The assistant is optional and the rest of the app stays offline-first.** If the endpoint
+  is not configured, `/assistant` shows setup instructions and every other screen works. No
+  part of the sale, credit, report, backup, or sign-in path calls the provider.
+- **Assistant tools reuse the screen queries.** Sales, credit, stock, expenses, and cash tools
+  call the same `src/modules` queries the dashboard and reports use, so the assistant cannot
+  drift into a second set of reporting rules.
+- **The assistant has no chat persistence in Phase 6.** History is client state for the open
+  page, capped at six turns. There is no chat table, no migration, and no transcript on disk.
+- **Assistant limits are deliberately small.** A question is at most 500 characters; one
+  answer uses at most four model rounds and eight tool calls. This bounds latency and provider
+  cost on a shop laptop and keeps a confused model from looping.
+- **Shop data leaves the laptop only when the assistant is configured.** The question and the
+  figures needed to answer it go to the configured provider. The README documents a local
+  Ollama option for shops that want the data to stay on the laptop.
+- **The assistant is reached from the dashboard and More, not the main navigation.** It is a
+  secondary tool, so adding it did not lengthen the phone header.
+
 ## Session Notes
 
 - Verified environment: Node.js v22.22.1, npm 9.2.0 (global prefix `/usr/local` is not
@@ -550,3 +611,15 @@ complete.
 - The test database is rebuilt with `prisma migrate deploy`; the new `users` table has no
   foreign keys, so the existing cleanup order is unchanged. The auth test deletes users in
   its own `beforeEach`.
+- Phase 6 added no schema change and no dependency. The provider adapter uses the global
+  `fetch`, and `z.toJSONSchema` (already in the installed Zod) generates the model-facing tool
+  schemas. The `$schema` key is removed before the definitions are sent.
+- The assistant configuration is read at request time, but Next loads `.env` at startup, so
+  changing `AI_BASE_URL`, `AI_API_KEY`, or `AI_MODEL` requires a server restart.
+- The Phase 6 verification used a production `next start` on port 3001 with the mock provider
+  environment, while the normal dev server stayed on 3000. The mock server and the 3001
+  process were stopped afterward; `.env` was not changed.
+- The real dev database has no sales dated 28 Oct 2026, so the mock end-to-end loop correctly
+  answered "Rs. 0.00 today across 0 sales." The loop used the real database read-only.
+- The assistant chat and the Phase 5.5 login form still need a final phone check on the LAN
+  URL. Both are designed for a phone, but a real-device pass has not been recorded.
