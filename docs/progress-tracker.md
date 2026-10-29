@@ -14,9 +14,10 @@ Update this file after every meaningful implementation change.
   signed-in shopkeeper can confirm it. Next is Phase 8 — Pashto support, unless the owner first
   asks to extend Phase 7 to customer creation, product changes, or stock adjustments; each
   needs its own confirmation design.
-- Branch `phase-7b-expense-payment-proposals` is stacked on the Phase 7 branch. It is committed
-  locally and has not been merged. Pull request #1 for sale proposals remains open and
-  unmerged.
+- Branch `phase-7b-expense-payment-proposals` is stacked on the Phase 7 branch and pushed as
+  pull request #2 (base `phase-7-assistant-sale-proposals`). It has not been merged. Pull
+  request #1 for sale proposals remains open and unmerged. CI run 40818562612 is green for the
+  implementation commit.
 - Open follow-up: pull request #1 is green in CI, but the Vercel preview is blocked on missing
   repository and Vercel environment values, not on code. See the Phase 7 session notes for the
   exact failure and prerequisites. The preview is deferred; a real friends test should use
