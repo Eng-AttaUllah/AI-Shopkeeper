@@ -3,10 +3,10 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 
 import { askAssistantAction } from "@/app/assistant/actions";
-import { SaleProposalCard } from "@/components/assistant/sale-proposal-card";
+import { ProposalCard } from "@/components/assistant/proposal-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import type { SaleProposal } from "@/modules/assistant/proposal-schema";
+import type { AssistantProposal } from "@/modules/assistant/proposal-schema";
 
 const SUGGESTIONS = [
   "How much did I sell today?",
@@ -14,7 +14,8 @@ const SUGGESTIONS = [
   "Who owes me the most?",
   "What was my net profit this month?",
   "How much cash should be in the drawer?",
-  "What was my last sale?",
+  "Record 500 rupees electricity expense",
+  "Ali paid 200 on his khata",
 ] as const;
 
 type ChatMessage = {
@@ -22,7 +23,7 @@ type ChatMessage = {
   role: "user" | "assistant";
   content: string;
   tools?: string[];
-  proposal?: SaleProposal;
+  proposal?: AssistantProposal;
 };
 
 let nextMessageId = 0;
@@ -96,8 +97,8 @@ export function AssistantChat() {
           <div className="mx-auto max-w-xl py-6 text-center">
             <p className="text-base font-medium">What would you like to know?</p>
             <p className="mt-1 text-sm text-ink-muted">
-              Try one of these, or ask me to prepare a sale. Nothing is saved
-              until you confirm it.
+              Try one of these, or ask me to prepare a sale, expense, or
+              payment. Nothing is saved until you confirm it.
             </p>
             <div className="mt-4 flex flex-wrap justify-center gap-2">
               {SUGGESTIONS.map((suggestion) => (
@@ -154,7 +155,7 @@ export function AssistantChat() {
                   </div>
                 ) : null}
                 {message.proposal ? (
-                  <SaleProposalCard proposal={message.proposal} />
+                  <ProposalCard proposal={message.proposal} />
                 ) : null}
               </div>
             </div>

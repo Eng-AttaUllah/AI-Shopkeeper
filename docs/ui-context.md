@@ -110,21 +110,28 @@ as protected files:
   until the shopkeeper is signed in.
 - **Assistant:** one card with a **Read-only · confirm to save** badge, a scrollable
   transcript, and a composer fixed to the bottom of the card. The empty state shows a short
-  prompt and six suggested questions as large tap targets. User messages are right-aligned in
-  the teal accent with white text; assistant messages are left-aligned on a white surface.
-  Under an answer, show the checks used as small labels ("Checked: Sales summary"). While
-  waiting, show a pending bubble ("Checking the shop…") and disable the composer. If the
-  provider is not configured, replace the chat with a setup card that shows the three
-  environment variables and a local Ollama example. A short privacy note sits below the card.
-  Reach the assistant from the dashboard and **More**, not the main navigation.
-- **Sale proposal card:** warning-tinted, never the success colour. The heading is
-  **Proposed sale — not saved yet**; show the lines, unit prices, subtotal, discount, total,
-  payment method, customer, cash received, change, and expiry. The primary action is
-  **Confirm sale** (large, teal); **Dismiss** is secondary. The card states plainly that
+  prompt and suggested prompts as large tap targets, including a sale, an expense, and a khata
+  payment example. User messages are right-aligned in the teal accent with white text;
+  assistant messages are left-aligned on a white surface. Under an answer, show the checks used
+  as small labels ("Checked: Sales summary"). While waiting, show a pending bubble ("Checking
+  the shop…") and disable the composer. If the provider is not configured, replace the chat
+  with a setup card that shows the three environment variables and a local Ollama example. A
+  short privacy note sits below the card. Reach the assistant from the dashboard and **More**,
+  not the main navigation.
+- **Proposal cards:** warning-tinted, never the success colour. Each card states plainly that
   nothing is saved and the assistant cannot confirm it. While confirming, disable both buttons
-  and show "Recording…". On success, replace the card with a success panel and a **View
-  receipt** link; on failure, keep the card and show an inline error. A confirmed card must not
-  be confirmable again.
+  and show "Recording…". On success, replace the card with a success panel and a link to the
+  record; on failure, keep the card and show an inline error. A confirmed card must not be
+  confirmable again.
+  - **Sale:** heading **Proposed sale — not saved yet**; show the lines, unit prices, subtotal,
+    discount, total, payment method, customer, cash received, change, and expiry. Primary
+    action **Confirm sale**; secondary **Dismiss**; success link **View receipt**.
+  - **Expense:** heading **Proposed expense — not saved yet**; show category, amount, shop
+    date, note, and expiry. Primary action **Confirm expense**; secondary **Dismiss**; success
+    link **View expenses**.
+  - **Payment:** heading **Proposed payment — not saved yet**; show customer, amount, khata
+    before, khata after, note, and expiry. Primary action **Confirm payment**; secondary
+    **Dismiss**; success link **View customer**.
 - **Modals:** centered overlay with a dimmed backdrop. Use `alert-dialog` for destructive
   confirmations (voiding a sale) and `dialog` for editing.
 - **Empty states:** every list has a short explanation and the action that fills it ("No
@@ -142,6 +149,6 @@ as protected files:
   "The assistant could not reach the AI provider." Never show a stack trace, a provider body,
   or a raw HTTP status.
 - The assistant shows its **Read-only · confirm to save** badge. It has no direct save, edit,
-  or delete action; a sale proposal is written only by the shopkeeper's **Confirm sale**
+  or delete action; a proposal is written only by the shopkeeper's matching **Confirm**
   button.
 - Destructive actions require confirmation and name the record being affected.

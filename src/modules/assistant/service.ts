@@ -9,13 +9,12 @@ import { prisma } from "@/lib/db";
 import { formatDate } from "@/lib/format";
 import { fail, ok, type Result } from "@/lib/result";
 
-import type { SaleProposal } from "./proposal-schema";
+import type { AssistantProposal } from "./proposal-schema";
 import {
-  PROPOSAL_TOOL_LABEL,
-  PROPOSAL_TOOL_NAME,
+  findProposalTool,
   proposalToolDefinitions,
-  runProposeSaleTool,
-} from "./sale-proposal";
+  toAssistantProposal,
+} from "./proposal-tools";
 import {
   assistantRequestSchema,
   type AssistantHistoryTurn,
@@ -34,8 +33,8 @@ export type AssistantAnswer = {
   answer: string;
   /** Human-readable names of the checks used, for the UI. */
   tools: string[];
-  /** A prepared sale that only the shopkeeper can confirm. */
-  proposal?: SaleProposal;
+  /** A prepared sale, expense, or payment that only the shopkeeper can confirm. */
+  proposal?: AssistantProposal;
 };
 
 export type AssistantServiceInput = {
@@ -54,10 +53,12 @@ function systemPrompt(shopName: string, now: Date): string {
     "Answer in English. The currency is PKR; money figures returned by tools are already formatted.",
     "Use only the provided tools for shop figures. Never guess, estimate, or invent a number. If a tool returns no data, say so plainly.",
     "If a question is ambiguous, ask one short clarifying question instead of guessing.",
-    "You cannot create, edit, void, or delete records directly. You may prepare a sale proposal with propose_sale, but nothing is saved until the shopkeeper presses Confirm sale on screen.",
+    "You cannot create, edit, void, or delete records directly. You may prepare a sale, expense, or payment proposal with propose_sale, propose_expense, or propose_payment, but nothing is saved until the shopkeeper presses the matching Confirm button on screen.",
     "Use propose_sale only when the shopkeeper clearly asks to record a sale and the items, quantities, payment method, and (for credit) customer are known. If anything is missing, ask one short question. Never invent a product, customer, quantity, price, or payment.",
-    "After propose_sale returns, tell the shopkeeper to review the card and press Confirm sale. Never say the sale is recorded, saved, or completed. Do not call propose_sale for questions that only ask for information.",
-    "If a proposal tool reports an ambiguous or missing product or customer, relay the choices and ask which one.",
+    "Use propose_expense only when the shopkeeper clearly asks to record an expense and the category and amount are known. Omit the date when it is for today; use YYYY-MM-DD only for another day.",
+    "Use propose_payment only when the shopkeeper clearly asks to record a repayment and the customer and amount are known. The customer must already exist, and the amount cannot exceed the outstanding khata balance.",
+    "After any proposal tool returns, tell the shopkeeper to review the card and press Confirm sale, Confirm expense, or Confirm payment. Never say it is recorded, saved, or completed. Do not call a proposal tool for questions that only ask for information.",
+    "If a proposal tool reports an ambiguous or missing product, customer, or category, relay the choices and ask which one.",
     "Use the smallest set of tools needed. Answer in plain text, at most six short lines or a short bullet list. Quote the formatted figures exactly.",
     "Do not mention tool names, JSON, or internal details.",
   ].join("\n");
@@ -105,7 +106,7 @@ export async function answerShopQuestion(
   ];
   const usedTools = new Set<string>();
   let toolCallCount = 0;
-  let proposal: SaleProposal | undefined;
+  let proposal: AssistantProposal | undefined;
 
   for (let round = 0; round < MAX_ROUNDS; round += 1) {
     let turn: AssistantTurn;
@@ -147,14 +148,16 @@ export async function answerShopQuestion(
         );
       }
 
-      if (call.name === PROPOSAL_TOOL_NAME) {
+      const proposalTool = findProposalTool(call.name);
+
+      if (proposalTool) {
         if (proposal) {
           messages.push({
             role: "tool",
             toolCallId: call.id,
             content: JSON.stringify({
               error:
-                "A sale proposal was already prepared. Ask the shopkeeper to confirm or discard it before preparing another.",
+                "A proposal was already prepared. Ask the shopkeeper to confirm or discard it before preparing another.",
             }),
           });
           continue;
@@ -172,14 +175,14 @@ export async function answerShopQuestion(
           continue;
         }
 
-        const proposalResult = await runProposeSaleTool(call.arguments, {
+        const proposalResult = await proposalTool.run(call.arguments, {
           userId: input.userId,
           now,
         });
 
         if (proposalResult.ok) {
-          proposal = proposalResult.data.proposal;
-          usedTools.add(PROPOSAL_TOOL_LABEL);
+          proposal = toAssistantProposal(proposalResult.data);
+          usedTools.add(proposalTool.label);
           messages.push({
             role: "tool",
             toolCallId: call.id,

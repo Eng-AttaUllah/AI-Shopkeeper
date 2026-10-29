@@ -198,6 +198,9 @@ model Payment {
   customerId  String
   amountPaisa Int
   note        String?
+  /// Set when a payment is created from an assistant proposal. Unique so a
+  /// replayed confirmation cannot credit the khata twice (Phase 7).
+  proposalId  String?  @unique
   createdAt   DateTime @default(now())
 
   customer Customer @relation(fields: [customerId], references: [id], onDelete: Restrict)
@@ -215,6 +218,9 @@ model Expense {
   /// Shop-local midnight of the day the expense belongs to.
   spentAt     DateTime
   note        String?
+  /// Set when an expense is created from an assistant proposal. Unique so a
+  /// replayed confirmation cannot record the expense twice (Phase 7).
+  proposalId  String?  @unique
   createdAt   DateTime @default(now())
 
   @@index([spentAt])

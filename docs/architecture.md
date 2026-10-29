@@ -13,7 +13,7 @@
 | Tests | Vitest | Unit and integration tests for business logic |
 | Runtime | Node.js 22 on the shop's laptop | Hosts the app for the local network |
 | Future: camera | Python + OpenCV, separate process | Person/zone detection, clip capture, alert posting |
-| AI (Phases 6–7) | OpenAI-compatible adapter behind one interface, called with `fetch` | Answers read-only shop questions and prepares signed sale proposals that only the shopkeeper can confirm |
+| AI (Phases 6–7) | OpenAI-compatible adapter behind one interface, called with `fetch` | Answers read-only shop questions and prepares signed sale, expense, and repayment proposals that only the shopkeeper can confirm |
 
 ## System Boundaries
 
@@ -22,7 +22,7 @@
 - `src/modules/` — Business logic, one folder per domain (`products`, `sales`, `customers`,
   `reports`, `expenses`, `cash`, `assistant`). Each folder exposes `schema.ts` (Zod),
   `service.ts` (mutations and rules), and `queries.ts` (reads); the assistant also owns its
-  read-only tool registry, range resolver, and signed sale-proposal tool. Owns all
+  read-only tool registry, range resolver, and signed proposal tools. Owns all
   invariants. Auth is infrastructure, not a domain module: its config and credential rules
   live in `src/lib`.
 - `src/lib/` — Shared infrastructure: Prisma client, Auth.js configuration and credential
@@ -128,8 +128,9 @@ from `app`, and `lib` never imports from `modules`.
 ## Assistant (Phases 6–7)
 
 The assistant is an optional, post-v1 feature. Phase 6 answers questions about the shop and
-cannot create, edit, void, or delete a record. Phase 7 adds one write-shaped action: the
-assistant can prepare a **sale proposal**, but only the signed-in shopkeeper can confirm it.
+cannot create, edit, void, or delete a record. Phase 7 adds write-shaped proposals: the
+assistant can prepare a **sale, expense, or khata repayment**, but only the signed-in
+shopkeeper can confirm it.
 
 ### Read-only questions
 
@@ -154,38 +155,56 @@ assistant can prepare a **sale proposal**, but only the signed-in shopkeeper can
   become a short, safe message; the details are logged on the server. The server action calls
   `requireUser()` and re-validates the question and history with Zod.
 - **No chat persistence.** Conversation history is client state for the open page only. There
-  is no chat table. Phase 7 adds only a nullable, unique `Sale.proposalId` for idempotent
-  confirmations, not a transcript. Reloading `/assistant` clears the transcript and any
-  unconfirmed proposal.
+  is no chat table. Phase 7 adds only nullable, unique proposal ids on `Sale`, `Expense`, and
+  `Payment` for idempotent confirmations, not a transcript. Reloading `/assistant` clears the
+  transcript and any unconfirmed proposal.
 - **Privacy.** The question and the shop figures needed to answer it are sent to the
   configured provider. A local model (for example Ollama) keeps the data on the laptop. The
   API key stays in the server environment and is never sent to the browser.
 
-### Sale proposals (Phase 7)
+### Proposals (Phase 7)
 
-- **Separate registry.** The proposal tool `propose_sale` lives in
-  `src/modules/assistant/sale-proposal.ts`, not in the read-only registry
-  `src/modules/assistant/tools.ts`. It reads products and customers, prices the draft with
-  `priceSale`, and returns a signed proposal. It never writes.
-- **Explicit confirmation.** The UI renders a "Proposed sale — not saved yet" card with the
-  lines, totals, payment method, customer, and expiry. The shopkeeper must press **Confirm
-  sale**; the model cannot confirm, and no URL or automatic retry writes the sale.
-- **Signed, short-lived, user-bound.** The proposal payload contains the exact draft and the
-  priced preview. It is signed with a key derived from `AUTH_SECRET` (HMAC-SHA256), bound to
-  the signed-in user id, and expires after 15 minutes. The proposal is not stored; only the
-  resulting sale stores the proposal id.
-- **One transaction, exact preview.** `confirmSaleProposalAction` verifies the token, then
-  calls `createSaleWithStatus` with `proposalId` and `expectedPreview`. The existing sale
-  service re-prices the draft inside its transaction and refuses to write if prices, stock,
-  customer, note, or lines no longer produce the preview the shopkeeper saw. The write
-  creates the sale, lines, stock movements, decrements, audit row, and khata effect together.
-- **Idempotent replay.** `Sale.proposalId` is nullable and unique. A replayed confirmation
-  returns the sale already created instead of creating a second one. Ordinary sell-screen
-  sales leave it null.
-- **Audit.** The sale audit row records the signed-in username and
-  `details.source = "assistant_proposal"`.
-- **Scope.** Only sales are proposed in this slice. Expense, payment, customer, product, and
-  stock-adjustment proposals remain out of scope until their own confirmation designs exist.
+- **Separate registry.** The proposal tools live in their own modules, not in the read-only
+  registry `src/modules/assistant/tools.ts`:
+  - `propose_sale` in `sale-proposal.ts` reads products and customers, prices the draft with
+    `priceSale`, and signs the result.
+  - `propose_expense` in `expense-proposal.ts` resolves the category, amount, and shop date.
+  - `propose_payment` in `payment-proposal.ts` resolves an existing customer and reads the
+    current outstanding khata balance.
+  `proposal-tools.ts` registers the three tools and enforces one proposal per answer. No
+  proposal tool writes.
+- **Explicit confirmation.** The UI renders a warning-tinted card labelled "Proposed sale —
+  not saved yet", "Proposed expense — not saved yet", or "Proposed payment — not saved yet".
+  The shopkeeper must press **Confirm sale**, **Confirm expense**, or **Confirm payment**; the
+  model cannot confirm, and no URL or automatic retry writes the record.
+- **Signed, short-lived, user-bound.** Each payload contains the exact draft and the preview
+  the shopkeeper saw. It is signed with a purpose-specific key derived from `AUTH_SECRET`
+  (HMAC-SHA256), bound to the signed-in user id, and expires after 15 minutes. The proposal is
+  not stored; only the resulting sale, expense, or payment stores the proposal id.
+- **One transaction, exact preview.**
+  - **Sale:** `confirmSaleProposalAction` verifies the token, then calls
+    `createSaleWithStatus` with `proposalId` and `expectedPreview`. The sale service re-prices
+    the draft inside its transaction and refuses to write if prices, stock, customer, note, or
+    lines no longer produce the preview the shopkeeper saw. The write creates the sale, lines,
+    stock movements, decrements, audit row, and khata effect together.
+  - **Expense:** `confirmExpenseProposalAction` verifies the token and calls
+    `createExpenseWithStatus` with the signed draft, preview, and proposal id. The expense and
+    its audit row are written in one transaction. Expenses have no external price or stock to
+    re-read, so the draft/preview comparison plus the unique proposal id provide the guarantee.
+  - **Payment:** `confirmPaymentProposalAction` verifies the token and calls
+    `recordPaymentWithStatus`. Inside the transaction the service re-reads the derived khata
+    balance and refuses to write if it differs from the preview, or if the amount exceeds the
+    balance. The payment and audit row are written together.
+- **Idempotent replay.** `Sale.proposalId`, `Expense.proposalId`, and `Payment.proposalId` are
+  nullable and unique. A replayed confirmation returns the row already created instead of
+  creating a second one. For payments the idempotency lookup runs before the balance check, so
+  a later repayment does not make the original confirmation look stale. Ordinary screen
+  entries leave the proposal id null.
+- **Audit.** Each confirmed row records the signed-in username and
+  `details.source = "assistant_proposal"`, plus the proposal id.
+- **Scope.** Only sales, expenses, and khata repayments are proposed. Customer creation,
+  product changes, and stock adjustments remain out of scope until their own
+  explicit-confirmation designs exist.
 
 ## Invariants
 
@@ -213,10 +232,11 @@ assistant can prepare a **sale proposal**, but only the signed-in shopkeeper can
 11. Business rules live only in `src/modules/`. Route handlers and components orchestrate and
     display; they do not decide.
 12. The AI layer may only call the approved, typed tool registries. Read-only questions use
-    `src/modules/assistant/tools.ts`; sale proposals use the separate signed-proposal tool in
-    `src/modules/assistant/sale-proposal.ts`. Every tool has a Zod input schema and runs on
-    the server; unknown tools and invalid arguments are rejected before execution. The
-    assistant never generates SQL, never estimates or edits a financial figure, and never
-    writes a financial record directly. A sale proposal is signed and short-lived; only the
-    shopkeeper's explicit confirmation action may write it, and the write re-prices the draft
+    `src/modules/assistant/tools.ts`; sale, expense, and payment proposals use the separate
+    signed-proposal tools registered in `src/modules/assistant/proposal-tools.ts`. Every tool
+    has a Zod input schema and runs on the server; unknown tools and invalid arguments are
+    rejected before execution. The assistant never generates SQL, never estimates or edits a
+    financial figure, and never writes a financial record directly. A proposal is signed and
+    short-lived; only the shopkeeper's matching confirmation action may write it. The write
+    re-prices a sale, re-validates an expense, or re-reads the khata balance for a payment
     inside the transaction and rejects a stale preview.
