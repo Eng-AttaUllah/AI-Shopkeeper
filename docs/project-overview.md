@@ -189,7 +189,8 @@ questions about the shop using the same database the screens read.
    screens.
 2. The Phase 6 assistant cannot create, edit, void, or delete a record. Every tool is
    read-only, and unknown tools or invalid arguments are rejected before execution. (Phase 7
-   adds a separately confirmed sale proposal; it does not weaken this rule.)
+   adds separately confirmed sale, expense, and repayment proposals; it does not weaken this
+   rule.)
 3. Answers quote the formatted figures returned by the tools. If the data is missing, the
    assistant says so instead of estimating.
 4. With no provider configured, `/assistant` shows setup instructions and the rest of the app

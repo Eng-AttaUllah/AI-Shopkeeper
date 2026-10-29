@@ -811,7 +811,7 @@ design before a write tool is added. The read-only registry in
   `details.source = "assistant_proposal"`. The next test run's global setup deletes that test
   database and rebuilds it.
 - Phase 7 work is on branch `phase-7-assistant-sale-proposals`, pushed in commits `c0d423a`,
-  `e5d525d`, and `442da3b`. Pull request #1 is open:
+  `e5d525d`, `442da3b`, and `f6b00fd`. Pull request #1 is open:
   https://github.com/Eng-AttaUllah/AI-Shopkeeper/pull/1. CI passed (typecheck, lint, test,
   build). The Vercel Preview Actions workflow failed at the deploy step because the
   `VERCEL_TOKEN` repository secret is not set; the Vercel Git integration deployment also
@@ -821,3 +821,13 @@ design before a write tool is added. The read-only registry in
   secret and the Vercel Preview environment values remain. Add them, then rerun the workflow
   or push a commit. The local environment has a GitHub credential but no `gh` binary; the PR
   was created through the GitHub API.
+- Phase 7.1 added migration `20261029120000_add_expense_payment_proposal_id`, applied to
+  `prisma/dev.db`; the Prisma client was regenerated. The migration only adds nullable
+  `proposalId` columns and unique indexes to `expenses` and `payments`. The test global setup
+  rebuilds `prisma/test.db` from all migrations on every run.
+- Phase 7.1 work is on branch `phase-7b-expense-payment-proposals`, stacked on the Phase 7
+  branch. Pull request #2 targets `phase-7-assistant-sale-proposals`:
+  https://github.com/Eng-AttaUllah/AI-Shopkeeper/pull/2. It is deliberately not merged. CI
+  passed via manual dispatch (run 40818562612 for the implementation commit, then
+  40818701633 for the docs commit). The live Gemini check used the disposable test database;
+  the test global setup replaced that data on the next run.
