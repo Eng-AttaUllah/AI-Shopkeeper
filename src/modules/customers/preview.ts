@@ -2,7 +2,51 @@ import { z } from "zod";
 
 import { rupeesToPaisa } from "@/lib/money";
 
-import type { PaymentInput } from "./schema";
+import type { CustomerInput, PaymentInput } from "./schema";
+
+/**
+ * The shopkeeper-facing customer preview that is signed into a proposal.
+ *
+ * A customer has no derived state, so confirmation only needs to compare the
+ * draft with this preview. The unique proposal id on the customer row makes a
+ * replay idempotent. See `docs/architecture.md`, Phase 7.
+ */
+export const customerPreviewSchema = z.object({
+  name: z.string().min(1),
+  phone: z.string().nullable(),
+  note: z.string().nullable(),
+});
+
+export type CustomerPreview = z.infer<typeof customerPreviewSchema>;
+
+function emptyToNull(value: string | undefined): string | null {
+  const trimmed = value?.trim();
+
+  return trimmed ? trimmed : null;
+}
+
+/** Build the exact preview shown for a validated customer draft. */
+export function customerPreviewFromInput(input: CustomerInput): CustomerPreview {
+  return {
+    name: input.name,
+    phone: emptyToNull(input.phone),
+    note: emptyToNull(input.note),
+  };
+}
+
+/** True when the draft still produces exactly the preview the owner saw. */
+export function matchesCustomerPreview(
+  input: CustomerInput,
+  preview: CustomerPreview,
+): boolean {
+  const current = customerPreviewFromInput(input);
+
+  return (
+    current.name === preview.name &&
+    current.phone === preview.phone &&
+    current.note === preview.note
+  );
+}
 
 /**
  * The shopkeeper-facing repayment preview that is signed into a proposal.
@@ -23,12 +67,6 @@ export const paymentPreviewSchema = z.object({
 
 export type PaymentPreview = z.infer<typeof paymentPreviewSchema>;
 
-function noteOrNull(note: string | undefined): string | null {
-  const trimmed = note?.trim();
-
-  return trimmed ? trimmed : null;
-}
-
 /** Build the exact preview shown for a validated repayment draft. */
 export function paymentPreviewFromInput(
   input: PaymentInput,
@@ -41,7 +79,7 @@ export function paymentPreviewFromInput(
     customerId: input.customerId,
     customerName,
     amountPaisa,
-    note: noteOrNull(input.note),
+    note: emptyToNull(input.note),
     balanceBeforePaisa,
     balanceAfterPaisa: balanceBeforePaisa - amountPaisa,
   };
@@ -61,7 +99,7 @@ export function matchesPaymentPreview(
   return (
     input.customerId === preview.customerId &&
     amountPaisa === preview.amountPaisa &&
-    noteOrNull(input.note) === preview.note &&
+    emptyToNull(input.note) === preview.note &&
     balanceBeforePaisa === preview.balanceBeforePaisa &&
     balanceBeforePaisa - amountPaisa === preview.balanceAfterPaisa
   );

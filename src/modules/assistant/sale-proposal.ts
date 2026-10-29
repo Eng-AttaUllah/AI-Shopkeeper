@@ -19,8 +19,9 @@ import type { SaleProposal } from "./proposal-schema";
 import { createSaleProposalToken } from "./proposal-token";
 import {
   matchCustomer,
-  normalize,
-  normalizePhone,
+  matchProduct,
+  productCandidates,
+  type ProductCandidate,
   type ProposalToolContext,
 } from "./resolve";
 
@@ -82,71 +83,22 @@ export const proposeSaleSchema = z.object({
 
 export type ProposeSaleInput = z.infer<typeof proposeSaleSchema>;
 
-type ResolvedProduct = {
-  id: string;
-  name: string;
-  barcode: string | null;
-  aliases: string[];
-};
-
-function matchProducts(
-  products: ResolvedProduct[],
-  term: string,
-): ResolvedProduct[] {
-  const normalized = normalize(term);
-  const digits = normalizePhone(term);
-
-  const exact = products.filter(
-    (product) =>
-      normalize(product.name) === normalized ||
-      product.aliases.some((alias) => normalize(alias) === normalized) ||
-      (product.barcode !== null && product.barcode === term.trim()),
-  );
-
-  if (exact.length > 0) {
-    return exact;
-  }
-
-  if (digits.length >= 3) {
-    const byBarcode = products.filter(
-      (product) =>
-        product.barcode !== null &&
-        normalizePhone(product.barcode) === digits,
-    );
-
-    if (byBarcode.length > 0) {
-      return byBarcode;
-    }
-  }
-
-  return products.filter(
-    (product) =>
-      normalize(product.name).includes(normalized) ||
-      product.aliases.some((alias) => normalize(alias).includes(normalized)),
-  );
-}
-
-function productCandidates(matches: ResolvedProduct[]): string {
-  return matches
-    .slice(0, 5)
-    .map((product) => product.name)
-    .join(", ");
-}
-
 async function resolveDraft(
   input: ProposeSaleInput,
 ): Promise<Result<CreateSaleInput>> {
-  const products = (await listProducts()).map((product) => ({
-    id: product.id,
-    name: product.name,
-    barcode: product.barcode,
-    aliases: product.aliases.map((alias) => alias.alias),
-  }));
+  const products: ProductCandidate[] = (await listProducts()).map(
+    (product) => ({
+      id: product.id,
+      name: product.name,
+      barcode: product.barcode,
+      aliases: product.aliases.map((alias) => alias.alias),
+    }),
+  );
 
   const items: Array<{ productId: string; quantity: string }> = [];
 
   for (const item of input.items) {
-    const matches = matchProducts(products, item.product);
+    const matches = matchProduct(products, item.product);
 
     if (matches.length === 0) {
       return fail(

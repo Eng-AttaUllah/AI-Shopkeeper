@@ -60,6 +60,9 @@ model Product {
   lowStockMilli Int @default(0)
   imagePath String?
   isActive  Boolean  @default(true)
+  /// Set when a product is created from an assistant proposal. Unique so a
+  /// replayed confirmation cannot create a second product (Phase 7).
+  proposalId String? @unique
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -96,6 +99,9 @@ model StockMovement {
   /// Source record id (sale id, etc.) when applicable.
   reference     String?
   note          String?
+  /// Set when stock is changed from an assistant proposal. Unique so a
+  /// replayed confirmation cannot apply the adjustment twice (Phase 7).
+  proposalId    String?  @unique
   createdAt     DateTime @default(now())
 
   product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
@@ -180,6 +186,9 @@ model Customer {
   name      String
   phone     String?
   note      String?
+  /// Set when a customer is created from an assistant proposal. Unique so a
+  /// replayed confirmation cannot create a second customer (Phase 7).
+  proposalId String? @unique
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -245,6 +254,10 @@ model AuditLog {
   after      String?
   /// Extra context such as a note or restored stock lines.
   details    String?
+  /// Set when the audit row is the idempotency record for an assistant
+  /// proposal, currently product edits. Unique so a replay cannot apply the
+  /// same update twice (Phase 7).
+  proposalId String? @unique
   createdAt  DateTime @default(now())
 
   @@index([createdAt])

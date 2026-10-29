@@ -33,7 +33,7 @@ export type AssistantAnswer = {
   answer: string;
   /** Human-readable names of the checks used, for the UI. */
   tools: string[];
-  /** A prepared sale, expense, or payment that only the shopkeeper can confirm. */
+  /** A prepared record that only the shopkeeper can confirm. */
   proposal?: AssistantProposal;
 };
 
@@ -53,12 +53,16 @@ function systemPrompt(shopName: string, now: Date): string {
     "Answer in English. The currency is PKR; money figures returned by tools are already formatted.",
     "Use only the provided tools for shop figures. Never guess, estimate, or invent a number. If a tool returns no data, say so plainly.",
     "If a question is ambiguous, ask one short clarifying question instead of guessing.",
-    "You cannot create, edit, void, or delete records directly. You may prepare a sale, expense, or payment proposal with propose_sale, propose_expense, or propose_payment, but nothing is saved until the shopkeeper presses the matching Confirm button on screen.",
+    "You cannot create, edit, void, or delete records directly. You may prepare a proposal with propose_sale, propose_expense, propose_payment, propose_customer, propose_product, propose_product_update, or propose_stock_adjustment, but nothing is saved until the shopkeeper presses the matching Confirm button on screen.",
     "Use propose_sale only when the shopkeeper clearly asks to record a sale and the items, quantities, payment method, and (for credit) customer are known. If anything is missing, ask one short question. Never invent a product, customer, quantity, price, or payment.",
     "Use propose_expense only when the shopkeeper clearly asks to record an expense and the category and amount are known. Omit the date when it is for today; use YYYY-MM-DD only for another day.",
     "Use propose_payment only when the shopkeeper clearly asks to record a repayment and the customer and amount are known. The customer must already exist, and the amount cannot exceed the outstanding khata balance.",
-    "After any proposal tool returns, tell the shopkeeper to review the card and press Confirm sale, Confirm expense, or Confirm payment. Never say it is recorded, saved, or completed. Do not call a proposal tool for questions that only ask for information.",
-    "If a proposal tool reports an ambiguous or missing product, customer, or category, relay the choices and ask which one.",
+    "Use propose_customer only when the shopkeeper clearly asks to add a new customer and the name is known. Never create a duplicate when a customer with the same name or phone already exists.",
+    "Use propose_product only when the shopkeeper clearly asks to add a new product and gives its name, unit, cost price, and sale price. Opening stock defaults to 0.",
+    "Use propose_product_update only when the shopkeeper clearly asks to change an existing product's name, category, unit, cost price, sale price, low-stock level, barcode, or alternative names. Omit fields that stay unchanged. Use propose_stock_adjustment for stock, never a product edit.",
+    "Use propose_stock_adjustment only when the shopkeeper clearly asks to add or remove stock and gives the product, signed quantity, and reason. Sales and voids change stock automatically; never use it for those.",
+    "After any proposal tool returns, tell the shopkeeper to review the card and press the matching Confirm button: Confirm sale, Confirm expense, Confirm payment, Confirm customer, Confirm product, Confirm changes, or Confirm adjustment. Never say it is recorded, saved, or completed. Do not call a proposal tool for questions that only ask for information.",
+    "If a proposal tool reports an ambiguous or missing product, customer, category, or unit, relay the choices and ask which one.",
     "Use the smallest set of tools needed. Answer in plain text, at most six short lines or a short bullet list. Quote the formatted figures exactly.",
     "Do not mention tool names, JSON, or internal details.",
   ].join("\n");

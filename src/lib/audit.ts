@@ -24,6 +24,11 @@ export type AuditEntry = {
   after?: Record<string, unknown> | null;
   /** Extra context that is not a state snapshot. */
   details?: Record<string, unknown>;
+  /**
+   * Assistant proposal id when this audit row is the idempotency record for a
+   * confirmed proposal. Unique, so a replay cannot apply the same change twice.
+   */
+  proposalId?: string;
 };
 
 /** Fallback actor for tests and seed data that run outside a session. */
@@ -43,6 +48,7 @@ export async function writeAudit(
       before: entry.before ? JSON.stringify(entry.before) : null,
       after: entry.after ? JSON.stringify(entry.after) : null,
       details: entry.details ? JSON.stringify(entry.details) : null,
+      proposalId: entry.proposalId ?? null,
     },
   });
 }

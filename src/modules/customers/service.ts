@@ -9,7 +9,9 @@ import { fieldErrors } from "@/lib/zod";
 
 import { outstandingPaisa } from "./balance";
 import {
+  matchesCustomerPreview,
   matchesPaymentPreview,
+  type CustomerPreview,
   type PaymentPreview,
 } from "./preview";
 import { customerSchema, paymentSchema } from "./schema";
@@ -46,9 +48,30 @@ function handleError(error: unknown): Result<never> {
   return fail("Something went wrong while saving. Please try again.");
 }
 
-export async function createCustomer(
+export type CreateCustomerOptions = {
+  /** Set only when confirming an assistant proposal. */
+  proposalId?: string;
+  /** The preview the shopkeeper confirmed; the write must match it. */
+  expectedPreview?: CustomerPreview;
+};
+
+export type CreateCustomerOutcome = {
+  customer: Customer;
+  alreadyConfirmed: boolean;
+};
+
+/**
+ * Create a customer, optionally from a signed assistant proposal.
+ *
+ * The unique proposal id makes a replayed confirmation idempotent. Customer
+ * creation does not touch money or stock, but the audit row still records who
+ * created it and whether it came from the assistant.
+ */
+export async function createCustomerWithStatus(
   input: unknown,
-): Promise<Result<Customer>> {
+  actor: string = LOCAL_ACTOR,
+  options: CreateCustomerOptions = {},
+): Promise<Result<CreateCustomerOutcome>> {
   const parsed = customerSchema.safeParse(input);
 
   if (!parsed.success) {
@@ -57,19 +80,91 @@ export async function createCustomer(
 
   const data = parsed.data;
 
+  if (
+    options.expectedPreview &&
+    !matchesCustomerPreview(data, options.expectedPreview)
+  ) {
+    return fail(
+      "This customer proposal changed before it was confirmed. Ask the assistant to prepare it again.",
+    );
+  }
+
   try {
-    const customer = await prisma.customer.create({
-      data: {
-        name: data.name,
-        phone: emptyToNull(data.phone),
-        note: emptyToNull(data.note),
-      },
+    const outcome = await prisma.$transaction(async (tx) => {
+      if (options.proposalId) {
+        const existing = await tx.customer.findUnique({
+          where: { proposalId: options.proposalId },
+        });
+
+        if (existing) {
+          return { customer: existing, alreadyConfirmed: true };
+        }
+      }
+
+      const customer = await tx.customer.create({
+        data: {
+          name: data.name,
+          phone: emptyToNull(data.phone),
+          note: emptyToNull(data.note),
+          proposalId: options.proposalId ?? null,
+        },
+      });
+
+      await writeAudit(tx, {
+        actor,
+        action: "CUSTOMER_CREATED",
+        entityType: "Customer",
+        entityId: customer.id,
+        summary: `Customer ${customer.name} created`,
+        before: null,
+        after: {
+          name: customer.name,
+          phone: customer.phone,
+          note: customer.note,
+        },
+        details: {
+          proposalId: customer.proposalId,
+          source: options.proposalId
+            ? "assistant_proposal"
+            : "customer_screen",
+        },
+        proposalId: options.proposalId,
+      });
+
+      return { customer, alreadyConfirmed: false };
     });
 
-    return ok(customer);
+    return ok(outcome);
   } catch (error) {
+    // A concurrent confirmation may win the unique proposal index.
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002" &&
+      options.proposalId
+    ) {
+      const existing = await prisma.customer.findUnique({
+        where: { proposalId: options.proposalId },
+      });
+
+      if (existing) {
+        return ok({ customer: existing, alreadyConfirmed: true });
+      }
+    }
+
     return handleError(error);
   }
+}
+
+export async function createCustomer(
+  input: unknown,
+): Promise<Result<Customer>> {
+  const result = await createCustomerWithStatus(input);
+
+  if (!result.ok) {
+    return result;
+  }
+
+  return ok(result.data.customer);
 }
 
 export async function updateCustomer(

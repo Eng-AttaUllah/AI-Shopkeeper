@@ -64,9 +64,10 @@ npx prisma studio        # inspect the database
 
 ## Current state
 
-Phase 6 — the read-only assistant — and Phase 7 — signed sale, expense, and khata repayment
-proposals — are complete. Phase 8, Pashto support, is next. See `docs/progress-tracker.md` for
-the live task list and branch status.
+Phase 6 — the read-only assistant — and Phase 7 — signed sale, expense, khata repayment,
+customer, product, product-edit, and stock-adjustment proposals — are complete. Phase 8,
+Pashto support, is next. See `docs/progress-tracker.md` for the live task list and branch
+status.
 
 <!-- BEGIN:nextjs-agent-rules -->
 

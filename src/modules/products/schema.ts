@@ -59,6 +59,8 @@ export const STOCK_REASONS = [
   "OTHER",
 ] as const;
 
+export type StockReason = (typeof STOCK_REASONS)[number];
+
 export const adjustStockSchema = z.object({
   productId: z.string().min(1, "Missing product"),
   quantity: signedQuantityField,
