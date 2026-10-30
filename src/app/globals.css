@@ -124,6 +124,15 @@
   --radius-4xl: 24px;
 }
 
+/**
+ * Phase 8: Pashto uses a script-capable font. Noto Naskh Arabic covers the
+ * Pashto Arabic-script letters; Geist remains the Latin fallback. The body
+ * token `font-sans` is Geist, so Pashto pages opt into the Arabic font here.
+ */
+html[lang="ps"] {
+  font-family: var(--font-noto-naskh-arabic), var(--font-geist-sans), sans-serif;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

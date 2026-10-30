@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Noto_Naskh_Arabic } from "next/font/google";
 import Link from "next/link";
 
+import { LocaleSwitcher } from "@/components/locale-switcher";
 import { signOutAction } from "@/app/auth-actions";
 import { Button } from "@/components/ui/button";
 import { auth } from "@/lib/auth";
+import { getDirection, getLocale, type Locale, t } from "@/lib/i18n";
 
 import "./globals.css";
 
@@ -16,6 +18,11 @@ const geistSans = Geist({
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+});
+
+const notoNaskhArabic = Noto_Naskh_Arabic({
+  variable: "--font-noto-naskh-arabic",
+  subsets: ["arabic"],
 });
 
 export const metadata: Metadata = {
@@ -31,11 +38,14 @@ export default async function RootLayout({
 }) {
   const session = await auth();
   const user = session?.user;
+  const locale: Locale = await getLocale();
+  const dir = await getDirection(locale);
 
   return (
     <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      lang={locale}
+      dir={dir}
+      className={`${geistSans.variable} ${geistMono.variable} ${notoNaskhArabic.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col bg-page font-sans text-ink">
         <header className="border-b border-line bg-surface">
@@ -47,9 +57,13 @@ export default async function RootLayout({
               AI Shopkeeper
             </Link>
 
+            <LocaleSwitcher locale={locale} />
+
             {user ? (
               <div className="order-2 ml-auto flex items-center gap-2 sm:order-3">
-                <span className="text-sm text-ink-muted">{user.username}</span>
+                <span className="text-sm text-ink-muted">
+                  {await t("nav.signedInAs", { user: user.username })}
+                </span>
                 <form action={signOutAction}>
                   <Button
                     type="submit"
@@ -57,7 +71,7 @@ export default async function RootLayout({
                     size="sm"
                     className="h-11 px-3 text-sm"
                   >
-                    Sign out
+                    {await t("nav.signOut")}
                   </Button>
                 </form>
               </div>
@@ -72,43 +86,43 @@ export default async function RootLayout({
                   href="/"
                   className="whitespace-nowrap text-ink-muted transition-colors hover:text-ink"
                 >
-                  Dashboard
+                  {await t("nav.dashboard")}
                 </Link>
                 <Link
                   href="/sell"
                   className="whitespace-nowrap text-ink-muted transition-colors hover:text-ink"
                 >
-                  Sell
+                  {await t("nav.sell")}
                 </Link>
                 <Link
                   href="/products"
                   className="whitespace-nowrap text-ink-muted transition-colors hover:text-ink"
                 >
-                  Products
+                  {await t("nav.products")}
                 </Link>
                 <Link
                   href="/sales"
                   className="whitespace-nowrap text-ink-muted transition-colors hover:text-ink"
                 >
-                  Sales
+                  {await t("nav.sales")}
                 </Link>
                 <Link
                   href="/customers"
                   className="whitespace-nowrap text-ink-muted transition-colors hover:text-ink"
                 >
-                  Customers
+                  {await t("nav.customers")}
                 </Link>
                 <Link
                   href="/reports"
                   className="whitespace-nowrap text-ink-muted transition-colors hover:text-ink"
                 >
-                  Reports
+                  {await t("nav.reports")}
                 </Link>
                 <Link
                   href="/more"
                   className="whitespace-nowrap text-ink-muted transition-colors hover:text-ink"
                 >
-                  More
+                  {await t("nav.more")}
                 </Link>
               </nav>
             ) : null}
