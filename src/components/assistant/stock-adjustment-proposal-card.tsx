@@ -11,18 +11,16 @@ import {
 import { Button, buttonVariants } from "@/components/ui/button";
 import { formatDateTime } from "@/lib/format";
 import { formatQuantity } from "@/lib/quantity";
+import { readClientLocale, translate } from "@/lib/dictionary";
 import type { StockAdjustmentProposal } from "@/modules/assistant/proposal-schema";
 
 type StockAdjustmentProposalCardProps = {
   proposal: StockAdjustmentProposal;
 };
 
-const REASON_LABELS: Record<string, string> = {
-  RESTOCK: "Restock",
-  DAMAGE: "Damage or loss",
-  CORRECTION: "Stock correction",
-  OTHER: "Other",
-};
+function reasonLabel(reason: string, t: (key: string) => string): string {
+  return t(`proposal.reason.${reason}`) ?? reason;
+}
 
 /**
  * The only place an assistant-prepared stock adjustment becomes real. The
@@ -36,6 +34,11 @@ export function StockAdjustmentProposalCard({
   const [confirmed, setConfirmed] =
     useState<ConfirmStockAdjustmentProposalActionResult | null>(null);
   const [dismissed, setDismissed] = useState(false);
+  const locale = readClientLocale();
+
+  function t(key: string, params?: Record<string, string>): string {
+    return translate(locale, key, params);
+  }
 
   if (dismissed) {
     return null;
@@ -46,12 +49,12 @@ export function StockAdjustmentProposalCard({
       <section className="mt-3 rounded-xl border border-success/30 bg-success/5 p-4">
         <p className="font-medium text-success">
           {confirmed.alreadyConfirmed
-            ? "This stock adjustment was already applied."
-            : "Stock adjusted."}
+            ? t("proposal.stockAdjustmentAlreadyRecorded")
+            : t("proposal.stockAdjustmentRecorded")}
         </p>
         <p className="mt-1 text-sm text-ink-muted">
           {confirmed.productName} ·{" "}
-          {formatQuantity(confirmed.newStockMilli, confirmed.unit)} in stock
+          {formatQuantity(confirmed.newStockMilli, confirmed.unit)} {t("proposal.inStock")}
         </p>
         <div className="mt-3">
           <Link
@@ -61,7 +64,7 @@ export function StockAdjustmentProposalCard({
               "min-h-11 px-4 text-base",
             )}
           >
-            View product
+            {t("proposal.productRecord")}
           </Link>
         </div>
       </section>
@@ -79,8 +82,7 @@ export function StockAdjustmentProposalCard({
 
     startTransition(async () => {
       try {
-        const result =
-          await confirmStockAdjustmentProposalAction(proposal.token);
+        const result = await confirmStockAdjustmentProposalAction(proposal.token);
 
         if (result.ok) {
           setConfirmed(result.data);
@@ -103,10 +105,12 @@ export function StockAdjustmentProposalCard({
     <section className="mt-3 rounded-xl border border-warning/30 bg-warning/5 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="rounded-full bg-warning/10 px-2.5 py-1 text-sm font-medium text-warning">
-          Proposed stock adjustment — not saved yet
+          {t("proposal.notSaved", { kind: t("proposal.kind.stock_adjustment") })}
         </span>
         <span className="text-sm text-ink-muted">
-          Expires {formatDateTime(new Date(proposal.expiresAt))}
+          {t("proposal.expires", {
+            date: formatDateTime(new Date(proposal.expiresAt)),
+          })}
         </span>
       </div>
 
@@ -119,33 +123,31 @@ export function StockAdjustmentProposalCard({
           </dd>
         </div>
         <div className="flex justify-between gap-3">
-          <dt className="text-ink-muted">Stock before</dt>
+          <dt className="text-ink-muted">{t("proposal.stockBefore")}</dt>
           <dd className="tabular-nums">
             {formatQuantity(preview.beforeMilli, preview.unit)}
           </dd>
         </div>
         <div className="flex justify-between gap-3">
-          <dt className="text-ink-muted">Stock after</dt>
+          <dt className="text-ink-muted">{t("proposal.stockAfter")}</dt>
           <dd className="tabular-nums">
             {formatQuantity(preview.afterMilli, preview.unit)}
           </dd>
         </div>
         <div className="flex justify-between gap-3">
-          <dt className="text-ink-muted">Reason</dt>
-          <dd>{REASON_LABELS[preview.reason] ?? preview.reason}</dd>
+          <dt className="text-ink-muted">{t("proposal.reason")}</dt>
+          <dd>{reasonLabel(preview.reason, t)}</dd>
         </div>
         {preview.note ? (
           <div className="flex justify-between gap-3">
-            <dt className="text-ink-muted">Note</dt>
+            <dt className="text-ink-muted">{t("proposal.note")}</dt>
             <dd>{preview.note}</dd>
           </div>
         ) : null}
       </dl>
 
       <p className="mt-3 rounded-lg bg-surface px-3 py-2 text-sm text-ink-muted">
-        Nothing has been saved. Press{" "}
-        <span className="font-medium text-ink">Confirm adjustment</span> to
-        apply it. The assistant cannot confirm it for you.
+        {t("proposal.nothingSaved", { action: t("proposal.confirmAdjustment") })}
       </p>
 
       {error ? (
@@ -164,7 +166,7 @@ export function StockAdjustmentProposalCard({
           disabled={pending}
           className="min-h-11 px-4 text-base"
         >
-          {pending ? "Saving…" : "Confirm adjustment"}
+          {pending ? "Saving…" : t("proposal.confirmAdjustment")}
         </Button>
         <Button
           type="button"
@@ -173,7 +175,7 @@ export function StockAdjustmentProposalCard({
           disabled={pending}
           className="min-h-11 px-4 text-base"
         >
-          Dismiss
+          {t("proposal.dismiss")}
         </Button>
       </div>
     </section>
