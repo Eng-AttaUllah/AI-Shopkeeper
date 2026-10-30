@@ -14,6 +14,7 @@ import {
 import { prisma } from "@/lib/db";
 import { formatDate, formatDateTime, formatPaisa } from "@/lib/format";
 import { formatQuantity } from "@/lib/quantity";
+import { readClientLocale, translate } from "@/lib/dictionary";
 import {
   inventoryValuePaisa,
   lowStockProducts,
@@ -64,34 +65,42 @@ export default async function Home() {
     listSales(5),
   ]);
 
+  const locale = readClientLocale();
+
+  function t(key: string, params?: Record<string, string>): string {
+    return translate(locale, key, params);
+  }
+
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-8">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-sm font-medium uppercase tracking-wide text-ink-muted">
-            {shop?.name ?? "Your shop"} · {formatDate(now)}
+            {shop?.name ?? t("dashboard.yourShop")} · {formatDate(now)}
           </p>
-          <h1 className="mt-1 text-3xl font-semibold">Dashboard</h1>
+          <h1 className="mt-1 text-3xl font-semibold">
+            {await t("page.dashboard")}
+          </h1>
           <p className="mt-2 text-sm text-ink-muted">
-            This month:{" "}
+            {t("dashboard.thisMonth")}:{" "}
             <span className="font-medium text-ink">
               {formatPaisa(month.revenuePaisa)}
             </span>{" "}
-            revenue ·{" "}
+            {t("dashboard.revenue")} ·{" "}
             <span className="font-medium text-ink">
               {formatPaisa(month.profitPaisa)}
             </span>{" "}
-            gross profit ·{" "}
+            {t("dashboard.grossProfit")} ·{" "}
             <span className="font-medium text-ink">
               {formatPaisa(month.expensePaisa)}
             </span>{" "}
-            expenses ·{" "}
+            {t("dashboard.expenses")} ·{" "}
             <span className="font-medium text-ink">
               {formatPaisa(month.netProfitPaisa)}
             </span>{" "}
-            net profit ·{" "}
+            {t("dashboard.netProfit")} ·{" "}
             <span className="font-medium text-ink">{month.salesCount}</span>{" "}
-            {month.salesCount === 1 ? "sale" : "sales"}
+            {month.salesCount === 1 ? t("dashboard.sale") : t("dashboard.sales")}
           </p>
         </div>
 
@@ -100,7 +109,7 @@ export default async function Home() {
             href="/sell"
             className={buttonVariants({ className: "h-11 px-4 text-base" })}
           >
-            Start a sale
+            {t("dashboard.startSale")}
           </Link>
           <Link
             href="/reports"
@@ -109,7 +118,7 @@ export default async function Home() {
               className: "h-11 px-4 text-base",
             })}
           >
-            Reports
+            {await t("nav.reports")}
           </Link>
           <Link
             href="/assistant"
@@ -118,7 +127,7 @@ export default async function Home() {
               className: "h-11 px-4 text-base",
             })}
           >
-            Ask assistant
+            {t("dashboard.askAssistant")}
           </Link>
           <Link
             href="/day-close"
@@ -127,36 +136,40 @@ export default async function Home() {
               className: "h-11 px-4 text-base",
             })}
           >
-            Day close
+            {t("dashboard.dayClose")}
           </Link>
         </div>
       </header>
 
-      <section aria-label="Today" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <section aria-label={t("dashboard.today")} className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard
-          label="Today's revenue"
+          label={t("dashboard.todayRevenue")}
           value={formatPaisa(today.revenuePaisa)}
-          hint={`${today.salesCount} ${today.salesCount === 1 ? "sale" : "sales"}`}
+          hint={`${today.salesCount} ${
+            today.salesCount === 1 ? t("dashboard.sale") : t("dashboard.sales")
+          }`}
         />
         <StatCard
-          label="Today's profit"
+          label={t("dashboard.todayProfit")}
           value={formatPaisa(today.profitPaisa)}
-          hint={`Before expenses · Cost ${formatPaisa(today.costPaisa)}`}
+          hint={`${t("dashboard.beforeExpenses")} ${formatPaisa(today.costPaisa)}`}
         />
         <StatCard
-          label="Credit given today"
+          label={t("dashboard.creditGivenToday")}
           value={formatPaisa(today.creditGivenPaisa)}
-          hint="New khata"
+          hint={t("dashboard.newKhata")}
           tone={today.creditGivenPaisa > 0 ? "error" : "default"}
         />
         <StatCard
-          label="Outstanding credit"
+          label={t("dashboard.outstandingCredit")}
           value={formatPaisa(credit.totalPaisa)}
           hint={
             credit.customerCount === 0
-              ? "No one owes"
+              ? t("dashboard.noOneOwes")
               : `${credit.customerCount} ${
-                  credit.customerCount === 1 ? "customer owes" : "customers owe"
+                  credit.customerCount === 1
+                    ? t("dashboard.customerOwes")
+                    : t("dashboard.customersOwe")
                 }`
           }
           tone={credit.totalPaisa > 0 ? "error" : "default"}
@@ -166,16 +179,18 @@ export default async function Home() {
       <section className="rounded-xl border border-line bg-surface p-5">
         <div className="flex flex-wrap items-end justify-between gap-2">
           <div>
-            <h2 className="text-lg font-semibold">Sales, last 14 days</h2>
+            <h2 className="text-lg font-semibold">
+              {t("dashboard.salesLast14Days")}
+            </h2>
             <p className="text-sm text-ink-muted">
-              Daily revenue in Asia/Karachi time.
+              {t("dashboard.dailyRevenue")}
             </p>
           </div>
           <Link
             href="/reports?period=month"
             className="text-sm font-medium text-brand hover:text-brand-hover"
           >
-            Monthly report
+            {t("dashboard.monthlyReport")}
           </Link>
         </div>
 
@@ -190,20 +205,20 @@ export default async function Home() {
       <div className="grid gap-4 lg:grid-cols-2">
         <section className="rounded-xl border border-line bg-surface p-5">
           <div className="flex items-center justify-between gap-3">
-            <h2 className="text-lg font-semibold">Recent sales</h2>
+            <h2 className="text-lg font-semibold">{t("dashboard.recentSales")}</h2>
             <Link
               href="/sales"
               className="text-sm font-medium text-brand hover:text-brand-hover"
             >
-              View all
+              {t("dashboard.viewAll")}
             </Link>
           </div>
 
           {recentSales.length === 0 ? (
             <p className="mt-3 rounded-md bg-subtle px-3 py-2 text-sm text-ink-muted">
-              No sales yet.{" "}
+              {t("dashboard.noSalesYet")}{" "}
               <Link href="/sell" className="text-brand underline">
-                Start a sale
+                {t("dashboard.startSale")}
               </Link>
               .
             </p>
@@ -239,21 +254,21 @@ export default async function Home() {
 
         <section className="rounded-xl border border-line bg-surface p-5">
           <div className="flex items-center justify-between gap-3">
-            <h2 className="text-lg font-semibold">Low stock</h2>
+            <h2 className="text-lg font-semibold">{t("dashboard.lowStock")}</h2>
             <Link
               href="/products"
               className="text-sm font-medium text-brand hover:text-brand-hover"
             >
-              View products
+              {t("dashboard.viewProducts")}
             </Link>
           </div>
           <p className="mt-1 text-sm text-ink-muted">
-            Inventory value {formatPaisa(stockValue)}.
+            {t("dashboard.inventoryValue")} {formatPaisa(stockValue)}.
           </p>
 
           {lowStock.length === 0 ? (
             <p className="mt-3 rounded-md bg-subtle px-3 py-2 text-sm text-ink-muted">
-              Everything is above its low-stock level.
+              {t("dashboard.everythingAboveLowStock")}
             </p>
           ) : (
             <ul className="mt-3 divide-y divide-line">
@@ -265,7 +280,7 @@ export default async function Home() {
                   <div>
                     <p className="font-medium">{product.name}</p>
                     <p className="text-sm text-ink-muted">
-                      {product.category ?? "No category"}
+                      {product.category ?? t("dashboard.noCategory")}
                     </p>
                   </div>
                   <div className="text-right">
@@ -283,18 +298,20 @@ export default async function Home() {
 
       <section className="rounded-xl border border-line bg-surface p-5">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold">Customers who owe</h2>
+          <h2 className="text-lg font-semibold">
+            {t("dashboard.customersWhoOwe")}
+          </h2>
           <Link
             href="/customers"
             className="text-sm font-medium text-brand hover:text-brand-hover"
           >
-            View customers
+            {t("dashboard.viewCustomers")}
           </Link>
         </div>
 
         {credit.topCustomers.length === 0 ? (
           <p className="mt-3 rounded-md bg-subtle px-3 py-2 text-sm text-ink-muted">
-            No customer owes money.
+            {t("dashboard.noCustomerOwesMoney")}
           </p>
         ) : (
           <ul className="mt-3 divide-y divide-line">
