@@ -6,6 +6,7 @@ import type { ActionState } from "@/app/products/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { readClientLocale, translate } from "@/lib/dictionary";
 
 const UNIT_OPTIONS = [
   { value: "kg", label: "Kilogram (kg)" },
@@ -52,6 +53,11 @@ export function ProductForm({
   const [state, formAction, pending] = useActionState(action, { ok: false });
   const error = state.ok ? undefined : state.error;
   const errors = (state.ok ? {} : state.fieldErrors) ?? {};
+  const locale = readClientLocale();
+
+  function t(key: string, params?: Record<string, string>): string {
+    return translate(locale, key, params);
+  }
 
   return (
     <form action={formAction} className="flex flex-col gap-5">
@@ -70,7 +76,7 @@ export function ProductForm({
 
       <div className="grid gap-5 sm:grid-cols-2">
         <div className="flex flex-col gap-2 sm:col-span-2">
-          <Label htmlFor="name">Product name</Label>
+          <Label htmlFor="name">{t("products.productName")}</Label>
           <Input
             id="name"
             name="name"
@@ -85,7 +91,7 @@ export function ProductForm({
         </div>
 
         <div className="flex flex-col gap-2">
-          <Label htmlFor="category">Category (optional)</Label>
+          <Label htmlFor="category">{t("products.categoryOptional")}</Label>
           <Input
             id="category"
             name="category"
@@ -98,7 +104,7 @@ export function ProductForm({
         </div>
 
         <div className="flex flex-col gap-2">
-          <Label htmlFor="unit">Sold by</Label>
+          <Label htmlFor="unit">{t("products.soldBy")}</Label>
           <select
             id="unit"
             name="unit"
@@ -115,7 +121,7 @@ export function ProductForm({
         </div>
 
         <div className="flex flex-col gap-2">
-          <Label htmlFor="costPrice">Cost price per unit (Rs.)</Label>
+          <Label htmlFor="costPrice">{t("products.costPricePerUnit")}</Label>
           <Input
             id="costPrice"
             name="costPrice"
@@ -131,7 +137,7 @@ export function ProductForm({
         </div>
 
         <div className="flex flex-col gap-2">
-          <Label htmlFor="salePrice">Sale price per unit (Rs.)</Label>
+          <Label htmlFor="salePrice">{t("products.salePricePerUnit")}</Label>
           <Input
             id="salePrice"
             name="salePrice"
@@ -148,7 +154,7 @@ export function ProductForm({
 
         {showOpeningStock ? (
           <div className="flex flex-col gap-2">
-            <Label htmlFor="openingStock">Opening stock</Label>
+            <Label htmlFor="openingStock">{t("products.openingStock")}</Label>
             <Input
               id="openingStock"
               name="openingStock"
@@ -164,7 +170,7 @@ export function ProductForm({
         ) : null}
 
         <div className="flex flex-col gap-2">
-          <Label htmlFor="lowStockLevel">Low-stock level</Label>
+          <Label htmlFor="lowStockLevel">{t("products.lowStockLevelField")}</Label>
           <Input
             id="lowStockLevel"
             name="lowStockLevel"
@@ -176,13 +182,13 @@ export function ProductForm({
             aria-invalid={Boolean(errors.lowStockLevel)}
           />
           <p className="text-sm text-ink-muted">
-            Warn when stock reaches this amount.
+            {t("products.warnLowStock")}
           </p>
           <FieldError message={errors.lowStockLevel} />
         </div>
 
         <div className="flex flex-col gap-2">
-          <Label htmlFor="barcode">Barcode (optional)</Label>
+          <Label htmlFor="barcode">{t("products.barcodeOptional")}</Label>
           <Input
             id="barcode"
             name="barcode"
@@ -195,7 +201,7 @@ export function ProductForm({
         </div>
 
         <div className="flex flex-col gap-2 sm:col-span-2">
-          <Label htmlFor="aliases">Other names (optional)</Label>
+          <Label htmlFor="aliases">{t("products.otherNames")}</Label>
           <Input
             id="aliases"
             name="aliases"
@@ -206,7 +212,7 @@ export function ProductForm({
             aria-invalid={Boolean(errors.aliases)}
           />
           <p className="text-sm text-ink-muted">
-            Separate with commas. Used when searching for this product.
+            {t("products.separateCommas")}
           </p>
           <FieldError message={errors.aliases} />
         </div>
