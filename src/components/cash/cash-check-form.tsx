@@ -106,6 +106,7 @@ export function CashCheckForm({ today, action, t }: CashCheckFormProps) {
             required
             className="h-11 text-base"
             aria-invalid={Boolean(errors.counted)}
+            dir="ltr"
           />
           {errors.counted ? (
             <p className="text-sm text-error">{errors.counted}</p>
@@ -121,6 +122,7 @@ export function CashCheckForm({ today, action, t }: CashCheckFormProps) {
             placeholder={t("dayClose.rsKeptForChange")}
             className="h-11 text-base"
             aria-invalid={Boolean(errors.note)}
+            dir="auto"
           />
           {errors.note ? (
             <p className="text-sm text-error">{errors.note}</p>

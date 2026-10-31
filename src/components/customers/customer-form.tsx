@@ -65,6 +65,7 @@ export function CustomerForm({
           autoComplete="off"
           className="h-11 text-base"
           aria-invalid={Boolean(errors.name)}
+          dir="auto"
         />
         {errors.name ? (
           <p className="text-sm text-error">{errors.name}</p>
@@ -82,6 +83,7 @@ export function CustomerForm({
           autoComplete="off"
           className="h-11 text-base"
           aria-invalid={Boolean(errors.phone)}
+          dir="auto"
         />
         {errors.phone ? (
           <p className="text-sm text-error">{errors.phone}</p>
@@ -98,6 +100,7 @@ export function CustomerForm({
           rows={3}
           className="text-base"
           aria-invalid={Boolean(errors.note)}
+          dir="auto"
         />
         {errors.note ? (
           <p className="text-sm text-error">{errors.note}</p>

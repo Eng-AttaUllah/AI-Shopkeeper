@@ -86,6 +86,7 @@ export function ProductForm({
             autoComplete="off"
             className={inputClass}
             aria-invalid={Boolean(errors.name)}
+            dir="auto"
           />
           <FieldError message={errors.name} />
         </div>
@@ -99,6 +100,7 @@ export function ProductForm({
             placeholder="Grocery"
             autoComplete="off"
             className={inputClass}
+            dir="auto"
           />
           <FieldError message={errors.category} />
         </div>
@@ -132,6 +134,7 @@ export function ProductForm({
             required
             className={inputClass}
             aria-invalid={Boolean(errors.costPrice)}
+            dir="ltr"
           />
           <FieldError message={errors.costPrice} />
         </div>
@@ -148,6 +151,7 @@ export function ProductForm({
             required
             className={inputClass}
             aria-invalid={Boolean(errors.salePrice)}
+            dir="ltr"
           />
           <FieldError message={errors.salePrice} />
         </div>
@@ -164,6 +168,7 @@ export function ProductForm({
               required
               className={inputClass}
               aria-invalid={Boolean(errors.openingStock)}
+              dir="ltr"
             />
             <FieldError message={errors.openingStock} />
           </div>
@@ -180,6 +185,7 @@ export function ProductForm({
             required
             className={inputClass}
             aria-invalid={Boolean(errors.lowStockLevel)}
+            dir="ltr"
           />
           <p className="text-sm text-ink-muted">
             {t("products.warnLowStock")}
@@ -196,6 +202,7 @@ export function ProductForm({
             autoComplete="off"
             className={inputClass}
             aria-invalid={Boolean(errors.barcode)}
+            dir="ltr"
           />
           <FieldError message={errors.barcode} />
         </div>
@@ -210,6 +217,7 @@ export function ProductForm({
             autoComplete="off"
             className={inputClass}
             aria-invalid={Boolean(errors.aliases)}
+            dir="auto"
           />
           <p className="text-sm text-ink-muted">
             {t("products.separateCommas")}

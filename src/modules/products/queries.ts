@@ -1,6 +1,7 @@
 import type { Product, ProductAlias } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
 import { fromMilli } from "@/lib/quantity";
+import { normalizeText } from "@/lib/text";
 
 export type ProductWithAliases = Product & { aliases: ProductAlias[] };
 
@@ -15,23 +16,32 @@ export async function listProducts(
 ): Promise<ProductWithAliases[]> {
   const term = options.search?.trim();
 
-  return prisma.product.findMany({
+  let products = await prisma.product.findMany({
     where: {
       ...(options.includeInactive ? {} : { isActive: true }),
-      ...(term
-        ? {
-            OR: [
-              { name: { contains: term } },
-              { category: { contains: term } },
-              { barcode: { contains: term } },
-              { aliases: { some: { alias: { contains: term } } } },
-            ],
-          }
-        : {}),
     },
     include: { aliases: { orderBy: { alias: "asc" } } },
     orderBy: { name: "asc" },
   });
+
+  if (term) {
+    const normalized = normalizeText(term);
+
+    products = products.filter((product) => {
+      const haystack = [
+        product.name,
+        product.category ?? "",
+        product.barcode ?? "",
+        ...product.aliases.map((alias) => alias.alias),
+      ]
+        .map((part) => normalizeText(part))
+        .join(" ");
+
+      return haystack.includes(normalized);
+    });
+  }
+
+  return products;
 }
 
 /** One product with its aliases and most recent stock movements. */

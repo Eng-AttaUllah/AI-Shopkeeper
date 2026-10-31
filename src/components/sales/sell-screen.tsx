@@ -12,6 +12,7 @@ import { formatPaisa } from "@/lib/format";
 import { multiplyPaisa, paisaToRupees, rupeesToPaisa } from "@/lib/money";
 import { formatQuantity, fromMilli, toMilli } from "@/lib/quantity";
 import { readClientLocale, translate } from "@/lib/dictionary";
+import { normalizeText } from "@/lib/text";
 import type { CustomerOption } from "@/modules/customers/queries";
 import type { SellableProduct } from "@/modules/products/queries";
 
@@ -99,7 +100,7 @@ export function SellScreen({ products, customers, action }: SellScreenProps) {
   }, [router]);
 
   const filteredProducts = useMemo(() => {
-    const term = search.trim().toLowerCase();
+    const term = normalizeText(search);
 
     if (!term) {
       return products;
@@ -107,9 +108,9 @@ export function SellScreen({ products, customers, action }: SellScreenProps) {
 
     return products.filter(
       (product) =>
-        product.name.toLowerCase().includes(term) ||
-        product.category?.toLowerCase().includes(term) ||
-        product.aliases.some((alias) => alias.toLowerCase().includes(term)),
+        normalizeText(product.name).includes(term) ||
+        normalizeText(product.category ?? "").includes(term) ||
+        product.aliases.some((alias) => normalizeText(alias).includes(term)),
     );
   }, [products, search]);
 
@@ -236,6 +237,7 @@ export function SellScreen({ products, customers, action }: SellScreenProps) {
           placeholder={t("sell.searchPlaceholder")}
           autoComplete="off"
           className="h-11 text-base"
+          dir="auto"
         />
 
         {products.length === 0 ? (
@@ -354,6 +356,7 @@ export function SellScreen({ products, customers, action }: SellScreenProps) {
                       aria-label={t("sell.quantityOf", { name: line.name })}
                       aria-invalid={milli === null}
                       className="h-11 w-20 text-center text-base"
+                      dir="ltr"
                     />
                     <Button
                       type="button"
@@ -389,6 +392,7 @@ export function SellScreen({ products, customers, action }: SellScreenProps) {
             placeholder="0"
             aria-invalid={Boolean(fieldErrors.discount)}
             className="h-11 text-base"
+            dir="ltr"
           />
           {fieldErrors.discount ? (
             <p className="text-sm text-error">{fieldErrors.discount}</p>
@@ -512,6 +516,7 @@ export function SellScreen({ products, customers, action }: SellScreenProps) {
               placeholder="0"
               aria-invalid={Boolean(fieldErrors.paid) || overpaidOnCredit}
               className="h-11 text-base"
+              dir="ltr"
             />
             <p className="text-sm text-ink-muted">
               {t("sell.leaveEmptyCredit")}
@@ -554,6 +559,7 @@ export function SellScreen({ products, customers, action }: SellScreenProps) {
               placeholder={String(paisaToRupees(totalPaisa))}
               aria-invalid={Boolean(fieldErrors.paid)}
               className="h-11 text-base"
+              dir="ltr"
             />
             <p className="text-sm text-ink-muted">
               {t("sell.leaveEmptyExact")}

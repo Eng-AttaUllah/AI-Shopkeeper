@@ -1,5 +1,7 @@
 /** Shared name/phone matching for assistant proposal tools. */
 
+import { normalizeDigits, normalizeText } from "@/lib/text";
+
 export type ProposalToolContext = {
   userId: string;
   now: Date;
@@ -19,11 +21,11 @@ export type ProductCandidate = {
 };
 
 export function normalize(value: string): string {
-  return value.trim().toLowerCase().replace(/\s+/g, " ");
+  return normalizeText(value);
 }
 
 export function normalizePhone(value: string): string {
-  return value.replace(/\D/g, "");
+  return normalizeDigits(value).replace(/\D/g, "");
 }
 
 /**
@@ -73,7 +75,8 @@ export function matchProduct<T extends ProductCandidate>(
     (product) =>
       normalize(product.name) === normalized ||
       product.aliases.some((alias) => normalize(alias) === normalized) ||
-      (product.barcode !== null && product.barcode === term.trim()),
+      (product.barcode !== null &&
+        normalizeDigits(product.barcode) === normalizeDigits(term.trim())),
   );
 
   if (exact.length > 0) {

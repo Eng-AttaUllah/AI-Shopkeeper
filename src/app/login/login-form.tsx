@@ -47,6 +47,7 @@ export function LoginForm({
           autoFocus
           className="h-11 text-base"
           aria-invalid={Boolean(errors.username)}
+          dir="ltr"
         />
         {errors.username ? (
           <p className="text-sm text-error">{errors.username}</p>
@@ -63,6 +64,7 @@ export function LoginForm({
           required
           className="h-11 text-base"
           aria-invalid={Boolean(errors.password)}
+          dir="ltr"
         />
         {errors.password ? (
           <p className="text-sm text-error">{errors.password}</p>

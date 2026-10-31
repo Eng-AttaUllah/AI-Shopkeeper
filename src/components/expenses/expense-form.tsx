@@ -82,6 +82,7 @@ export function ExpenseForm({ today, action, t, categoryT }: ExpenseFormProps) {
             required
             className="h-11 text-base"
             aria-invalid={Boolean(errors.amount)}
+            dir="ltr"
           />
           {errors.amount ? (
             <p className="text-sm text-error">{errors.amount}</p>
@@ -113,6 +114,7 @@ export function ExpenseForm({ today, action, t, categoryT }: ExpenseFormProps) {
             placeholder="Electricity bill for October"
             className="h-11 text-base"
             aria-invalid={Boolean(errors.note)}
+            dir="auto"
           />
           {errors.note ? (
             <p className="text-sm text-error">{errors.note}</p>

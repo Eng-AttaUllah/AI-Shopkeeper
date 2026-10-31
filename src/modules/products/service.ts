@@ -25,6 +25,8 @@ import {
   updateProductSchema,
 } from "./schema";
 
+import { normalizeText } from "@/lib/text";
+
 /** An error whose message is safe and useful to show the shopkeeper. */
 class ServiceError extends Error {
   constructor(
@@ -37,7 +39,7 @@ class ServiceError extends Error {
 }
 
 function normalizeName(name: string): string {
-  return name.trim().replace(/\s+/g, " ").toLowerCase();
+  return normalizeText(name).toLowerCase();
 }
 
 function emptyToNull(value: string | undefined): string | null {

@@ -488,8 +488,8 @@ Update this file after every meaningful implementation change.
 - Slice 8.1: i18n/RTL foundation — locale cookie, `lang`/`dir`, Pashto font, translated shell
   and navigation.
 - Slice 8.2: Pashto assistant — system prompt, suggestions, tool labels, proposal cards.
-- Slice 8.3: Pashto screens — all pages translated.
-- Slice 8.4: Pashto input/aliases — Unicode normalization, Pashto digits, bidi-safe inputs.
+- Slice 8.3: Pashto screens — all pages translated. **Complete.**
+- Slice 8.4: Pashto input/aliases — Unicode normalization, Pashto digits, bidi-safe inputs. **In progress.**
 - Slice 8.5: QA in English and Pashto at 360px and desktop; typecheck/lint/test/build pass.
 
 ## Open Questions
