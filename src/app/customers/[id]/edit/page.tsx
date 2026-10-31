@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { updateCustomerAction } from "@/app/customers/actions";
 import { CustomerForm } from "@/components/customers/customer-form";
 import { getCustomer } from "@/modules/customers/queries";
+import { t } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
@@ -30,9 +31,11 @@ export default async function EditCustomerPage({
         >
           ← {customer.name}
         </Link>
-        <h1 className="mt-2 text-2xl font-semibold">Edit customer</h1>
+        <h1 className="mt-2 text-2xl font-semibold">
+          {await t("customers.editCustomer")}
+        </h1>
         <p className="mt-1 text-sm text-ink-muted">
-          Changing these details does not change the khata balance.
+          {await t("customers.changingDetails")}
         </p>
       </div>
 
@@ -45,7 +48,7 @@ export default async function EditCustomerPage({
             phone: customer.phone,
             note: customer.note,
           }}
-          submitLabel="Save changes"
+          submitLabel={await t("products.saveChanges")}
         />
       </div>
     </main>

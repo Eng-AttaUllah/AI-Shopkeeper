@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { readClientLocale, translate } from "@/lib/dictionary";
 
 export type CustomerFormValues = {
   id?: string;
@@ -32,6 +33,11 @@ export function CustomerForm({
   const [state, formAction, pending] = useActionState(action, { ok: false });
   const error = state.ok ? undefined : state.error;
   const errors = (state.ok ? {} : state.fieldErrors) ?? {};
+  const locale = readClientLocale();
+
+  function t(key: string, params?: Record<string, string>): string {
+    return translate(locale, key, params);
+  }
 
   return (
     <form action={formAction} className="flex flex-col gap-5">
@@ -49,7 +55,7 @@ export function CustomerForm({
       ) : null}
 
       <div className="flex flex-col gap-2">
-        <Label htmlFor="name">Customer name</Label>
+        <Label htmlFor="name">{t("customerForm.customerName")}</Label>
         <Input
           id="name"
           name="name"
@@ -66,7 +72,7 @@ export function CustomerForm({
       </div>
 
       <div className="flex flex-col gap-2">
-        <Label htmlFor="phone">Phone (optional)</Label>
+        <Label htmlFor="phone">{t("customerForm.phoneOptional")}</Label>
         <Input
           id="phone"
           name="phone"
@@ -83,7 +89,7 @@ export function CustomerForm({
       </div>
 
       <div className="flex flex-col gap-2">
-        <Label htmlFor="note">Note (optional)</Label>
+        <Label htmlFor="note">{t("customerForm.noteOptional")}</Label>
         <Textarea
           id="note"
           name="note"

@@ -6,6 +6,7 @@ import type { CustomerActionState } from "@/app/customers/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { readClientLocale, translate } from "@/lib/dictionary";
 
 type PaymentFormProps = {
   customerId: string;
@@ -21,6 +22,11 @@ export function PaymentForm({ customerId, action }: PaymentFormProps) {
 
   const error = state.ok ? undefined : state.error;
   const errors = (state.ok ? {} : state.fieldErrors) ?? {};
+  const locale = readClientLocale();
+
+  function t(key: string, params?: Record<string, string>): string {
+    return translate(locale, key, params);
+  }
 
   useEffect(() => {
     if (state.ok) {
@@ -46,12 +52,12 @@ export function PaymentForm({ customerId, action }: PaymentFormProps) {
           role="status"
           className="rounded-lg border border-success/30 bg-success/5 px-3 py-2 text-sm text-success"
         >
-          Payment recorded.
+          {t("customerForm.paymentRecorded")}
         </p>
       ) : null}
 
       <div className="flex flex-col gap-2">
-        <Label htmlFor="amount">Amount received (Rs.)</Label>
+        <Label htmlFor="amount">{t("customerForm.amountReceived")}</Label>
         <Input
           id="amount"
           name="amount"
@@ -68,7 +74,7 @@ export function PaymentForm({ customerId, action }: PaymentFormProps) {
       </div>
 
       <div className="flex flex-col gap-2">
-        <Label htmlFor="payment-note">Note (optional)</Label>
+        <Label htmlFor="payment-note">{t("customerForm.noteOptional")}</Label>
         <Input
           id="payment-note"
           name="note"
@@ -88,7 +94,7 @@ export function PaymentForm({ customerId, action }: PaymentFormProps) {
           disabled={pending}
           className="h-11 w-full px-5 text-base sm:w-auto"
         >
-          {pending ? "Saving…" : "Record payment"}
+          {pending ? "Saving…" : t("customerForm.recordPayment")}
         </Button>
       </div>
     </form>

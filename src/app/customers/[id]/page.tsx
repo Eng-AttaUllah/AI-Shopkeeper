@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { prisma } from "@/lib/db";
 import { formatDateTime, formatPaisa } from "@/lib/format";
+import { t } from "@/lib/i18n";
 import {
   buildStatementText,
   customerBalancePaisa,
@@ -44,6 +45,13 @@ export default async function CustomerPage({ params }: CustomerPageProps) {
   const phoneDigits = customer.phone?.replace(/\D/g, "") ?? "";
   const whatsappHref = `https://wa.me/${phoneDigits}?text=${encodeURIComponent(statement)}`;
 
+  const saleLabel = await t("dashboard.sale");
+  const itemLabel = await t("customers.item");
+  const itemsLabel = await t("customers.items");
+  const paymentLabel = await t("customers.payment");
+  const cashPaymentLabel = await t("customers.cashPayment");
+  const paidLabel = await t("customers.paid");
+
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-5 px-4 py-8">
       <div>
@@ -51,14 +59,14 @@ export default async function CustomerPage({ params }: CustomerPageProps) {
           href="/customers"
           className="text-sm text-ink-muted transition-colors hover:text-ink"
         >
-          ← Customers
+          {await t("customers.backToCustomers")}
         </Link>
 
         <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
           <div>
             <h1 className="text-2xl font-semibold">{customer.name}</h1>
             <p className="mt-1 text-sm text-ink-muted">
-              {customer.phone ?? "No phone number"}
+              {customer.phone ?? (await t("customers.noPhoneNumber"))}
             </p>
             {customer.note ? (
               <p className="mt-1 text-sm text-ink-muted">{customer.note}</p>
@@ -73,13 +81,13 @@ export default async function CustomerPage({ params }: CustomerPageProps) {
                 className: "h-11 px-4 text-base",
               })}
             >
-              Edit
+              {await t("action.edit")}
             </Link>
             <Link
               href="/sell"
               className={buttonVariants({ className: "h-11 px-4 text-base" })}
             >
-              New sale
+              {t("action.newSale")}
             </Link>
           </div>
         </div>
@@ -90,7 +98,9 @@ export default async function CustomerPage({ params }: CustomerPageProps) {
           <section className="rounded-xl border border-line bg-surface p-5">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-sm text-ink-muted">Outstanding balance</p>
+                <p className="text-sm text-ink-muted">
+                  {await t("customers.outstandingBalance")}
+                </p>
                 <p
                   className={
                     balancePaisa > 0
@@ -106,17 +116,16 @@ export default async function CustomerPage({ params }: CustomerPageProps) {
               </Badge>
             </div>
             <p className="mt-3 text-sm text-ink-muted">
-              Credit sales minus recorded payments. It is calculated from the
-              sales and payments, never stored separately.
+              {await t("customers.balanceCalculated")}
             </p>
           </section>
 
           <section className="rounded-xl border border-line bg-surface p-5">
-            <h2 className="text-lg font-semibold">History</h2>
+            <h2 className="text-lg font-semibold">{await t("customers.history")}</h2>
 
             {history.length === 0 ? (
               <p className="mt-3 rounded-md bg-subtle px-3 py-2 text-sm text-ink-muted">
-                No credit sales or payments yet.
+                {await t("customers.noCreditSalesOrPayments")}
               </p>
             ) : (
               <ul className="mt-3 divide-y divide-line">
@@ -133,24 +142,26 @@ export default async function CustomerPage({ params }: CustomerPageProps) {
                               href={`/sales/${entry.id}`}
                               className="hover:text-brand"
                             >
-                              Sale {entry.number}
+                              {saleLabel} {entry.number}
                             </Link>
                           </p>
                           <p className="text-sm text-ink-muted">
                             {formatDateTime(entry.createdAt)} ·{" "}
                             {entry.itemCount}{" "}
-                            {entry.itemCount === 1 ? "item" : "items"}
+                            {entry.itemCount === 1 ? itemLabel : itemsLabel}{" "}
                             {entry.paidPaisa > 0
-                              ? ` · ${formatPaisa(entry.paidPaisa)} paid`
+                              ? ` · ${formatPaisa(entry.paidPaisa)} ${paidLabel}`
                               : ""}
                           </p>
                         </>
                       ) : (
                         <>
-                          <p className="font-medium">Payment</p>
+                          <p className="font-medium">
+                            {paymentLabel}
+                          </p>
                           <p className="text-sm text-ink-muted">
                             {formatDateTime(entry.createdAt)} ·{" "}
-                            {entry.note ?? "Cash payment"}
+                            {entry.note ?? cashPaymentLabel}
                           </p>
                         </>
                       )}
@@ -176,12 +187,14 @@ export default async function CustomerPage({ params }: CustomerPageProps) {
 
         <div className="flex flex-col gap-5">
           <section className="rounded-xl border border-line bg-surface p-5">
-            <h2 className="text-lg font-semibold">Record a payment</h2>
+            <h2 className="text-lg font-semibold">
+              {await t("customers.recordPayment")}
+            </h2>
 
             {balancePaisa > 0 ? (
               <>
                 <p className="mt-1 mb-4 text-sm text-ink-muted">
-                  A payment cannot be more than the outstanding balance.
+                  {await t("customers.paymentCannotExceed")}
                 </p>
                 <PaymentForm
                   customerId={customer.id}
@@ -190,15 +203,15 @@ export default async function CustomerPage({ params }: CustomerPageProps) {
               </>
             ) : (
               <p className="mt-3 rounded-md bg-subtle px-3 py-2 text-sm text-ink-muted">
-                Nothing is outstanding. Record a credit sale first.
+                {await t("customers.nothingOutstanding")}
               </p>
             )}
           </section>
 
           <section className="rounded-xl border border-line bg-surface p-5">
-            <h2 className="text-lg font-semibold">Statement</h2>
+            <h2 className="text-lg font-semibold">{await t("customers.statement")}</h2>
             <p className="mt-1 text-sm text-ink-muted">
-              Send this text on WhatsApp or copy it.
+              {await t("customers.sendStatement")}
             </p>
 
             <pre className="mt-3 max-h-72 overflow-auto whitespace-pre-wrap rounded-lg bg-subtle p-3 text-sm">
@@ -214,7 +227,7 @@ export default async function CustomerPage({ params }: CustomerPageProps) {
                 className: "mt-3 h-11 w-full px-4 text-base",
               })}
             >
-              Send on WhatsApp
+              {await t("customers.sendOnWhatsApp")}
             </a>
           </section>
         </div>
