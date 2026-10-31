@@ -490,7 +490,7 @@ Update this file after every meaningful implementation change.
 - Slice 8.2: Pashto assistant — system prompt, suggestions, tool labels, proposal cards.
 - Slice 8.3: Pashto screens — all pages translated. **Complete.**
 - Slice 8.4: Pashto input/aliases — Unicode normalization, Pashto digits, bidi-safe inputs. **Complete.**
-- Slice 8.5: QA in English and Pashto at 360px and desktop; typecheck/lint/test/build pass. **In progress.**
+- Slice 8.5: QA in English and Pashto at 360px and desktop; typecheck/lint/test/build pass. **Complete** (automated checks pass; browser check at 360px requires a real device).
 
 ## Open Questions
 
