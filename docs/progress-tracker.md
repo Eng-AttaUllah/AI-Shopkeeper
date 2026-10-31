@@ -470,8 +470,8 @@ Update this file after every meaningful implementation change.
 
 ## Current Phase
 
-- Phase 8 — Pashto support: **In progress** (Pashto UI with RTL layout, conversational
-  assistant in Pashto, product aliases, Pashto input handling).
+- Phase 8 — Pashto support: **Complete** (Pashto UI with RTL layout, conversational
+  assistant in Pashto, product aliases, Pashto input handling). Pull request #4 open.
 
 ## Current Goal
 
@@ -479,8 +479,10 @@ Update this file after every meaningful implementation change.
   and navigation → screen strings → assistant prompts/tool labels/cards → Pashto product and
   customer input handling → QA in English and Pashto. Build nothing outside this scope
   (voice, camera, thermal printing are later phases).
-- Branch `phase-8-pashto-support` will be stacked on `phase-7c-customer-product-stock-proposals`
-  and kept unmerged until the owner decides merge order; PR #1, #2, and #3 remain unmerged.
+- Phase 8 is complete and pushed on branch `phase-8-pashto-support`; pull request #4 is open
+  (https://github.com/Eng-AttaUllah/AI-Shopkeeper/pull/4) based on
+  `phase-7c-customer-product-stock-proposals`. Kept unmerged until the owner decides merge
+  order; PR #1, #2, and #3 remain unmerged.
 
 ## Next Up
 
