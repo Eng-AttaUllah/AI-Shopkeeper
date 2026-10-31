@@ -6,6 +6,7 @@ import type { SaleActionState } from "@/app/sales/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { readClientLocale, translate } from "@/lib/dictionary";
 
 type VoidSaleFormProps = {
   saleId: string;
@@ -19,6 +20,11 @@ export function VoidSaleForm({ saleId, action }: VoidSaleFormProps) {
   const [state, formAction, pending] = useActionState(action, { ok: false });
   const error = state.ok ? undefined : state.error;
   const errors = (state.ok ? {} : state.fieldErrors) ?? {};
+  const locale = readClientLocale();
+
+  function t(key: string, params?: Record<string, string>): string {
+    return translate(locale, key, params);
+  }
 
   return (
     <form action={formAction} className="flex flex-col gap-3">
@@ -38,17 +44,17 @@ export function VoidSaleForm({ saleId, action }: VoidSaleFormProps) {
           role="status"
           className="rounded-lg border border-success/30 bg-success/5 px-3 py-2 text-sm text-success"
         >
-          Sale voided.
+          {t("void.saleVoided")}
         </p>
       ) : null}
 
       <div className="flex flex-col gap-2">
-        <Label htmlFor="void-reason">Reason for voiding</Label>
+        <Label htmlFor="void-reason">{t("void.reason")}</Label>
         <Input
           id="void-reason"
           name="reason"
           autoComplete="off"
-          placeholder="Wrong item entered"
+          placeholder={t("void.sayWhy")}
           required
           className="h-11 text-base"
           aria-invalid={Boolean(errors.reason)}
@@ -59,9 +65,7 @@ export function VoidSaleForm({ saleId, action }: VoidSaleFormProps) {
       </div>
 
       <p className="text-sm text-ink-muted">
-        Voiding restores the stock and removes this sale from reports and khata.
-        It cannot be undone. If you already took cash, refund it outside the app;
-        the void does not record a cash refund.
+        {t("receipt.voidNote")}
       </p>
 
       <div>
@@ -71,7 +75,7 @@ export function VoidSaleForm({ saleId, action }: VoidSaleFormProps) {
           disabled={pending}
           className="h-11 px-5 text-base"
         >
-          {pending ? "Voiding…" : "Void sale"}
+          {pending ? t("void.voiding") : t("void.voidSale")}
         </Button>
       </div>
     </form>

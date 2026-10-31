@@ -4,50 +4,45 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { listAuditLogs } from "@/lib/audit";
 import { formatDateTime } from "@/lib/format";
+import { readClientLocale, translate } from "@/lib/dictionary";
 
 export const dynamic = "force-dynamic";
 
-const ACTION_LABELS: Record<string, string> = {
-  PRODUCT_CREATED: "Product created",
-  PRODUCT_UPDATED: "Product updated",
-  STOCK_ADJUSTED: "Stock adjusted",
-  SALE_CREATED: "Sale recorded",
-  SALE_VOIDED: "Sale voided",
-  PAYMENT_RECORDED: "Repayment",
-  EXPENSE_RECORDED: "Expense",
-  CASH_RECONCILED: "Cash check",
-};
-
-function actionLabel(action: string): string {
-  return ACTION_LABELS[action] ?? action.replaceAll("_", " ").toLowerCase();
-}
-
-function actorLabel(actor: string): string {
-  return actor === "local" ? "local user" : actor;
-}
-
-function prettyDetails(details: string | null): string | null {
-  if (!details) {
-    return null;
-  }
-
-  try {
-    return JSON.stringify(JSON.parse(details), null, 2);
-  } catch {
-    return details;
-  }
-}
-
 export default async function AuditPage() {
   const entries = await listAuditLogs(100);
+  const locale = readClientLocale();
+
+  function t(key: string, params?: Record<string, string>): string {
+    return translate(locale, key, params);
+  }
+
+  function actionLabel(action: string): string {
+    return t(`audit.action.${action}`) ?? action.replaceAll("_", " ").toLowerCase();
+  }
+
+  function actorLabel(actor: string): string {
+    return actor === "local" ? t("audit.localUser") : actor;
+  }
+
+  function prettyDetails(details: string | null): string | null {
+    if (!details) {
+      return null;
+    }
+
+    try {
+      return JSON.stringify(JSON.parse(details), null, 2);
+    } catch {
+      return details;
+    }
+  }
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-8">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-semibold">Audit log</h1>
+          <h1 className="text-3xl font-semibold">{t("audit.auditLog")}</h1>
           <p className="mt-1 text-sm text-ink-muted">
-            Every money and stock change, newest first.
+            {t("audit.everyChange")}
           </p>
         </div>
         <Link
@@ -57,16 +52,15 @@ export default async function AuditPage() {
             className: "h-11 px-4 text-base",
           })}
         >
-          More tools
+          {t("more.moreTools")}
         </Link>
       </header>
 
       {entries.length === 0 ? (
         <div className="rounded-xl border border-dashed border-line bg-surface p-10 text-center">
-          <p className="font-medium">Nothing has been recorded yet.</p>
+          <p className="font-medium">{t("audit.nothingRecorded")}</p>
           <p className="mt-1 text-sm text-ink-muted">
-            Sales, stock changes, repayments, expenses, and cash checks appear
-            here.
+            {t("audit.salesStockAppear")}
           </p>
         </div>
       ) : (
@@ -83,8 +77,8 @@ export default async function AuditPage() {
                   <div>
                     <p className="font-medium">{entry.summary}</p>
                     <p className="mt-1 text-sm text-ink-muted">
-                      {formatDateTime(entry.createdAt)} · by{" "}
-                      {actorLabel(entry.actor)}
+                      {formatDateTime(entry.createdAt)} ·{" "}
+                      {t("audit.by")} {actorLabel(entry.actor)}
                     </p>
                   </div>
                   <Badge
@@ -101,12 +95,12 @@ export default async function AuditPage() {
                 {entry.before || entry.after || details ? (
                   <details className="mt-3">
                     <summary className="cursor-pointer text-sm text-ink-muted">
-                      Before / after
+                      {t("audit.beforeAfter")}
                     </summary>
                     <div className="mt-2 grid gap-2 sm:grid-cols-2">
                       <div>
                         <p className="text-xs font-medium text-ink-muted">
-                          Before
+                          {t("audit.before")}
                         </p>
                         <pre className="mt-1 overflow-x-auto rounded-md bg-subtle p-3 text-xs">
                           {prettyDetails(entry.before) ?? "—"}
@@ -114,7 +108,7 @@ export default async function AuditPage() {
                       </div>
                       <div>
                         <p className="text-xs font-medium text-ink-muted">
-                          After
+                          {t("audit.after")}
                         </p>
                         <pre className="mt-1 overflow-x-auto rounded-md bg-subtle p-3 text-xs">
                           {prettyDetails(entry.after) ?? "—"}
@@ -124,7 +118,7 @@ export default async function AuditPage() {
                     {details ? (
                       <div className="mt-2">
                         <p className="text-xs font-medium text-ink-muted">
-                          Details
+                          {t("audit.details")}
                         </p>
                         <pre className="mt-1 overflow-x-auto rounded-md bg-subtle p-3 text-xs">
                           {details}

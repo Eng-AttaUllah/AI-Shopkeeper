@@ -14,19 +14,20 @@ type CashCheckFormProps = {
     state: CashCheckState,
     formData: FormData,
   ) => Promise<CashCheckState>;
+  t: (key: string, params?: Record<string, string>) => string;
 };
 
-export function CashCheckForm({ today, action }: CashCheckFormProps) {
+export function CashCheckForm({ today, action, t }: CashCheckFormProps) {
   const [state, formAction, pending] = useActionState(action, { ok: false });
   const error = state.ok ? undefined : state.error;
   const errors = (state.ok ? {} : state.fieldErrors) ?? {};
 
   const differenceLabel = state.ok
     ? state.differencePaisa === 0
-      ? "Balanced"
+      ? t("dayClose.balanced")
       : state.differencePaisa > 0
-        ? `Over by ${formatPaisa(state.differencePaisa)}`
-        : `Short by ${formatPaisa(-state.differencePaisa)}`
+        ? t("dayClose.overBy", { amount: formatPaisa(state.differencePaisa) })
+        : t("dayClose.shortBy", { amount: formatPaisa(-state.differencePaisa) })
     : null;
 
   return (
@@ -46,23 +47,23 @@ export function CashCheckForm({ today, action }: CashCheckFormProps) {
           className="rounded-lg border border-success/30 bg-success/5 px-3 py-3 text-sm"
         >
           <p className="font-medium text-success">
-            Cash check saved for {state.dateLabel}.
+            {t("dayClose.cashCheckSavedFor", { date: state.dateLabel })}
           </p>
           <dl className="mt-2 flex flex-col gap-1">
             <div className="flex justify-between gap-3">
-              <dt className="text-ink-muted">Expected</dt>
+              <dt className="text-ink-muted">{t("dayClose.expected")}</dt>
               <dd className="tabular-nums">
                 {formatPaisa(state.expectedPaisa)}
               </dd>
             </div>
             <div className="flex justify-between gap-3">
-              <dt className="text-ink-muted">Counted</dt>
+              <dt className="text-ink-muted">{t("dayClose.counted")}</dt>
               <dd className="tabular-nums">
                 {formatPaisa(state.countedPaisa)}
               </dd>
             </div>
             <div className="flex justify-between gap-3 font-medium">
-              <dt>Difference</dt>
+              <dt>{t("dayClose.difference")}</dt>
               <dd
                 className={
                   state.differencePaisa === 0
@@ -79,7 +80,7 @@ export function CashCheckForm({ today, action }: CashCheckFormProps) {
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="flex flex-col gap-2">
-          <Label htmlFor="cash-date">Day</Label>
+          <Label htmlFor="cash-date">{t("dayClose.day")}</Label>
           <Input
             id="cash-date"
             name="date"
@@ -95,7 +96,7 @@ export function CashCheckForm({ today, action }: CashCheckFormProps) {
         </div>
 
         <div className="flex flex-col gap-2">
-          <Label htmlFor="cash-counted">Counted cash (Rs.)</Label>
+          <Label htmlFor="cash-counted">{t("dayClose.countedCash")}</Label>
           <Input
             id="cash-counted"
             name="counted"
@@ -112,12 +113,12 @@ export function CashCheckForm({ today, action }: CashCheckFormProps) {
         </div>
 
         <div className="flex flex-col gap-2 sm:col-span-2">
-          <Label htmlFor="cash-note">Note (optional)</Label>
+          <Label htmlFor="cash-note">{t("proposal.note")} (optional)</Label>
           <Input
             id="cash-note"
             name="note"
             autoComplete="off"
-            placeholder="Rs. 200 kept for change"
+            placeholder={t("dayClose.rsKeptForChange")}
             className="h-11 text-base"
             aria-invalid={Boolean(errors.note)}
           />
@@ -133,7 +134,7 @@ export function CashCheckForm({ today, action }: CashCheckFormProps) {
           disabled={pending}
           className="h-11 w-full px-5 text-base sm:w-auto"
         >
-          {pending ? "Saving…" : "Save cash check"}
+          {pending ? t("dayClose.saving") : t("dayClose.saveCheck")}
         </Button>
       </div>
     </form>

@@ -11,35 +11,41 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatDateTime, formatPaisa } from "@/lib/format";
+import { readClientLocale, translate } from "@/lib/dictionary";
 import { listSales } from "@/modules/sales/queries";
 
 export const dynamic = "force-dynamic";
 
 export default async function SalesPage() {
   const sales = await listSales(50);
+  const locale = readClientLocale();
+
+  function t(key: string, params?: Record<string, string>): string {
+    return translate(locale, key, params);
+  }
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-8">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Sales</h1>
+          <h1 className="text-2xl font-semibold">{await t("page.sales")}</h1>
           <p className="mt-1 text-sm text-ink-muted">
-            The last 50 sales, newest first.
+            {t("sales.last50Sales")}
           </p>
         </div>
         <Link
           href="/sell"
           className={buttonVariants({ className: "h-11 px-4 text-base" })}
         >
-          New sale
+          {t("sales.newSale")}
         </Link>
       </div>
 
       {sales.length === 0 ? (
         <div className="rounded-xl border border-dashed border-line bg-surface p-10 text-center">
-          <p className="font-medium">No sales yet.</p>
+          <p className="font-medium">{t("sales.noSales")}</p>
           <p className="mt-1 text-sm text-ink-muted">
-            Record your first sale and it will appear here with its receipt.
+            {t("sales.recordFirstSale")}
           </p>
           <Link
             href="/sell"
@@ -47,7 +53,7 @@ export default async function SalesPage() {
               className: "mt-4 h-11 px-4 text-base",
             })}
           >
-            Start a sale
+            {t("sales.startSale")}
           </Link>
         </div>
       ) : (
@@ -56,12 +62,12 @@ export default async function SalesPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Receipt</TableHead>
-                  <TableHead>Customer</TableHead>
-                  <TableHead>When</TableHead>
-                  <TableHead>Items</TableHead>
-                  <TableHead>Total</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>{t("sales.receipt")}</TableHead>
+                  <TableHead>{t("sales.customer")}</TableHead>
+                  <TableHead>{t("sales.when")}</TableHead>
+                  <TableHead>{t("sales.items")}</TableHead>
+                  <TableHead>{t("sales.total")}</TableHead>
+                  <TableHead className="text-right">{t("sales.actions")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -71,7 +77,7 @@ export default async function SalesPage() {
                       <span className="font-medium">{sale.number}</span>
                       {sale.voidedAt ? (
                         <Badge variant="destructive" className="ml-2">
-                          Voided
+                          {t("sales.voided")}
                         </Badge>
                       ) : null}
                     </TableCell>
@@ -84,7 +90,7 @@ export default async function SalesPage() {
                           {sale.customer.name}
                         </Link>
                       ) : (
-                        <span className="text-ink-muted">Cash</span>
+                        <span className="text-ink-muted">{t("sales.cash")}</span>
                       )}
                     </TableCell>
                     <TableCell className="text-ink-muted">
@@ -101,7 +107,7 @@ export default async function SalesPage() {
                         href={`/sales/${sale.id}`}
                         className="text-sm font-medium text-brand hover:text-brand-hover"
                       >
-                        Receipt
+                        {t("sales.viewReceipt")}
                       </Link>
                     </TableCell>
                   </TableRow>
@@ -129,15 +135,15 @@ export default async function SalesPage() {
                     </p>
                   </div>
                   {sale.voidedAt ? (
-                    <Badge variant="destructive">Voided</Badge>
+                    <Badge variant="destructive">{t("sales.voided")}</Badge>
                   ) : sale.paymentMethod === "CREDIT" ? (
-                    <Badge variant="secondary">Credit</Badge>
+                    <Badge variant="secondary">{t("sales.credit")}</Badge>
                   ) : null}
                 </div>
                 <div className="mt-3 flex items-center justify-between text-sm">
                   <span className="text-ink-muted">
                     {sale._count.items}{" "}
-                    {sale._count.items === 1 ? "item" : "items"}
+                    {sale._count.items === 1 ? t("sales.item") : t("sales.itemsCount")}
                   </span>
                   <span className="font-medium tabular-nums">
                     {formatPaisa(sale.totalPaisa)}
@@ -147,7 +153,7 @@ export default async function SalesPage() {
                   href={`/sales/${sale.id}`}
                   className="mt-3 inline-block text-sm font-medium text-brand hover:text-brand-hover"
                 >
-                  View receipt
+                  {t("sales.viewReceipt")}
                 </Link>
               </li>
             ))}

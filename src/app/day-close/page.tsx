@@ -9,6 +9,7 @@ import {
 } from "@/lib/dates";
 import { prisma } from "@/lib/db";
 import { formatDate, formatPaisa } from "@/lib/format";
+import { readClientLocale, translate } from "@/lib/dictionary";
 import { cashBreakdown, listReconciliations } from "@/modules/cash/queries";
 
 export const dynamic = "force-dynamic";
@@ -23,14 +24,19 @@ export default async function DayClosePage() {
     listReconciliations(14),
   ]);
 
+  const locale = readClientLocale();
+
+  function t(key: string, params?: Record<string, string>): string {
+    return translate(locale, key, params);
+  }
+
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-8">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-semibold">Day close</h1>
+          <h1 className="text-3xl font-semibold">{await t("page.dayClose")}</h1>
           <p className="mt-1 text-sm text-ink-muted">
-            Count the cash in the drawer and compare it with what the app
-            expects.
+            {t("dayClose.countCash")}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -41,7 +47,7 @@ export default async function DayClosePage() {
               className: "h-11 px-4 text-base",
             })}
           >
-            Expenses
+            {await t("nav.expenses")}
           </Link>
           <Link
             href="/"
@@ -50,7 +56,7 @@ export default async function DayClosePage() {
               className: "h-11 px-4 text-base",
             })}
           >
-            Dashboard
+            {await t("nav.dashboard")}
           </Link>
         </div>
       </header>
@@ -58,7 +64,9 @@ export default async function DayClosePage() {
       <section className="rounded-xl border border-line bg-surface p-5">
         <div className="flex flex-wrap items-end justify-between gap-2">
           <div>
-            <h2 className="text-lg font-semibold">Expected cash today</h2>
+            <h2 className="text-lg font-semibold">
+              {t("dayClose.expectedCashToday")}
+            </h2>
             <p className="text-sm text-ink-muted">{formatDate(now)}</p>
           </div>
           <p className="text-2xl font-semibold tabular-nums">
@@ -68,25 +76,25 @@ export default async function DayClosePage() {
 
         <dl className="mt-4 flex flex-col gap-2 border-t border-line pt-4 text-sm">
           <div className="flex justify-between gap-3">
-            <dt className="text-ink-muted">Cash sales</dt>
+            <dt className="text-ink-muted">{t("dayClose.cashSales")}</dt>
             <dd className="tabular-nums">
               {formatPaisa(breakdown.cashSalesPaisa)}
             </dd>
           </div>
           <div className="flex justify-between gap-3">
-            <dt className="text-ink-muted">Cash paid on credit sales</dt>
+            <dt className="text-ink-muted">{t("dayClose.cashPaidCreditSales")}</dt>
             <dd className="tabular-nums">
               {formatPaisa(breakdown.creditCashPaisa)}
             </dd>
           </div>
           <div className="flex justify-between gap-3">
-            <dt className="text-ink-muted">Repayments received</dt>
+            <dt className="text-ink-muted">{t("dayClose.repaymentsReceived")}</dt>
             <dd className="tabular-nums">
               {formatPaisa(breakdown.repaymentsPaisa)}
             </dd>
           </div>
           <div className="flex justify-between gap-3">
-            <dt className="text-ink-muted">Expenses paid from the drawer</dt>
+            <dt className="text-ink-muted">{t("dayClose.expensesDrawer")}</dt>
             <dd className="tabular-nums">
               − {formatPaisa(breakdown.expensesPaisa)}
             </dd>
@@ -94,31 +102,33 @@ export default async function DayClosePage() {
         </dl>
 
         <p className="mt-4 text-xs text-ink-muted">
-          Expected cash is cash sales, cash paid at the counter on credit sales,
-          and repayments, minus expenses. Voided sales are excluded. A cash
-          refund for a voided sale is not recorded; note it when you count.
+          {t("dayClose.expectedCashNote")}
         </p>
       </section>
 
       <section className="rounded-xl border border-line bg-surface p-5">
-        <h2 className="text-lg font-semibold">Save a cash check</h2>
+        <h2 className="text-lg font-semibold">{t("dayClose.saveCashCheck")}</h2>
         <p className="mt-1 text-sm text-ink-muted">
-          Re-running a day updates its saved check.
+          {t("dayClose.rerunUpdates")}
         </p>
         <div className="mt-4">
-          <CashCheckForm action={recordCashCheckAction} today={todayKey} />
+          <CashCheckForm
+            action={recordCashCheckAction}
+            today={todayKey}
+            t={t}
+          />
         </div>
       </section>
 
       <section className="rounded-xl border border-line bg-surface p-5">
-        <h2 className="text-lg font-semibold">Recent cash checks</h2>
+        <h2 className="text-lg font-semibold">{t("dayClose.recentChecks")}</h2>
         <p className="mt-1 text-sm text-ink-muted">
-          The last 14 saved days, newest first.
+          {t("dayClose.last14Days")}
         </p>
 
         {history.length === 0 ? (
           <p className="mt-3 rounded-md bg-subtle px-3 py-2 text-sm text-ink-muted">
-            No cash checks saved yet.
+            {t("dayClose.noChecksYet")}
           </p>
         ) : (
           <ul className="mt-3 divide-y divide-line">
@@ -130,8 +140,7 @@ export default async function DayClosePage() {
                 <div>
                   <p className="font-medium">{formatDate(check.businessDate)}</p>
                   <p className="text-sm text-ink-muted">
-                    Expected {formatPaisa(check.expectedPaisa)} · Counted{" "}
-                    {formatPaisa(check.countedPaisa)}
+                    {t("dayClose.expected")} {formatPaisa(check.expectedPaisa)} · {t("dayClose.counted")} {formatPaisa(check.countedPaisa)}
                   </p>
                   {check.note ? (
                     <p className="text-sm text-ink-muted">{check.note}</p>
@@ -145,7 +154,7 @@ export default async function DayClosePage() {
                   }`}
                 >
                   {check.differencePaisa === 0
-                    ? "Balanced"
+                    ? t("dayClose.balanced")
                     : formatPaisa(check.differencePaisa)}
                 </p>
               </li>

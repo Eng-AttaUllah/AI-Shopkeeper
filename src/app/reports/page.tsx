@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/table";
 import { formatPaisa } from "@/lib/format";
 import { formatQuantity } from "@/lib/quantity";
+import { readClientLocale, translate } from "@/lib/dictionary";
 import {
   periodSummary,
   productSales,
@@ -34,11 +35,11 @@ type ReportsPageProps = {
   }>;
 };
 
-const PERIOD_LINKS: { value: ReportPeriod; label: string }[] = [
-  { value: "today", label: "Today" },
-  { value: "month", label: "This month" },
-  { value: "year", label: "This year" },
-  { value: "custom", label: "Custom" },
+const PERIOD_LINKS: { value: ReportPeriod; labelKey: string }[] = [
+  { value: "today", labelKey: "reports.today" },
+  { value: "month", labelKey: "reports.thisMonth" },
+  { value: "year", labelKey: "reports.thisYear" },
+  { value: "custom", labelKey: "reports.custom" },
 ];
 
 function first(value: string | string[] | undefined): string | undefined {
@@ -59,9 +60,10 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
     : resolveReportRange({ period: "month" });
 
   if (!active.ok) {
+    const locale = readClientLocale();
     return (
       <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-5 px-4 py-8">
-        <h1 className="text-3xl font-semibold">Reports</h1>
+        <h1 className="text-3xl font-semibold">{translate(locale, "reports.reports")}</h1>
         <p
           role="alert"
           className="rounded-lg border border-error/30 bg-error/5 px-3 py-2 text-sm text-error"
@@ -82,11 +84,17 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
   ]);
   const bestSellers = products.slice(0, 5);
 
+  const locale = readClientLocale();
+
+  function t(key: string, params?: Record<string, string>): string {
+    return translate(locale, key, params);
+  }
+
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-8">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-semibold">Reports</h1>
+          <h1 className="text-3xl font-semibold">{await t("page.reports")}</h1>
           <p className="mt-1 text-sm text-ink-muted">{label}</p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -97,7 +105,7 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
               className: "h-11 px-4 text-base",
             })}
           >
-            Expenses
+            {await t("nav.expenses")}
           </Link>
           <Link
             href="/"
@@ -106,7 +114,7 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
               className: "h-11 px-4 text-base",
             })}
           >
-            Dashboard
+            {await t("nav.dashboard")}
           </Link>
         </div>
       </header>
@@ -135,7 +143,7 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
               className: "h-11 px-4 text-base",
             })}
           >
-            {item.label}
+            {t(item.labelKey)}
           </Link>
         ))}
       </nav>
@@ -148,7 +156,7 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
           <input type="hidden" name="period" value="custom" />
 
           <div className="flex flex-col gap-2">
-            <Label htmlFor="from">From</Label>
+            <Label htmlFor="from">{t("reports.from")}</Label>
             <Input
               id="from"
               name="from"
@@ -159,7 +167,7 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
           </div>
 
           <div className="flex flex-col gap-2">
-            <Label htmlFor="to">To</Label>
+            <Label htmlFor="to">{t("reports.to")}</Label>
             <Input
               id="to"
               name="to"
@@ -170,60 +178,57 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
           </div>
 
           <Button type="submit" className="h-11 px-4 text-base">
-            Apply
+            {t("reports.apply")}
           </Button>
         </form>
       ) : null}
 
       <section
-        aria-label="Summary"
+        aria-label={t("reports.summary")}
         className="grid grid-cols-2 gap-3 lg:grid-cols-3"
       >
         <StatCard
-          label="Sales"
+          label={t("reports.salesCount")}
           value={String(summary.salesCount)}
           hint={label}
         />
         <StatCard
-          label="Revenue"
+          label={t("reports.revenue")}
           value={formatPaisa(summary.revenuePaisa)}
-          hint={`Discounts ${formatPaisa(summary.discountPaisa)}`}
+          hint={`${t("reports.discounts")} ${formatPaisa(summary.discountPaisa)}`}
         />
         <StatCard
-          label="Gross profit"
+          label={t("reports.grossProfit")}
           value={formatPaisa(summary.profitPaisa)}
-          hint={`Cost of goods ${formatPaisa(summary.costPaisa)}`}
+          hint={`${t("reports.costOfGoods")} ${formatPaisa(summary.costPaisa)}`}
         />
         <StatCard
-          label="Expenses"
+          label={t("reports.expenses")}
           value={formatPaisa(summary.expensePaisa)}
-          hint="Recorded in this period"
+          hint={t("reports.recordedPeriod")}
         />
         <StatCard
-          label="Net profit"
+          label={t("reports.netProfit")}
           value={formatPaisa(summary.netProfitPaisa)}
-          hint="Gross profit minus expenses"
+          hint={t("reports.grossMinusExpenses")}
           tone={summary.netProfitPaisa < 0 ? "error" : "default"}
         />
         <StatCard
-          label="Credit given"
+          label={t("reports.creditGiven")}
           value={formatPaisa(summary.creditGivenPaisa)}
-          hint="New khata in this period"
+          hint={t("reports.newKhata")}
           tone={summary.creditGivenPaisa > 0 ? "error" : "default"}
         />
       </section>
 
       <p className="text-xs text-ink-muted">
-        Revenue counts a sale when it is recorded, including the unpaid part of
-        a credit sale. Repayments reduce khata but do not add revenue. Gross
-        profit uses the cost price stored on each sale line. Net profit
-        subtracts expenses recorded in the period.
+        {t("reports.revenueNote")}
       </p>
 
       {period !== "today" && series.points.length > 1 ? (
         <section className="rounded-xl border border-line bg-surface p-5">
           <h2 className="text-lg font-semibold">
-            Revenue by {series.granularity === "day" ? "day" : "month"}
+            {t("reports.revenueBy", { granularity: series.granularity === "day" ? t("reports.day") : t("reports.month") })}
           </h2>
           <p className="text-sm text-ink-muted">{label}</p>
           <div className="mt-4">
@@ -238,22 +243,22 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
       <section className="rounded-xl border border-line bg-surface p-5">
         <div className="flex flex-wrap items-end justify-between gap-2">
           <div>
-            <h2 className="text-lg font-semibold">Sales by product</h2>
+            <h2 className="text-lg font-semibold">{t("reports.salesByProduct")}</h2>
             <p className="text-sm text-ink-muted">
-              Line sales and profit before any sale-level discount.
+              {t("reports.lineSalesProfit")}
             </p>
           </div>
           <p className="text-sm text-ink-muted">
             {products.length}{" "}
-            {products.length === 1 ? "product sold" : "products sold"}
+            {products.length === 1 ? t("reports.product") : t("reports.items")}
           </p>
         </div>
 
         {products.length === 0 ? (
           <div className="mt-4 rounded-lg border border-dashed border-line p-6 text-center">
-            <p className="font-medium">No sales in this period.</p>
+            <p className="font-medium">{t("reports.noSalesPeriod")}</p>
             <p className="mt-1 text-sm text-ink-muted">
-              Choose another period or record a sale.
+              {t("reports.chooseAnotherPeriod")}
             </p>
             <Link
               href="/sell"
@@ -261,7 +266,7 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
                 className: "mt-4 h-11 px-4 text-base",
               })}
             >
-              Start a sale
+              {t("reports.startSale")}
             </Link>
           </div>
         ) : (
@@ -270,10 +275,10 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Product</TableHead>
-                    <TableHead>Sold</TableHead>
-                    <TableHead>Line sales</TableHead>
-                    <TableHead>Profit</TableHead>
+                    <TableHead>{t("products.productName")}</TableHead>
+                    <TableHead>{t("reports.sold")}</TableHead>
+                    <TableHead>{t("reports.lineSales")}</TableHead>
+                    <TableHead>{t("reports.profit")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -305,16 +310,16 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
                 >
                   <p className="font-medium">{row.productName}</p>
                   <p className="text-sm text-ink-muted">
-                    {formatQuantity(row.quantityMilli, row.unit)} sold
+                    {formatQuantity(row.quantityMilli, row.unit)} {t("reports.sold")}
                   </p>
                   <div className="mt-2 flex justify-between text-sm">
-                    <span className="text-ink-muted">Line sales</span>
+                    <span className="text-ink-muted">{t("reports.lineSales")}</span>
                     <span className="tabular-nums">
                       {formatPaisa(row.revenuePaisa)}
                     </span>
                   </div>
                   <div className="mt-1 flex justify-between text-sm">
-                    <span className="text-ink-muted">Profit</span>
+                    <span className="text-ink-muted">{t("reports.profit")}</span>
                     <span className="tabular-nums">
                       {formatPaisa(row.profitPaisa)}
                     </span>
@@ -328,14 +333,14 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
 
       <div className="grid gap-4 lg:grid-cols-2">
         <section className="rounded-xl border border-line bg-surface p-5">
-          <h2 className="text-lg font-semibold">Best sellers</h2>
+          <h2 className="text-lg font-semibold">{t("reports.bestSellers")}</h2>
           <p className="text-sm text-ink-muted">
-            Ranked by line sales in this period.
+            {t("reports.rankedLineSales")}
           </p>
 
           {bestSellers.length === 0 ? (
             <p className="mt-3 rounded-md bg-subtle px-3 py-2 text-sm text-ink-muted">
-              Nothing sold in this period.
+              {t("reports.nothingSoldPeriod")}
             </p>
           ) : (
             <ol className="mt-3 divide-y divide-line">
@@ -351,7 +356,7 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
                     <div>
                       <p className="font-medium">{row.productName}</p>
                       <p className="text-sm text-ink-muted">
-                        {formatQuantity(row.quantityMilli, row.unit)} sold
+                        {formatQuantity(row.quantityMilli, row.unit)} {t("reports.sold")}
                       </p>
                     </div>
                   </div>
@@ -365,14 +370,14 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
         </section>
 
         <section className="rounded-xl border border-line bg-surface p-5">
-          <h2 className="text-lg font-semibold">Slow movers</h2>
+          <h2 className="text-lg font-semibold">{t("reports.slowMovers")}</h2>
           <p className="text-sm text-ink-muted">
-            Active products with stock that sold nothing in this period.
+            {t("reports.stockSoldNothing")}
           </p>
 
           {slowMoving.length === 0 ? (
             <p className="mt-3 rounded-md bg-subtle px-3 py-2 text-sm text-ink-muted">
-              No stock is sitting still.
+              {t("reports.noStockSitting")}
             </p>
           ) : (
             <ul className="mt-3 divide-y divide-line">
@@ -384,8 +389,7 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
                   <div>
                     <p className="font-medium">{product.name}</p>
                     <p className="text-sm text-ink-muted">
-                      {formatQuantity(product.stockMilli, product.unit)} in
-                      stock
+                      {formatQuantity(product.stockMilli, product.unit)} {t("reports.inStock")}
                     </p>
                   </div>
                   <p className="shrink-0 text-sm tabular-nums text-ink-muted">

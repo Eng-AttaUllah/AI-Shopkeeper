@@ -6,7 +6,7 @@ import type { ExpenseActionState } from "@/app/expenses/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { EXPENSE_CATEGORIES, EXPENSE_CATEGORY_LABELS } from "@/modules/expenses/schema";
+import { EXPENSE_CATEGORIES } from "@/modules/expenses/schema";
 
 type ExpenseFormProps = {
   today: string;
@@ -14,9 +14,11 @@ type ExpenseFormProps = {
     state: ExpenseActionState,
     formData: FormData,
   ) => Promise<ExpenseActionState>;
+  t: (key: string, params?: Record<string, string>) => string;
+  categoryT: (category: string) => string;
 };
 
-export function ExpenseForm({ today, action }: ExpenseFormProps) {
+export function ExpenseForm({ today, action, t, categoryT }: ExpenseFormProps) {
   const [state, formAction, pending] = useActionState(action, { ok: false });
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -45,13 +47,13 @@ export function ExpenseForm({ today, action }: ExpenseFormProps) {
           role="status"
           className="rounded-lg border border-success/30 bg-success/5 px-3 py-2 text-sm text-success"
         >
-          Expense recorded.
+          {t("expenses.expenseRecorded")}
         </p>
       ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="flex flex-col gap-2">
-          <Label htmlFor="expense-category">Category</Label>
+          <Label htmlFor="expense-category">{t("expenses.category")}</Label>
           <select
             id="expense-category"
             name="category"
@@ -60,7 +62,7 @@ export function ExpenseForm({ today, action }: ExpenseFormProps) {
           >
             {EXPENSE_CATEGORIES.map((category) => (
               <option key={category} value={category}>
-                {EXPENSE_CATEGORY_LABELS[category]}
+                {categoryT(category)}
               </option>
             ))}
           </select>
@@ -70,7 +72,7 @@ export function ExpenseForm({ today, action }: ExpenseFormProps) {
         </div>
 
         <div className="flex flex-col gap-2">
-          <Label htmlFor="expense-amount">Amount (Rs.)</Label>
+          <Label htmlFor="expense-amount">{t("expenses.amount")} (Rs.)</Label>
           <Input
             id="expense-amount"
             name="amount"
@@ -87,7 +89,7 @@ export function ExpenseForm({ today, action }: ExpenseFormProps) {
         </div>
 
         <div className="flex flex-col gap-2">
-          <Label htmlFor="expense-date">Date</Label>
+          <Label htmlFor="expense-date">{t("expenses.expenseDate")}</Label>
           <Input
             id="expense-date"
             name="date"
@@ -103,7 +105,7 @@ export function ExpenseForm({ today, action }: ExpenseFormProps) {
         </div>
 
         <div className="flex flex-col gap-2">
-          <Label htmlFor="expense-note">Note (optional)</Label>
+          <Label htmlFor="expense-note">{t("expenses.note")} (optional)</Label>
           <Input
             id="expense-note"
             name="note"
@@ -124,7 +126,7 @@ export function ExpenseForm({ today, action }: ExpenseFormProps) {
           disabled={pending}
           className="h-11 w-full px-5 text-base sm:w-auto"
         >
-          {pending ? "Saving…" : "Record expense"}
+          {pending ? t("expenses.saving") : t("expenses.saveExpense")}
         </Button>
       </div>
     </form>
