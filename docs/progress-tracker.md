@@ -14,16 +14,16 @@ Update this file after every meaningful implementation change.
   customer, new product, product edit, or stock adjustment; only the signed-in shopkeeper can
   confirm it. Next is Phase 8 — Pashto support, unless the owner first asks to extend Phase 7
   further, for example customer edits or product activation.
-- Branch `phase-7c-customer-product-stock-proposals` is stacked on
-  `phase-7b-expense-payment-proposals` and pushed as pull request #3 (base
-  `phase-7b-expense-payment-proposals`). It has not been merged. Pull request #2 for
-  expense/payment proposals and pull request #1 for sale proposals remain open and unmerged.
-  CI run 40830255747 was dispatched manually because the workflow only runs automatically on
-  pull requests whose base is `main`.
-- Open follow-up: pull request #1 is green in CI, but the Vercel preview is blocked on missing
-  repository and Vercel environment values, not on code. See the Phase 7 session notes for the
-  exact failure and prerequisites. The preview is deferred; a real friends test should use
-  Tailscale or Cloudflare Tunnel.
+- Phase 7.2 customer, product, and stock proposals are complete and
+  verified locally. The assistant can prepare a signed sale, expense,
+  khata repayment, customer, new product, product edit, or stock
+  adjustment; only the signed-in shopkeeper can confirm it.
+
+  All PRs in the stack are now merged into `main`:
+  - PR #1: sale proposals (Phase 7)
+  - PR #2: expense and payment proposals (Phase 7.1)
+  - PR #3: customer, product, and stock proposals (Phase 7.2)
+  - PR #4: Pashto support (Phase 8)
 
 ## Completed
 
@@ -471,28 +471,27 @@ Update this file after every meaningful implementation change.
 ## Current Phase
 
 - Phase 8 — Pashto support: **Complete** (Pashto UI with RTL layout, conversational
-  assistant in Pashto, product aliases, Pashto input handling). Pull request #4 open.
+  assistant in Pashto, product aliases, Pashto input handling). Pull request #4 merged
+  into main.
 
 ## Current Goal
 
-- Deliver Phase 8 as small, verifiable slices: language/RTL foundation → translated shell
-  and navigation → screen strings → assistant prompts/tool labels/cards → Pashto product and
-  customer input handling → QA in English and Pashto. Build nothing outside this scope
-  (voice, camera, thermal printing are later phases).
-- Phase 8 is complete and pushed on branch `phase-8-pashto-support`; pull request #4 is open
-  (https://github.com/Eng-AttaUllah/AI-Shopkeeper/pull/4) based on
-  `phase-7c-customer-product-stock-proposals`. Kept unmerged until the owner decides merge
-  order; PR #1, #2, and #3 remain unmerged.
+- Phase 0 through Phase 8 are complete and merged into `main`. All PRs (#1, #2, #3, #4)
+  have been merged in stack order. Next possible phase is Phase 9 (voice input), pending
+  owner decision.
 
 ## Next Up
 
-- Slice 8.0: docs resolution and Phase 8 scope/acceptance criteria (this session).
+- Slice 8.0: docs resolution and Phase 8 scope/acceptance criteria. **Complete.**
 - Slice 8.1: i18n/RTL foundation — locale cookie, `lang`/`dir`, Pashto font, translated shell
-  and navigation.
+  and navigation. **Complete.**
 - Slice 8.2: Pashto assistant — system prompt, suggestions, tool labels, proposal cards.
+  **Complete.**
 - Slice 8.3: Pashto screens — all pages translated. **Complete.**
-- Slice 8.4: Pashto input/aliases — Unicode normalization, Pashto digits, bidi-safe inputs. **Complete.**
-- Slice 8.5: QA in English and Pashto at 360px and desktop; typecheck/lint/test/build pass. **Complete** (automated checks pass; browser check at 360px requires a real device).
+- Slice 8.4: Pashto input/aliases — Unicode normalization, Pashto digits, bidi-safe inputs.
+  **Complete.**
+- Slice 8.5: QA in English and Pashto at 360px and desktop; typecheck/lint/test/build pass.
+  **Complete** (automated checks pass; browser check at 360px requires a real device).
 
 ## Open Questions
 
