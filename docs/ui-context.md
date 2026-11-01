@@ -110,8 +110,9 @@ as protected files:
   until the shopkeeper is signed in.
 - **Assistant:** one card with a **Read-only · confirm to save** badge, a scrollable
   transcript, and a composer fixed to the bottom of the card. The empty state shows a short
-  prompt and suggested prompts as large tap targets, including a sale, an expense, and a khata
-  payment example. User messages are right-aligned in the teal accent with white text;
+  prompt and suggested prompts as large tap targets, including a sale, an expense, a khata
+  payment, a customer, a product, and a stock example. User messages are right-aligned in the
+  teal accent with white text;
   assistant messages are left-aligned on a white surface. Under an answer, show the checks used
   as small labels ("Checked: Sales summary"). While waiting, show a pending bubble ("Checking
   the shop…") and disable the composer. If the provider is not configured, replace the chat
@@ -120,9 +121,9 @@ as protected files:
   not the main navigation.
 - **Proposal cards:** warning-tinted, never the success colour. Each card states plainly that
   nothing is saved and the assistant cannot confirm it. While confirming, disable both buttons
-  and show "Recording…". On success, replace the card with a success panel and a link to the
-  record; on failure, keep the card and show an inline error. A confirmed card must not be
-  confirmable again.
+  and show "Recording…", "Creating…", or "Saving…" as appropriate. On success, replace the
+  card with a success panel and a link to the record; on failure, keep the card and show an
+  inline error. A confirmed card must not be confirmable again.
   - **Sale:** heading **Proposed sale — not saved yet**; show the lines, unit prices, subtotal,
     discount, total, payment method, customer, cash received, change, and expiry. Primary
     action **Confirm sale**; secondary **Dismiss**; success link **View receipt**.
@@ -132,6 +133,18 @@ as protected files:
   - **Payment:** heading **Proposed payment — not saved yet**; show customer, amount, khata
     before, khata after, note, and expiry. Primary action **Confirm payment**; secondary
     **Dismiss**; success link **View customer**.
+  - **Customer:** heading **Proposed customer — not saved yet**; show name, phone, note, and
+    expiry. Primary action **Confirm customer**; secondary **Dismiss**; success link
+    **View customer**.
+  - **Product:** heading **Proposed product — not saved yet**; show name, unit, category, cost
+    and sale prices, opening stock, low-stock level, barcode, aliases, and expiry. Primary
+    action **Confirm product**; secondary **Dismiss**; success link **View product**.
+  - **Product edit:** heading **Proposed product change — not saved yet**; show each changed
+    field with its before and after value, and expiry. Primary action **Confirm changes**;
+    secondary **Dismiss**; success link **View product**.
+  - **Stock adjustment:** heading **Proposed stock adjustment — not saved yet**; show the
+    product, stock before, signed change, stock after, reason, note, and expiry. Primary action
+    **Confirm adjustment**; secondary **Dismiss**; success link **View product**.
 - **Modals:** centered overlay with a dimmed backdrop. Use `alert-dialog` for destructive
   confirmations (voiding a sale) and `dialog` for editing.
 - **Empty states:** every list has a short explanation and the action that fills it ("No

@@ -5,9 +5,13 @@ import { revalidatePath } from "next/cache";
 import { getChatProvider, isAssistantConfigured } from "@/lib/ai/config";
 import { requireUser } from "@/lib/require-user";
 import { fail, ok, type Result } from "@/lib/result";
+import { confirmCustomerProposal } from "@/modules/assistant/confirm-customer";
 import { confirmExpenseProposal } from "@/modules/assistant/confirm-expense";
 import { confirmPaymentProposal } from "@/modules/assistant/confirm-payment";
+import { confirmProductProposal } from "@/modules/assistant/confirm-product";
+import { confirmProductUpdateProposal } from "@/modules/assistant/confirm-product-update";
 import { confirmSaleProposal } from "@/modules/assistant/confirm-sale";
+import { confirmStockAdjustmentProposal } from "@/modules/assistant/confirm-stock-adjustment";
 import {
   assistantRequestSchema,
   type AssistantHistoryTurn,
@@ -231,5 +235,205 @@ export async function confirmPaymentProposalAction(
     console.error("Payment proposal confirmation failed:", error);
 
     return fail("The payment could not be confirmed. Please try again.");
+  }
+}
+
+export type ConfirmCustomerProposalActionResult = {
+  customerId: string;
+  name: string;
+  alreadyConfirmed: boolean;
+};
+
+/**
+ * Write a customer that the shopkeeper explicitly confirmed.
+ *
+ * The token is signed, bound to this user, and short-lived. The customer
+ * service writes the draft and audit row in one transaction, and the unique
+ * proposal id makes a replay idempotent.
+ */
+export async function confirmCustomerProposalAction(
+  token: string,
+): Promise<Result<ConfirmCustomerProposalActionResult>> {
+  const user = await requireUser();
+
+  if (!isValidProposalToken(token)) {
+    return invalidProposalToken();
+  }
+
+  try {
+    const result = await confirmCustomerProposal({
+      token,
+      userId: user.id,
+      actor: user.username,
+    });
+
+    if (!result.ok) {
+      return result;
+    }
+
+    revalidatePath("/");
+    revalidatePath("/customers");
+    revalidatePath("/sell");
+
+    return ok({
+      customerId: result.data.customer.id,
+      name: result.data.customer.name,
+      alreadyConfirmed: result.data.alreadyConfirmed,
+    });
+  } catch (error) {
+    console.error("Customer proposal confirmation failed:", error);
+
+    return fail("The customer could not be confirmed. Please try again.");
+  }
+}
+
+export type ConfirmProductProposalActionResult = {
+  productId: string;
+  name: string;
+  alreadyConfirmed: boolean;
+};
+
+/**
+ * Write a product and its opening stock that the shopkeeper explicitly
+ * confirmed. The token is signed, bound to this user, and short-lived.
+ */
+export async function confirmProductProposalAction(
+  token: string,
+): Promise<Result<ConfirmProductProposalActionResult>> {
+  const user = await requireUser();
+
+  if (!isValidProposalToken(token)) {
+    return invalidProposalToken();
+  }
+
+  try {
+    const result = await confirmProductProposal({
+      token,
+      userId: user.id,
+      actor: user.username,
+    });
+
+    if (!result.ok) {
+      return result;
+    }
+
+    revalidatePath("/");
+    revalidatePath("/products");
+    revalidatePath("/sell");
+
+    return ok({
+      productId: result.data.product.id,
+      name: result.data.product.name,
+      alreadyConfirmed: result.data.alreadyConfirmed,
+    });
+  } catch (error) {
+    console.error("Product proposal confirmation failed:", error);
+
+    return fail("The product could not be confirmed. Please try again.");
+  }
+}
+
+export type ConfirmProductUpdateProposalActionResult = {
+  productId: string;
+  name: string;
+  alreadyConfirmed: boolean;
+};
+
+/**
+ * Write a product edit that the shopkeeper explicitly confirmed.
+ *
+ * The signed before-state is re-checked inside the transaction, so a product
+ * changed after the proposal was prepared is rejected instead of silently
+ * overwritten.
+ */
+export async function confirmProductUpdateProposalAction(
+  token: string,
+): Promise<Result<ConfirmProductUpdateProposalActionResult>> {
+  const user = await requireUser();
+
+  if (!isValidProposalToken(token)) {
+    return invalidProposalToken();
+  }
+
+  try {
+    const result = await confirmProductUpdateProposal({
+      token,
+      userId: user.id,
+      actor: user.username,
+    });
+
+    if (!result.ok) {
+      return result;
+    }
+
+    revalidatePath("/");
+    revalidatePath("/products");
+    revalidatePath(`/products/${result.data.product.id}`);
+    revalidatePath("/sell");
+
+    return ok({
+      productId: result.data.product.id,
+      name: result.data.product.name,
+      alreadyConfirmed: result.data.alreadyConfirmed,
+    });
+  } catch (error) {
+    console.error("Product update proposal confirmation failed:", error);
+
+    return fail("The product changes could not be confirmed. Please try again.");
+  }
+}
+
+export type ConfirmStockAdjustmentProposalActionResult = {
+  productId: string;
+  productName: string;
+  newStockMilli: number;
+  unit: string;
+  alreadyConfirmed: boolean;
+};
+
+/**
+ * Write a stock adjustment that the shopkeeper explicitly confirmed.
+ *
+ * The stock service re-reads the current quantity inside the transaction and
+ * refuses the write if it changed, so the owner never applies an adjustment to
+ * a different stock level from the one they saw.
+ */
+export async function confirmStockAdjustmentProposalAction(
+  token: string,
+): Promise<Result<ConfirmStockAdjustmentProposalActionResult>> {
+  const user = await requireUser();
+
+  if (!isValidProposalToken(token)) {
+    return invalidProposalToken();
+  }
+
+  try {
+    const result = await confirmStockAdjustmentProposal({
+      token,
+      userId: user.id,
+      actor: user.username,
+    });
+
+    if (!result.ok) {
+      return result;
+    }
+
+    revalidatePath("/");
+    revalidatePath("/products");
+    revalidatePath(`/products/${result.data.product.id}`);
+    revalidatePath("/sell");
+    revalidatePath("/reports");
+
+    return ok({
+      productId: result.data.product.id,
+      productName: result.data.product.name,
+      newStockMilli: result.data.product.stockMilli,
+      unit: result.data.product.unit,
+      alreadyConfirmed: result.data.alreadyConfirmed,
+    });
+  } catch (error) {
+    console.error("Stock adjustment proposal confirmation failed:", error);
+
+    return fail("The stock adjustment could not be confirmed. Please try again.");
   }
 }

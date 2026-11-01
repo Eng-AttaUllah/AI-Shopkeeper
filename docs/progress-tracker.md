@@ -4,20 +4,22 @@ Update this file after every meaningful implementation change.
 
 ## Current Phase
 
-- Phase 7 — Assistant proposals: **Complete** (sales, expenses, and khata repayments;
-  customer, product, and stock proposals not built)
+- Phase 7 — Assistant proposals: **Complete** (sales, expenses, khata repayments, customer
+  creation, product creation, product edits, and stock adjustments)
 
 ## Current Goal
 
-- Nothing in progress. Phase 7.1 expense and payment proposals are complete and verified end
-  to end. The assistant can prepare a signed sale, expense, or khata repayment; only the
-  signed-in shopkeeper can confirm it. Next is Phase 8 — Pashto support, unless the owner first
-  asks to extend Phase 7 to customer creation, product changes, or stock adjustments; each
-  needs its own confirmation design.
-- Branch `phase-7b-expense-payment-proposals` is stacked on the Phase 7 branch and pushed as
-  pull request #2 (base `phase-7-assistant-sale-proposals`). It has not been merged. Pull
-  request #1 for sale proposals remains open and unmerged. CI run 40818562612 is green for the
-  implementation commit.
+- Nothing in progress. Phase 7.2 customer, product, and stock proposals are complete and
+  verified locally. The assistant can prepare a signed sale, expense, khata repayment,
+  customer, new product, product edit, or stock adjustment; only the signed-in shopkeeper can
+  confirm it. Next is Phase 8 — Pashto support, unless the owner first asks to extend Phase 7
+  further, for example customer edits or product activation.
+- Branch `phase-7c-customer-product-stock-proposals` is stacked on
+  `phase-7b-expense-payment-proposals` and pushed as pull request #3 (base
+  `phase-7b-expense-payment-proposals`). It has not been merged. Pull request #2 for
+  expense/payment proposals and pull request #1 for sale proposals remain open and unmerged.
+  CI run 40830255747 was dispatched manually because the workflow only runs automatically on
+  pull requests whose base is `main`.
 - Open follow-up: pull request #1 is green in CI, but the Vercel preview is blocked on missing
   repository and Vercel environment values, not on code. See the Phase 7 session notes for the
   exact failure and prerequisites. The preview is deferred; a real friends test should use
@@ -414,17 +416,68 @@ Update this file after every meaningful implementation change.
   Rs. 120.00 and left the derived balance at Rs. 200.00. `npm run typecheck`, `npm run lint`,
   `npm test`, and `npm run build` pass.
 
+### Phase 7.2 — Assistant customer, product, and stock proposals (complete)
+
+- One additive schema change: `Customer.proposalId`, `Product.proposalId`,
+  `StockMovement.proposalId`, and `AuditLog.proposalId`, all `String? @unique`, migration
+  `20261029160000_add_customer_product_stock_proposal_id`. Customer creation, product creation,
+  and stock adjustments use the row-level id for idempotency. Product edits update an existing
+  row, so the audit row is their idempotency record. Ordinary screen entries leave every
+  proposal id null.
+- `src/modules/customers/preview.ts` and `src/modules/products/preview.ts` — signed preview
+  schemas and comparison helpers for customer creation, product creation, product edits, and
+  stock adjustments. Product edit previews contain both the before and after snapshots; stock
+  previews contain the stock before, signed delta, and stock after.
+- `src/modules/customers/service.ts` — `createCustomerWithStatus` supports `proposalId` and
+  `expectedPreview`, writes the customer and audit row in one transaction, returns
+  `alreadyConfirmed`, and handles a concurrent unique conflict. `createCustomer` keeps its
+  original contract.
+- `src/modules/products/service.ts` — `createProductWithStatus`, `updateProductWithStatus`, and
+  `adjustStockWithStatus` support `proposalId` and `expectedPreview`, return
+  `alreadyConfirmed`, and handle a concurrent unique conflict. Product creation still writes
+  the OPENING movement in the same transaction. Product edits compare the signed before-state
+  with the current row and reject a stale proposal. Stock adjustments re-read the current stock
+  and reject a stale preview or a below-zero result. `createProduct`, `updateProduct`, and
+  `adjustStock` keep their original contracts.
+- `src/modules/assistant/customer-proposal.ts`, `product-proposal.ts`,
+  `product-update-proposal.ts`, and `stock-adjustment-proposal.ts` — `propose_customer`,
+  `propose_product`, `propose_product_update`, and `propose_stock_adjustment`. They resolve
+  names, aliases, barcodes, units, and stock reasons; validate against the same Zod schemas as
+  the screens; reject duplicates and below-zero stock; sign the draft and preview; and never
+  write.
+- `src/modules/assistant/proposal-schema.ts` and `proposal-token.ts` — signed payloads and
+  purpose-specific token wrappers for the four new kinds. `AssistantProposal` now covers seven
+  proposal kinds; the one-proposal-per-answer rule applies across all of them.
+- `src/modules/assistant/confirm-customer.ts`, `confirm-product.ts`,
+  `confirm-product-update.ts`, and `confirm-stock-adjustment.ts` — verify the token and call the
+  corresponding service with the signed draft, preview, and proposal id.
+- `src/app/assistant/actions.ts` — added the four confirmation actions, each calling
+  `requireUser()` and revalidating the affected paths.
+- `src/components/assistant/customer-proposal-card.tsx`,
+  `product-proposal-card.tsx`, `product-update-proposal-card.tsx`, and
+  `stock-adjustment-proposal-card.tsx` — warning-tinted cards with expiry, before/after values,
+  **Confirm**/**Dismiss**, pending/error states, and a success panel with a link to the record.
+  `proposal-card.tsx` renders all seven kinds.
+- `src/lib/audit.ts` — `writeAudit` accepts an optional `proposalId`; the audit row stores it in
+  a unique column when it is the idempotency record for a product edit.
+- Tests: 200 passing across 24 files. New tests cover the registry, customer creation and
+  duplicate rejection, product creation with opening stock, product edits with stale rejection
+  and replay, stock adjustments with stale/below-zero rejection and replay, audit source and
+  actor, and proposal id storage.
+- Verified locally with `npm run typecheck`, `npm run lint`, `npm test`, and `npm run build`.
+  The new cards have not yet been clicked in a browser; the service and action paths are
+  covered by the tests.
+
 ## In Progress
 
 - None.
 
 ## Next Up
 
-Phase 8 — Pashto support, unless the owner asks to extend Phase 7 to other record types first.
-The sale, expense, and payment proposal designs are documented in `docs/architecture.md`; any
-customer-creation, product, or stock-adjustment proposal needs its own explicit-confirmation
-design before a write tool is added. The read-only registry in
-`src/modules/assistant/tools.ts` must stay read-only.
+Phase 8 — Pashto support, unless the owner asks to extend Phase 7 further. The seven proposal
+designs are documented in `docs/architecture.md`; any new proposal kind, such as customer edits
+or product activation, needs its own explicit-confirmation design before a write tool is added.
+The read-only registry in `src/modules/assistant/tools.ts` must stay read-only.
 
 ## Open Questions
 
@@ -440,12 +493,14 @@ design before a write tool is added. The read-only registry in
   signs in.
 - Should assistant answers be saved for review? Phase 6 deliberately keeps history in the
   browser only; a saved transcript would need a retention and privacy decision.
-- Should Phase 7 expand to customer creation, product changes, or stock adjustments? Each
-  needs its own explicit-confirmation design; the current slice is sales, expenses, and khata
-  repayments only.
+- Should Phase 7 expand further to customer edits, product activation/deactivation, or customer
+  deletion? Each needs its own explicit-confirmation design; the current slice is sales,
+  expenses, khata repayments, customer creation, product creation, product edits, and stock
+  adjustments.
 - Should unconfirmed proposals be persisted for review, or remain signed, short-lived tokens?
-  The current choice stores nothing until confirmation; only the resulting sale, expense, or
-  payment keeps the proposal id.
+  The current choice stores nothing until confirmation; the resulting customer, product, stock
+  movement, sale, expense, or payment keeps the proposal id. A product edit keeps it on its
+  audit row because the product row is updated in place.
 - Should a payment proposal be allowed against a customer with no outstanding balance, for
   example an advance? The current choice rejects it so the derived khata balance never goes
   negative; an advance would need a new record type and reporting rule.
@@ -624,22 +679,27 @@ design before a write tool is added. The read-only registry in
 - **A proposal is signed, short-lived, user-bound, and not persisted.** Each proposal tool
   reads and prices or validates the draft, then signs the draft and preview with a
   purpose-specific HMAC key derived from `AUTH_SECRET`. It is bound to the signed-in user and
-  expires after 15 minutes. Nothing is written until the shopkeeper confirms; only the
-  resulting sale, expense, or payment stores the proposal id.
+  expires after 15 minutes. Nothing is written until the shopkeeper confirms; the resulting
+  row stores the proposal id.
 - **Confirmation re-checks the preview inside the write transaction.** `createSaleWithStatus`
   shares `priceSale` with the sell screen and compares the current lines and totals with the
   signed preview before writing. `recordPaymentWithStatus` re-reads the derived khata balance
   and rejects a stale balance or overpayment. `createExpenseWithStatus` compares the signed
   draft with the preview. A change produces a readable rejection, so the owner never gets a
   different record from the one they saw.
-- **`Sale.proposalId`, `Expense.proposalId`, and `Payment.proposalId` are nullable and unique
-  for idempotency.** A replayed confirmation returns the existing row instead of creating a
-  second one. Ordinary screen entries leave them null. For payments the idempotency lookup
-  runs before the balance check, so a later repayment does not make the original confirmation
-  look stale.
-- **Only sales, expenses, and khata repayments are proposed in this slice.** Customer
-  creation, product changes, and stock adjustments remain out of scope until each has its own
-  explicit-confirmation design.
+- **`Sale.proposalId`, `Expense.proposalId`, `Payment.proposalId`, `Customer.proposalId`,
+  `Product.proposalId`, and `StockMovement.proposalId` are nullable and unique for
+  idempotency.** A replayed confirmation returns the existing row instead of creating a second
+  one. Ordinary screen entries leave them null. For payments the idempotency lookup runs before
+  the balance check, so a later repayment does not make the original confirmation look stale.
+- **A product edit uses its audit row for idempotency.** The product row is updated in place,
+  so a unique `AuditLog.proposalId` marks the confirmed edit. The signed preview carries both
+  the before and after snapshots; confirmation compares the current product with the signed
+  before-state and rejects a stale proposal.
+- **The original Phase 7 slice was sales, expenses, and khata repayments; Phase 7.2 adds
+  customer creation, product creation, product edits, and stock adjustments.** Customer edits,
+  customer deletion, and product activation/deactivation remain out of scope until each has
+  its own explicit-confirmation design.
 - **The AI provider is an OpenAI-compatible HTTP endpoint, not a vendor SDK.** One adapter in
   `src/lib/ai/openai-compatible.ts` works with OpenAI, OpenRouter, Groq, LM Studio, Ollama,
   and similar services. Configuration is `AI_BASE_URL`, `AI_API_KEY`, and `AI_MODEL`; no
