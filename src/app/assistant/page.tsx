@@ -18,12 +18,13 @@ export default function AssistantPage() {
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-3xl font-semibold">Assistant</h1>
           <span className="rounded-full bg-brand-soft px-2.5 py-1 text-sm font-medium text-brand">
-            Read-only
+            Read-only · confirm to save
           </span>
         </div>
         <p className="mt-2 text-sm text-ink-muted">
-          Ask about sales, stock, credit, expenses, or cash. The assistant looks
-          up the figures; it cannot change any records.
+          Ask about sales, stock, credit, expenses, or cash. You can also ask
+          the assistant to prepare a sale; nothing is saved until you press
+          Confirm sale.
         </p>
       </header>
 

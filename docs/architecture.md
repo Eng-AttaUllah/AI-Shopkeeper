@@ -13,7 +13,7 @@
 | Tests | Vitest | Unit and integration tests for business logic |
 | Runtime | Node.js 22 on the shop's laptop | Hosts the app for the local network |
 | Future: camera | Python + OpenCV, separate process | Person/zone detection, clip capture, alert posting |
-| AI (Phase 6) | OpenAI-compatible adapter behind one interface, called with `fetch` | Answers read-only shop questions through approved, typed tools |
+| AI (Phases 6–7) | OpenAI-compatible adapter behind one interface, called with `fetch` | Answers read-only shop questions and prepares signed sale proposals that only the shopkeeper can confirm |
 
 ## System Boundaries
 
@@ -22,8 +22,9 @@
 - `src/modules/` — Business logic, one folder per domain (`products`, `sales`, `customers`,
   `reports`, `expenses`, `cash`, `assistant`). Each folder exposes `schema.ts` (Zod),
   `service.ts` (mutations and rules), and `queries.ts` (reads); the assistant also owns its
-  read-only tool registry and range resolver. Owns all invariants. Auth is infrastructure,
-  not a domain module: its config and credential rules live in `src/lib`.
+  read-only tool registry, range resolver, and signed sale-proposal tool. Owns all
+  invariants. Auth is infrastructure, not a domain module: its config and credential rules
+  live in `src/lib`.
 - `src/lib/` — Shared infrastructure: Prisma client, Auth.js configuration and credential
   verification, the OpenAI-compatible AI provider adapter and configuration, money helpers,
   date and timezone helpers, formatting, result/error types, audit and backup utilities.
@@ -124,10 +125,13 @@ from `app`, and `lib` never imports from `modules`.
   that defaults to `local`, so tests and seed code can run outside a session; server actions
   pass `session.user.username`.
 
-## Assistant (Phase 6)
+## Assistant (Phases 6–7)
 
-The assistant is an optional, post-v1 feature. It is **read-only**: it answers questions
-about the shop and cannot create, edit, void, or delete a record.
+The assistant is an optional, post-v1 feature. Phase 6 answers questions about the shop and
+cannot create, edit, void, or delete a record. Phase 7 adds one write-shaped action: the
+assistant can prepare a **sale proposal**, but only the signed-in shopkeeper can confirm it.
+
+### Read-only questions
 
 - **Provider.** Any OpenAI-compatible `/chat/completions` endpoint, called with `fetch` from
   `src/lib/ai/openai-compatible.ts`. Configuration is `AI_BASE_URL`, `AI_API_KEY` (optional
@@ -137,8 +141,8 @@ about the shop and cannot create, edit, void, or delete a record.
   call (for example Gemini's `thought_signature`) is treated as opaque and echoed back
   unchanged on the next turn; it is never executed or shown.
 - **No text-to-SQL and no arbitrary functions.** The model receives a closed list of tool
-  definitions generated from Zod schemas with `z.toJSONSchema`. The registry lives in
-  `src/modules/assistant/tools.ts`; an unknown tool name or invalid arguments are rejected
+  definitions generated from Zod schemas with `z.toJSONSchema`. The read-only registry lives
+  in `src/modules/assistant/tools.ts`; an unknown tool name or invalid arguments are rejected
   before any query runs. The model never sees SQL, table names, or the database.
 - **Approved read-only tools.** `sales_summary`, `top_products`, `product_sales`,
   `low_stock`, `outstanding_credit`, `customer_balance`, `inventory_value`, `slow_moving`,
@@ -150,12 +154,38 @@ about the shop and cannot create, edit, void, or delete a record.
   become a short, safe message; the details are logged on the server. The server action calls
   `requireUser()` and re-validates the question and history with Zod.
 - **No chat persistence.** Conversation history is client state for the open page only. There
-  is no chat table and no schema migration. Reloading `/assistant` clears the transcript.
+  is no chat table. Phase 7 adds only a nullable, unique `Sale.proposalId` for idempotent
+  confirmations, not a transcript. Reloading `/assistant` clears the transcript and any
+  unconfirmed proposal.
 - **Privacy.** The question and the shop figures needed to answer it are sent to the
   configured provider. A local model (for example Ollama) keeps the data on the laptop. The
   API key stays in the server environment and is never sent to the browser.
-- **Write actions are out of scope.** Phase 7 will need a separate, explicit-confirmation
-  design. No write tool may be added to this registry.
+
+### Sale proposals (Phase 7)
+
+- **Separate registry.** The proposal tool `propose_sale` lives in
+  `src/modules/assistant/sale-proposal.ts`, not in the read-only registry
+  `src/modules/assistant/tools.ts`. It reads products and customers, prices the draft with
+  `priceSale`, and returns a signed proposal. It never writes.
+- **Explicit confirmation.** The UI renders a "Proposed sale — not saved yet" card with the
+  lines, totals, payment method, customer, and expiry. The shopkeeper must press **Confirm
+  sale**; the model cannot confirm, and no URL or automatic retry writes the sale.
+- **Signed, short-lived, user-bound.** The proposal payload contains the exact draft and the
+  priced preview. It is signed with a key derived from `AUTH_SECRET` (HMAC-SHA256), bound to
+  the signed-in user id, and expires after 15 minutes. The proposal is not stored; only the
+  resulting sale stores the proposal id.
+- **One transaction, exact preview.** `confirmSaleProposalAction` verifies the token, then
+  calls `createSaleWithStatus` with `proposalId` and `expectedPreview`. The existing sale
+  service re-prices the draft inside its transaction and refuses to write if prices, stock,
+  customer, note, or lines no longer produce the preview the shopkeeper saw. The write
+  creates the sale, lines, stock movements, decrements, audit row, and khata effect together.
+- **Idempotent replay.** `Sale.proposalId` is nullable and unique. A replayed confirmation
+  returns the sale already created instead of creating a second one. Ordinary sell-screen
+  sales leave it null.
+- **Audit.** The sale audit row records the signed-in username and
+  `details.source = "assistant_proposal"`.
+- **Scope.** Only sales are proposed in this slice. Expense, payment, customer, product, and
+  stock-adjustment proposals remain out of scope until their own confirmation designs exist.
 
 ## Invariants
 
@@ -182,8 +212,11 @@ about the shop and cannot create, edit, void, or delete a record.
     boundaries for reports are computed in `Asia/Karachi`.
 11. Business rules live only in `src/modules/`. Route handlers and components orchestrate and
     display; they do not decide.
-12. The AI layer may only call the approved, typed, read-only tool registry in
-    `src/modules/assistant/tools.ts`. Every tool has a Zod input schema and runs on the
-    server; unknown tools and invalid arguments are rejected before execution. The assistant
-    never generates SQL, never estimates or edits a financial figure, and never writes a
-    financial record. Write actions (Phase 7) require a separate explicit-confirmation design.
+12. The AI layer may only call the approved, typed tool registries. Read-only questions use
+    `src/modules/assistant/tools.ts`; sale proposals use the separate signed-proposal tool in
+    `src/modules/assistant/sale-proposal.ts`. Every tool has a Zod input schema and runs on
+    the server; unknown tools and invalid arguments are rejected before execution. The
+    assistant never generates SQL, never estimates or edits a financial figure, and never
+    writes a financial record directly. A sale proposal is signed and short-lived; only the
+    shopkeeper's explicit confirmation action may write it, and the write re-prices the draft
+    inside the transaction and rejects a stale preview.

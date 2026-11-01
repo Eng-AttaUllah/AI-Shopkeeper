@@ -3,8 +3,10 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 
 import { askAssistantAction } from "@/app/assistant/actions";
+import { SaleProposalCard } from "@/components/assistant/sale-proposal-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import type { SaleProposal } from "@/modules/assistant/proposal-schema";
 
 const SUGGESTIONS = [
   "How much did I sell today?",
@@ -20,6 +22,7 @@ type ChatMessage = {
   role: "user" | "assistant";
   content: string;
   tools?: string[];
+  proposal?: SaleProposal;
 };
 
 let nextMessageId = 0;
@@ -67,6 +70,7 @@ export function AssistantChat() {
               role: "assistant",
               content: result.data.answer,
               tools: result.data.tools,
+              proposal: result.data.proposal,
             },
           ]);
         } else {
@@ -92,7 +96,8 @@ export function AssistantChat() {
           <div className="mx-auto max-w-xl py-6 text-center">
             <p className="text-base font-medium">What would you like to know?</p>
             <p className="mt-1 text-sm text-ink-muted">
-              Try one of these, or type your own question below.
+              Try one of these, or ask me to prepare a sale. Nothing is saved
+              until you confirm it.
             </p>
             <div className="mt-4 flex flex-wrap justify-center gap-2">
               {SUGGESTIONS.map((suggestion) => (
@@ -147,6 +152,9 @@ export function AssistantChat() {
                       </span>
                     ))}
                   </div>
+                ) : null}
+                {message.proposal ? (
+                  <SaleProposalCard proposal={message.proposal} />
                 ) : null}
               </div>
             </div>

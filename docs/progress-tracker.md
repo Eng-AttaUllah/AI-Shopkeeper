@@ -4,13 +4,18 @@ Update this file after every meaningful implementation change.
 
 ## Current Phase
 
-- Phase 6 — Assistant (read-only): **Complete**
+- Phase 7 — Assistant sale proposals: **Complete** (sales only; other record types not built)
 
 ## Current Goal
 
-- Nothing in progress. Phase 6 is complete and verified end to end. The read-only assistant
-  answers shop questions from the real database through an approved tool registry. Next is
-  Phase 7 — assistant actions.
+- Nothing in progress. Phase 7 sale proposals are complete and verified end to end. The
+  assistant can prepare a signed, priced sale proposal, but only the signed-in shopkeeper can
+  confirm it. Next is Phase 8 — Pashto support, unless the owner first asks to extend Phase 7
+  to expenses, payments, customer creation, or stock adjustments; each needs its own
+  confirmation design.
+- Open follow-up: pull request #1 is green in CI, but the Vercel preview is blocked on missing
+  repository and Vercel environment values, not on code. See the Phase 7 session notes for the
+  exact failure and prerequisites.
 
 ## Completed
 
@@ -305,16 +310,56 @@ Update this file after every meaningful implementation change.
   OpenAI-compatible server and the dev database. `npm run typecheck`, `npm run lint`,
   `npm test`, and `npm run build` pass.
 
+### Phase 7 — Assistant sale proposals (complete)
+
+- One schema change: `Sale.proposalId` (`String? @unique`), migration
+  `20261028120000_add_sale_proposal_id`. Ordinary sell-screen sales leave it null; a confirmed
+  proposal stores its id so a replay cannot create a second sale.
+- `src/modules/sales/pricing.ts` — shared `priceSale` reads products and customers, merges
+  duplicate lines, validates stock, discount, and cash/credit rules, and returns the exact
+  lines, totals, and snapshots. `createSale` now uses it, so the sell screen and a proposal
+  cannot drift. `toSalePreview` and `matchesSalePreview` compare the shopkeeper-facing
+  preview.
+- `src/modules/sales/service.ts` — `createSaleWithStatus` supports `proposalId` and
+  `expectedPreview`, returns `alreadyConfirmed`, and handles a concurrent unique-proposal
+  conflict. `createSale` keeps its original contract for the sell screen.
+- `src/modules/assistant/sale-proposal.ts` — `propose_sale`, separate from the read-only
+  registry. Resolves product names/aliases/barcodes and customer names/phones, prices the
+  draft, and returns a signed proposal plus a model-facing summary. It never writes.
+- `src/modules/assistant/proposal-token.ts` and `proposal-schema.ts` — HMAC-SHA256 token
+  derived from `AUTH_SECRET`, bound to the user id, 15-minute expiry, signed draft and preview.
+- `src/modules/assistant/confirm-sale.ts` — verifies the token and calls
+  `createSaleWithStatus` with the signed proposal id and preview.
+- `src/app/assistant/actions.ts` — `confirmSaleProposalAction` calls `requireUser()`, verifies
+  the token, writes through the sale service, and revalidates `/`, `/sell`, `/products`,
+  `/sales`, and `/customers`. `askAssistantAction` is still read-only and passes the user id.
+- `src/components/assistant/sale-proposal-card.tsx` — "Proposed sale — not saved yet" card
+  with lines, totals, payment/customer, expiry, **Confirm sale**, **Dismiss**, pending/error
+  states, and a receipt link on success. The chat renders it under the answer.
+- `/assistant` badge and copy now say "Read-only · confirm to save"; the empty state mentions
+  proposals. The read-only registry in `tools.ts` is unchanged.
+- Tests: 175 passing across 21 files. New tests cover token signing/tamper/expiry/wrong user,
+  proposal resolution (name, alias, barcode, customer phone, ambiguity, unknown, stock),
+  confirmation (write, audit actor, replay idempotency, stale price/stock, wrong user,
+  expiry, tamper, credit khata), and the assistant service capturing a proposal without
+  writing or exposing the token to the model.
+- Verified end to end with the real Gemini provider: "Sell 1 piece of Dove Shampo for cash."
+  returned a proposal for Rs. 400.00 and did not write. A live run against the disposable test
+  database confirmed a Rs. 25.00 sale for a seeded item: stock 5 → 4, audit actor
+  `live-owner`, `details.source = "assistant_proposal"`. `npm run typecheck`, `npm run lint`,
+  `npm test`, and `npm run build` pass.
+
 ## In Progress
 
 - None.
 
 ## Next Up
 
-Phase 7 — Assistant actions. The read-only assistant is complete; Phases 0–5.5 remain the
-sellable v1 and Phase 6 is the first post-v1 feature. Phase 7 may add write proposals only
-with an explicit-confirmation design, separate from the read-only tool registry. Do not add a
-write tool to `src/modules/assistant/tools.ts` before that design is documented.
+Phase 8 — Pashto support, unless the owner asks to extend Phase 7 to other record types first.
+The sale-proposal design is documented in `docs/architecture.md`; any expense, payment,
+customer, product, or stock-adjustment proposal needs its own explicit-confirmation design
+before a write tool is added. The read-only registry in `src/modules/assistant/tools.ts` must
+stay read-only.
 
 ## Open Questions
 
@@ -330,6 +375,16 @@ write tool to `src/modules/assistant/tools.ts` before that design is documented.
   signs in.
 - Should assistant answers be saved for review? Phase 6 deliberately keeps history in the
   browser only; a saved transcript would need a retention and privacy decision.
+- Should Phase 7 expand to expenses, payments, customer creation, product changes, or stock
+  adjustments? Each needs its own explicit-confirmation design; the current slice is sales
+  only.
+- Should unconfirmed proposals be persisted for review, or remain signed, short-lived tokens?
+  The current choice stores nothing until confirmation; only the resulting sale keeps the
+  proposal id.
+- Is a 15-minute proposal expiry right for a busy counter? A shorter window is safer; a longer
+  one is more convenient when a customer steps away.
+- Should a stale proposal be rejected (current) or re-priced and shown for a second
+  confirmation? Rejecting guarantees the owner gets exactly the preview they saw.
 - Should the shop's day be treated as starting at midnight, or does the shopkeeper consider
   the business day to end after closing (for example 2 a.m.)? Affects "today" reporting. The
   current implementation uses midnight.
@@ -493,10 +548,25 @@ write tool to `src/modules/assistant/tools.ts` before that design is documented.
 - **`/more` groups the less frequent tools.** Expenses, Day close, Backups, and Audit log sit
   behind one nav link instead of making the phone header longer.
 
-- **The assistant is read-only and tool-based, not text-to-SQL.** The model receives a closed
-  list of typed tools generated from Zod schemas. It never sees SQL or the database and cannot
-  write. Unknown tools and invalid arguments are rejected before execution. This keeps the
-  invariants enforceable even when the model is wrong.
+- **The assistant is tool-based, not text-to-SQL.** Read-only questions use a closed list of
+  typed tools generated from Zod schemas. Phase 7 adds a separate signed sale-proposal tool;
+  the model never sees SQL or the database and cannot write directly. Unknown tools and
+  invalid arguments are rejected before execution. This keeps the invariants enforceable even
+  when the model is wrong.
+- **A sale proposal is signed, short-lived, user-bound, and not persisted.** The proposal tool
+  reads and prices the draft, then signs the draft and preview with an HMAC key derived from
+  `AUTH_SECRET`. It is bound to the signed-in user and expires after 15 minutes. Nothing is
+  written until the shopkeeper confirms; only the resulting sale stores the proposal id.
+- **Confirmation re-prices inside the write transaction and rejects a stale preview.**
+  `createSaleWithStatus` shares `priceSale` with the sell screen and compares the current
+  lines and totals with the signed preview before writing. A price or stock change produces a
+  readable rejection, so the owner never gets a different sale from the one they saw.
+- **`Sale.proposalId` is nullable and unique for idempotency.** A replayed confirmation
+  returns the existing sale instead of creating a second one. Ordinary sell-screen sales leave
+  it null. This is the only schema change Phase 7 adds.
+- **Only sales are proposed in this slice.** Expenses, payments, customer creation, product
+  changes, and stock adjustments remain out of scope until each has its own
+  explicit-confirmation design.
 - **The AI provider is an OpenAI-compatible HTTP endpoint, not a vendor SDK.** One adapter in
   `src/lib/ai/openai-compatible.ts` works with OpenAI, OpenRouter, Groq, LM Studio, Ollama,
   and similar services. Configuration is `AI_BASE_URL`, `AI_API_KEY`, and `AI_MODEL`; no
@@ -509,11 +579,13 @@ write tool to `src/modules/assistant/tools.ts` before that design is documented.
 - **The assistant is optional and the rest of the app stays offline-first.** If the endpoint
   is not configured, `/assistant` shows setup instructions and every other screen works. No
   part of the sale, credit, report, backup, or sign-in path calls the provider.
-- **Assistant tools reuse the screen queries.** Sales, credit, stock, expenses, and cash tools
-  call the same `src/modules` queries the dashboard and reports use, so the assistant cannot
-  drift into a second set of reporting rules.
-- **The assistant has no chat persistence in Phase 6.** History is client state for the open
-  page, capped at six turns. There is no chat table, no migration, and no transcript on disk.
+- **Assistant tools reuse the screen queries and pricing.** Sales, credit, stock, expenses, and
+  cash tools call the same `src/modules` queries the dashboard and reports use; proposals and
+  the sell screen share `priceSale`. The assistant cannot drift into a second set of reporting
+  or pricing rules.
+- **The assistant has no chat persistence.** History is client state for the open page, capped
+  at six turns. There is no chat table and no transcript on disk. Phase 7 adds only
+  `Sale.proposalId` for idempotent confirmations, not a stored proposal or chat history.
 - **Assistant limits are deliberately small.** A question is at most 500 characters; one
   answer uses at most four model rounds and eight tool calls. This bounds latency and provider
   cost on a shop laptop and keeps a confused model from looping.
@@ -644,3 +716,34 @@ write tool to `src/modules/assistant/tools.ts` before that design is documented.
   answered "Rs. 0.00 today across 0 sales." The loop used the real database read-only.
 - The assistant chat and the Phase 5.5 login form still need a final phone check on the LAN
   URL. Both are designed for a phone, but a real-device pass has not been recorded.
+- Phase 7 added migration `20261028120000_add_sale_proposal_id`, applied to `prisma/dev.db`;
+  the Prisma client was regenerated. The migration only adds a nullable `proposalId` column and
+  a unique index. `migrate dev` refuses to run non-interactively in this environment, so the
+  migration SQL was written and applied with `migrate deploy`. Restart the dev server after
+  `prisma generate`; the long-running process keeps the old client.
+- The shared `priceSale` refactor keeps the sell-screen contract: the existing 13 sales tests
+  still pass, including stock rejection, discount, change, and credit rules. The proposal and
+  confirmation tests use the same pricing path.
+- The proposal token is signed with a key derived from `AUTH_SECRET` and is not sent to the
+  model. Only the model-facing summary goes into the tool message; the browser receives the
+  token for the confirmation card. Changing `AUTH_SECRET` invalidates unconfirmed proposals,
+  which is acceptable.
+- Customer lookup in the proposal tool reads all customers and normalizes phone digits. Passing
+  a spaced phone to `listCustomersWithBalances(search)` failed to match a stored phone with
+  dashes because the query uses `contains`; normalizing in memory fixed it.
+- A live Gemini check prepared a proposal for "Sell 1 piece of Dove Shampo for cash." for
+  Rs. 400.00 and wrote nothing. A second live run against the disposable `prisma/test.db`
+  confirmed a Rs. 25.00 sale for a seeded item: stock 5 → 4, audit actor `live-owner`,
+  `details.source = "assistant_proposal"`. The next test run's global setup deletes that test
+  database and rebuilds it.
+- Phase 7 work is on branch `phase-7-assistant-sale-proposals`, pushed in commits `c0d423a`,
+  `e5d525d`, and `442da3b`. Pull request #1 is open:
+  https://github.com/Eng-AttaUllah/AI-Shopkeeper/pull/1. CI passed (typecheck, lint, test,
+  build). The Vercel Preview Actions workflow failed at the deploy step because the
+  `VERCEL_TOKEN` repository secret is not set; the Vercel Git integration deployment also
+  failed, likely because the Vercel Preview environment lacks `DATABASE_URL` and
+  `AUTH_SECRET`. No preview URL exists yet. The repository variables `VERCEL_ORG_ID` and
+  `VERCEL_PROJECT_ID` are now set from the existing Vercel project; only the `VERCEL_TOKEN`
+  secret and the Vercel Preview environment values remain. Add them, then rerun the workflow
+  or push a commit. The local environment has a GitHub credential but no `gh` binary; the PR
+  was created through the GitHub API.

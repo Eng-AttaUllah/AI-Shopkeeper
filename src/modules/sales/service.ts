@@ -3,12 +3,16 @@ import { LOCAL_ACTOR, writeAudit } from "@/lib/audit";
 import { prisma } from "@/lib/db";
 import { dateKeyInKarachi } from "@/lib/dates";
 import { formatPaisa } from "@/lib/format";
-import { multiplyPaisa, rupeesToPaisa } from "@/lib/money";
-import { formatQuantity, fromMilli, toMilli } from "@/lib/quantity";
 import { fail, ok, type Result } from "@/lib/result";
 import { fieldErrors } from "@/lib/zod";
 import { outstandingPaisa } from "@/modules/customers/balance";
 
+import {
+  matchesSalePreview,
+  priceSale,
+  SalePricingError,
+  type SalePreview,
+} from "./pricing";
 import type { SaleWithItems } from "./queries";
 import { createSaleSchema, voidSaleSchema } from "./schema";
 
@@ -23,24 +27,11 @@ class ServiceError extends Error {
   }
 }
 
-type SaleLineInput = {
-  productId: string;
-  position: number;
-  productName: string;
-  unit: string;
-  quantityMilli: number;
-  unitPricePaisa: number;
-  unitCostPaisa: number;
-  lineTotalPaisa: number;
-  lineCostPaisa: number;
-};
-
-function emptyToNull(value: string | undefined): string | null {
-  const trimmed = value?.trim();
-  return trimmed ? trimmed : null;
-}
-
 function handleError(error: unknown): Result<never> {
+  if (error instanceof SalePricingError) {
+    return fail(error.message, error.fieldErrors);
+  }
+
   if (error instanceof ServiceError) {
     return fail(error.message, error.fieldErrors);
   }
@@ -76,136 +67,66 @@ async function nextSaleNumber(
  * insufficient stock, snapshots price and cost, creates the sale and its
  * lines, decrements stock, and writes a SALE stock movement per line
  * (invariants 2, 3, 5, 6). Nothing is written when any check fails.
+ *
+ * `createSaleWithStatus` also reports whether an assistant proposal was
+ * already confirmed, so a replayed confirmation is idempotent. `createSale`
+ * keeps the simple sell-screen contract.
  */
-export async function createSale(
+export type CreateSaleOptions = {
+  /** Set only when confirming an assistant proposal. */
+  proposalId?: string;
+  /** The preview the shopkeeper confirmed; the write must match it. */
+  expectedPreview?: SalePreview;
+};
+
+export type CreateSaleOutcome = {
+  sale: SaleWithItems;
+  alreadyConfirmed: boolean;
+};
+
+export async function createSaleWithStatus(
   input: unknown,
   actor: string = LOCAL_ACTOR,
-): Promise<Result<SaleWithItems>> {
+  options: CreateSaleOptions = {},
+): Promise<Result<CreateSaleOutcome>> {
   const parsed = createSaleSchema.safeParse(input);
 
   if (!parsed.success) {
     return fail("Please check the sale details.", fieldErrors(parsed.error));
   }
 
-  const data = parsed.data;
-
-  // Merge duplicate lines so stock is checked once per product.
-  const requestedMilli = new Map<string, number>();
-
-  for (const item of data.items) {
-    const quantityMilli = toMilli(item.quantity);
-
-    if (quantityMilli <= 0) {
-      return fail("Every quantity must be more than zero.", {
-        items: "Quantity must be more than zero",
-      });
-    }
-
-    requestedMilli.set(
-      item.productId,
-      (requestedMilli.get(item.productId) ?? 0) + quantityMilli,
-    );
-  }
-
-  const discountPaisa = rupeesToPaisa(data.discount);
-  const paidInput = data.paid?.trim();
-  const isCredit = data.paymentMethod === "CREDIT";
-  const customerId = data.customerId ?? null;
-
-  if (isCredit && !customerId) {
-    return fail("Choose a customer for a credit sale.", {
-      customerId: "Required",
-    });
-  }
-
   try {
-    const sale = await prisma.$transaction(async (tx) => {
-      let khataBalanceBeforePaisa: number | null = null;
-
-      if (isCredit && customerId) {
-        const customer = await tx.customer.findUnique({
-          where: { id: customerId },
+    const outcome = await prisma.$transaction(async (tx) => {
+      // A replayed confirmation returns the sale that already exists.
+      if (options.proposalId) {
+        const existing = await tx.sale.findUnique({
+          where: { proposalId: options.proposalId },
+          include: {
+            items: { orderBy: { position: "asc" } },
+            customer: { select: { id: true, name: true, phone: true } },
+          },
         });
 
-        if (!customer) {
-          throw new ServiceError("Customer not found.");
+        if (existing) {
+          return { sale: existing, alreadyConfirmed: true };
         }
-
-        khataBalanceBeforePaisa = await outstandingPaisa(tx, customerId);
       }
 
-      const products = await tx.product.findMany({
-        where: { id: { in: [...requestedMilli.keys()] } },
-      });
-      const productsById = new Map(
-        products.map((product) => [product.id, product]),
-      );
+      const priced = await priceSale(tx, parsed.data);
 
-      let subtotalPaisa = 0;
-      let position = 0;
-      const lines: SaleLineInput[] = [];
-
-      for (const [productId, quantityMilli] of requestedMilli) {
-        const product = productsById.get(productId);
-
-        if (!product) {
-          throw new ServiceError("One of the products no longer exists.");
-        }
-
-        if (!product.isActive) {
-          throw new ServiceError(`${product.name} is not on sale.`);
-        }
-
-        if (quantityMilli > product.stockMilli) {
-          throw new ServiceError(
-            `Only ${formatQuantity(product.stockMilli, product.unit)} of ${product.name} in stock.`,
-          );
-        }
-
-        const quantity = fromMilli(quantityMilli);
-        const lineTotalPaisa = multiplyPaisa(product.salePricePaisa, quantity);
-        const lineCostPaisa = multiplyPaisa(product.costPricePaisa, quantity);
-
-        subtotalPaisa += lineTotalPaisa;
-        lines.push({
-          productId,
-          position,
-          productName: product.name,
-          unit: product.unit,
-          quantityMilli,
-          unitPricePaisa: product.salePricePaisa,
-          unitCostPaisa: product.costPricePaisa,
-          lineTotalPaisa,
-          lineCostPaisa,
-        });
-        position += 1;
+      if (
+        options.expectedPreview &&
+        !matchesSalePreview(priced, options.expectedPreview)
+      ) {
+        throw new SalePricingError(
+          "Prices or stock changed since this proposal was prepared. Ask the assistant to prepare it again.",
+        );
       }
 
-      if (discountPaisa > subtotalPaisa) {
-        throw new ServiceError("The discount is more than the sale total.", {
-          discount: "More than the total",
-        });
-      }
-
-      const totalPaisa = subtotalPaisa - discountPaisa;
-      const paidPaisa = paidInput
-        ? rupeesToPaisa(paidInput)
-        : isCredit
-          ? 0
-          : totalPaisa;
-
-      if (isCredit) {
-        if (paidPaisa > totalPaisa) {
-          throw new ServiceError(
-            "Cash received is more than the total. Record a cash sale instead.",
-            { paid: "More than the total" },
-          );
-        }
-      } else if (paidPaisa < totalPaisa) {
-        throw new ServiceError("Cash received is less than the total.", {
-          paid: "Less than the total",
-        });
-      }
+      const khataBalanceBeforePaisa =
+        priced.paymentMethod === "CREDIT" && priced.customerId
+          ? await outstandingPaisa(tx, priced.customerId)
+          : null;
 
       const now = new Date();
       const number = await nextSaleNumber(tx, now);
@@ -213,14 +134,27 @@ export async function createSale(
       const created = await tx.sale.create({
         data: {
           number,
-          totalPaisa,
-          discountPaisa,
-          paidPaisa,
-          changePaisa: isCredit ? 0 : paidPaisa - totalPaisa,
-          paymentMethod: data.paymentMethod,
-          customerId: isCredit ? customerId : null,
-          note: emptyToNull(data.note),
-          items: { create: lines },
+          proposalId: options.proposalId ?? null,
+          totalPaisa: priced.totalPaisa,
+          discountPaisa: priced.discountPaisa,
+          paidPaisa: priced.paidPaisa,
+          changePaisa: priced.changePaisa,
+          paymentMethod: priced.paymentMethod,
+          customerId: priced.customerId,
+          note: priced.note,
+          items: {
+            create: priced.lines.map((line) => ({
+              productId: line.productId,
+              position: line.position,
+              productName: line.productName,
+              unit: line.unit,
+              quantityMilli: line.quantityMilli,
+              unitPricePaisa: line.unitPricePaisa,
+              unitCostPaisa: line.unitCostPaisa,
+              lineTotalPaisa: line.lineTotalPaisa,
+              lineCostPaisa: line.lineCostPaisa,
+            })),
+          },
         },
         include: {
           items: { orderBy: { position: "asc" } },
@@ -228,7 +162,7 @@ export async function createSale(
         },
       });
 
-      for (const line of lines) {
+      for (const line of priced.lines) {
         await tx.product.update({
           where: { id: line.productId },
           data: { stockMilli: { decrement: line.quantityMilli } },
@@ -244,21 +178,16 @@ export async function createSale(
         });
       }
 
-      const stockChanges = lines.map((line) => {
-        const product = productsById.get(line.productId);
-        const stockBeforeMilli = product?.stockMilli ?? 0;
-
-        return {
-          productId: line.productId,
-          quantityMilli: line.quantityMilli,
-          stockBeforeMilli,
-          stockAfterMilli: stockBeforeMilli - line.quantityMilli,
-        };
-      });
+      const stockChanges = priced.lines.map((line) => ({
+        productId: line.productId,
+        quantityMilli: line.quantityMilli,
+        stockBeforeMilli: line.stockBeforeMilli,
+        stockAfterMilli: line.stockBeforeMilli - line.quantityMilli,
+      }));
 
       const khataBalanceAfterPaisa =
-        isCredit && customerId
-          ? await outstandingPaisa(tx, customerId)
+        priced.paymentMethod === "CREDIT" && priced.customerId
+          ? await outstandingPaisa(tx, priced.customerId)
           : null;
 
       await writeAudit(tx, {
@@ -270,6 +199,7 @@ export async function createSale(
         before: null,
         after: {
           number: created.number,
+          proposalId: created.proposalId,
           totalPaisa: created.totalPaisa,
           discountPaisa: created.discountPaisa,
           paidPaisa: created.paidPaisa,
@@ -279,16 +209,53 @@ export async function createSale(
           khataBalanceBeforePaisa,
           khataBalanceAfterPaisa,
         },
-        details: { itemCount: lines.length, stockChanges },
+        details: {
+          itemCount: priced.lines.length,
+          stockChanges,
+          source: options.proposalId ? "assistant_proposal" : "sell_screen",
+        },
       });
 
-      return created;
+      return { sale: created, alreadyConfirmed: false };
     });
 
-    return ok(sale);
+    return ok(outcome);
   } catch (error) {
+    // A concurrent confirmation may win the unique proposal index.
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002" &&
+      options.proposalId
+    ) {
+      const existing = await prisma.sale.findUnique({
+        where: { proposalId: options.proposalId },
+        include: {
+          items: { orderBy: { position: "asc" } },
+          customer: { select: { id: true, name: true, phone: true } },
+        },
+      });
+
+      if (existing) {
+        return ok({ sale: existing, alreadyConfirmed: true });
+      }
+    }
+
     return handleError(error);
   }
+}
+
+/** Record a sale from the sell screen. */
+export async function createSale(
+  input: unknown,
+  actor: string = LOCAL_ACTOR,
+): Promise<Result<SaleWithItems>> {
+  const result = await createSaleWithStatus(input, actor);
+
+  if (!result.ok) {
+    return result;
+  }
+
+  return ok(result.data.sale);
 }
 
 /**

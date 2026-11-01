@@ -132,6 +132,10 @@ model Sale {
   voidedAt     DateTime?
   voidedReason String?
 
+  /// Set when a sale is created from an assistant proposal. Unique so a
+  /// replayed confirmation cannot create a second sale (Phase 7).
+  proposalId String? @unique
+
   createdAt DateTime @default(now())
 
   items SaleItem[]
