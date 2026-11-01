@@ -68,7 +68,7 @@ export function normalizeText(value: string): string {
 
   s = s.replace(/[\u0660-\u0669\u06F0-\u06F9]/g, (ch) => DIGIT_MAP[ch] ?? ch);
 
-  return s.replace(/\s+/g, " ").trim();
+  return s.toLowerCase().replace(/\s+/g, " ").trim();
 }
 
 /**

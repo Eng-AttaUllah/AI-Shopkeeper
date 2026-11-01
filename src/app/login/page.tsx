@@ -20,6 +20,10 @@ export default async function LoginPage({
     return translate(locale, key, params);
   }
 
+  const usernameLabel = t("login.username");
+  const passwordLabel = t("login.password");
+  const signInButtonLabel = t("login.signInButton");
+
   return (
     <main className="flex flex-1 items-center justify-center px-4 py-10">
       <div className="w-full max-w-sm rounded-xl border border-line bg-surface p-6">
@@ -29,7 +33,12 @@ export default async function LoginPage({
           {t("login.useAccount")}
         </p>
         <div className="mt-6">
-          <LoginForm from={from} t={t} />
+          <LoginForm
+            from={from}
+            usernameLabel={usernameLabel}
+            passwordLabel={passwordLabel}
+            signInButtonLabel={signInButtonLabel}
+          />
         </div>
       </div>
     </main>

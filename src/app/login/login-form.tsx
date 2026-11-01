@@ -10,10 +10,14 @@ import { loginAction, type LoginState } from "./actions";
 
 export function LoginForm({
   from,
-  t,
+  usernameLabel,
+  passwordLabel,
+  signInButtonLabel,
 }: {
   from: string;
-  t: (key: string, params?: Record<string, string>) => string;
+  usernameLabel: string;
+  passwordLabel: string;
+  signInButtonLabel: string;
 }) {
   const [state, formAction, pending] = useActionState<LoginState, FormData>(
     loginAction,
@@ -35,7 +39,7 @@ export function LoginForm({
       ) : null}
 
       <div className="flex flex-col gap-2">
-        <Label htmlFor="username">{t("login.username")}</Label>
+        <Label htmlFor="username">{usernameLabel}</Label>
         <Input
           id="username"
           name="username"
@@ -55,7 +59,7 @@ export function LoginForm({
       </div>
 
       <div className="flex flex-col gap-2">
-        <Label htmlFor="password">{t("login.password")}</Label>
+        <Label htmlFor="password">{passwordLabel}</Label>
         <Input
           id="password"
           name="password"
@@ -76,7 +80,7 @@ export function LoginForm({
         disabled={pending}
         className="h-11 w-full px-5 text-base"
       >
-        {pending ? "Signing in…" : t("login.signInButton")}
+        {pending ? "Signing in…" : signInButtonLabel}
       </Button>
     </form>
   );
