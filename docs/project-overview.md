@@ -284,6 +284,80 @@ assistant prepares a signed proposal; nothing is saved until the owner presses t
     clarifying question.
 11. `npm run typecheck`, `npm run lint`, `npm test`, and `npm run build` pass.
 
+## Phase 8 — Pashto support
+
+Phase 8 adds Pashto language support to the assistant and the shop interface. No schema
+change or migration is required.
+
+### Scope
+
+- A cookie-based locale (`shop_locale`, `en` or `ps`) remembered per browser; no migration.
+- `lang`/`dir` attributes on the root `html` element; Pashto uses `dir="rtl"`.
+- A Noto Naskh Arabic font for Pashto script, with Geist as the Latin fallback.
+- A language switcher in the header (English ↔ Pashto).
+- Translated shell, navigation, page headings, buttons, labels, assistant copy, and all
+  seven proposal cards. English is the fallback for unverified Pashto strings.
+- The assistant system prompt answers in Pashto when the locale is `ps`; tool descriptions
+  stay English for the model.
+- Text inputs are bidi-safe: names, notes, and search use `dir="auto"`; money, quantity,
+  phone, receipt number, and barcode use `dir="ltr"`.
+- Unicode text normalization (`src/lib/text.ts`) folds Arabic/Pashto character variants
+  (ي/ی, ك/ک, ہ/ه), strips ZWNJ/tatweel/diacritics, converts Arabic-Indic digits to ASCII, and
+  lowercases — applied to product/customer search, duplicate detection, and assistant
+  resolution.
+
+### Acceptance Criteria
+
+1. Switching the locale cookie changes `lang`/`dir` and all visible strings without a page
+   reload losing the choice (cookie persists across refreshes).
+2. Pashto pages render right-to-left with no horizontal scrolling on a 360px phone.
+3. The assistant answers in Pashto when `ps` is selected, quoting formatted figures exactly.
+4. All seven proposal cards render translated labels, buttons, and expiry; confirmation still
+   requires explicit shopkeeper action.
+5. `npm run typecheck`, `npm run lint`, `npm test`, and `npm run build` pass.
+
+## Phase 9 — Voice input
+
+Phase 9 adds spoken commands to the assistant. Spoken audio is converted to text using the
+browser's Web Speech API and fed into the existing assistant tool pipeline. No schema change
+or migration is required.
+
+### Scope
+
+- A microphone button on the assistant chat (`/assistant`) that starts/stops speech
+  recognition via the browser's Web Speech API (`window.SpeechRecognition` /
+  `webkitSpeechRecognition`).
+- A listening state indicator and live transcript shown while recording.
+- Recognition language follows the selected locale: `ps-PK` for Pashto, `en-US` for English.
+- On final transcript, the spoken text is submitted to `askAssistantAction` exactly as if it
+  were typed; the assistant answers using the same read-only tools and proposal flow.
+- Proposals prepared from voice input still require explicit shopkeeper confirmation — voice
+  cannot write directly.
+- If speech recognition is not supported or not available, the assistant shows a graceful
+  fallback (microphone button hidden or disabled with a short message).
+- Audio never leaves the laptop; no cloud transcription provider is used.
+
+### Acceptance Criteria
+
+1. A microphone button appears on `/assistant` only when speech recognition is supported.
+2. Clicking the button starts listening; a transcript appears; clicking again stops and
+   submits the spoken text to the assistant.
+3. Voice commands that match existing assistant questions (for example "how much did I sell
+   today?") produce answers identical to typing the same question.
+4. Voice requests to prepare a sale, expense, payment, customer, product, product edit, or
+   stock adjustment produce a signed proposal card requiring explicit Confirm — nothing is
+   written by voice alone.
+5. On a browser without speech recognition, the microphone button is absent/disabled with a
+   short message; the rest of the assistant works normally.
+6. `npm run typecheck`, `npm run lint`, `npm test`, and `npm run build` pass.
+
+### Out of Scope
+
+- Text-to-speech (assistant speaking back) — not part of "spoken commands".
+- Cloud transcription APIs — audio stays on the laptop.
+- Voice outside the assistant chat (for example, voice on the sell screen).
+- Persisting voice transcripts — chat history remains client state only.
+
 ## Implementation Phases
 
 | Phase | Name | Outcome |
@@ -299,7 +373,9 @@ assistant prepares a signed proposal; nothing is saved until the owner presses t
 | 7 | Assistant proposals | Signed sale, expense, repayment, customer, product, product-edit, and stock-adjustment proposals are written only after the shopkeeper confirms them |
 | 8 | Pashto support | Pashto UI with right-to-left layout, conversational assistant in Pashto,
 | product aliases, and Pashto input handling |
-| 9 | Voice input | Spoken commands, after testing on real Pashto speakers |
+| 9 | Voice input | Spoken commands converted to text via the browser's Web Speech API,
+| answered by the existing assistant tool pipeline; proposals still require
+| explicit shopkeeper confirmation |
 | 10 | Camera alerts | Suspicious-activity alerts with a saved clip, never automatic accusation |
 | 11 | Face recognition | Optional, consent-based research feature |
 

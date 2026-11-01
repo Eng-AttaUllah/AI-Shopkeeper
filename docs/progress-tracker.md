@@ -468,30 +468,56 @@ Update this file after every meaningful implementation change.
   The new cards have not yet been clicked in a browser; the service and action paths are
   covered by the tests.
 
+### Phase 8 — Pashto support (complete)
+
+- No schema change and no migration: locale, fonts, and translations are additive.
+- `src/lib/i18n.ts` — cookie-based `shop_locale` locale (`en`/`ps`), `getLocale()`,
+  `getDirection()`, and `t()` translation helper; server-only cookie reads.
+- `src/lib/dictionary.ts` — pure translation dictionaries (`en`/`ps`), client-safe
+  `translate()` helper, `readClientLocale()`.
+- `src/lib/text.ts` — Unicode text normalization: NFKC, ZWNJ/tatweel/diacritic stripping,
+  Arabic/Pashto character folding (ي/ی, ك/ک, ہ/ه), Arabic-Indic digit conversion, lowercasing.
+- `src/app/layout.tsx` — `lang`/`dir` on root `html`, Noto Naskh Arabic font for Pashto,
+  `LocaleSwitcher` client component.
+- `src/components/locale-switcher.tsx` + `src/app/locale/action.ts` — English/Pashto
+  language switcher; server action sets the `shop_locale` cookie.
+- Translated shell, navigation, page headings, buttons, labels, assistant copy, and all
+  seven proposal cards; English fallback for unverified Pashto strings.
+- Bidi-safe inputs: `dir="auto"` for names/notes/search; `dir="ltr"` for money/quantity/
+  phone/barcode.
+- Tests: 200 passing across 24 files. `npm run typecheck`, `npm run lint`, `npm test`, and
+  `npm run build` pass.
+
+### Phase 9 — Voice input (in progress)
+
+- `src/lib/speech.ts` — planned Web Speech API wrapper: start/stop listening, locale,
+  listening state, support check.
+- Microphone button on `/assistant` — planned; transcript feeds into `askAssistantAction`.
+- Recognition language follows locale: `ps-PK` for Pashto, `en-US` for English.
+- Voice proposals still require explicit shopkeeper confirmation.
+
 ## Current Phase
 
-- Phase 8 — Pashto support: **Complete** (Pashto UI with RTL layout, conversational
-  assistant in Pashto, product aliases, Pashto input handling). Pull request #4 merged
-  into main.
+- Phase 9 — Voice input: **In progress** (browser Web Speech API → assistant pipeline;
+  proposals still require explicit shopkeeper confirmation).
 
 ## Current Goal
 
-- Phase 0 through Phase 8 are complete and merged into `main`. All PRs (#1, #2, #3, #4)
-  have been merged in stack order. Next possible phase is Phase 9 (voice input), pending
-  owner decision.
+- Phase 0 through Phase 8 are complete and merged into `main`. Phase 9 voice input is
+  next. Build slices in order: docs → STT foundation → assistant integration → Pashto STT → QA.
+- Build nothing outside this scope (text-to-speech, cloud transcription, camera alerts are
+  later phases).
 
 ## Next Up
 
-- Slice 8.0: docs resolution and Phase 8 scope/acceptance criteria. **Complete.**
-- Slice 8.1: i18n/RTL foundation — locale cookie, `lang`/`dir`, Pashto font, translated shell
-  and navigation. **Complete.**
-- Slice 8.2: Pashto assistant — system prompt, suggestions, tool labels, proposal cards.
-  **Complete.**
-- Slice 8.3: Pashto screens — all pages translated. **Complete.**
-- Slice 8.4: Pashto input/aliases — Unicode normalization, Pashto digits, bidi-safe inputs.
-  **Complete.**
-- Slice 8.5: QA in English and Pashto at 360px and desktop; typecheck/lint/test/build pass.
-  **Complete** (automated checks pass; browser check at 360px requires a real device).
+- Slice 9.0: docs — Phase 9 scope and acceptance criteria (this session).
+- Slice 9.1: STT foundation — `src/lib/speech.ts` Web Speech API wrapper with locale,
+  listening state, and support check.
+- Slice 9.2: Assistant integration — microphone button on `/assistant`, transcript →
+  `askAssistantAction`, listening state.
+- Slice 9.3: Pashto STT — `ps-PK` recognition language when Pashto selected, `en-US` otherwise.
+- Slice 9.4: QA — browser check at 360px and desktop in English and Pashto;
+  typecheck/lint/test/build pass.
 
 ## Open Questions
 
