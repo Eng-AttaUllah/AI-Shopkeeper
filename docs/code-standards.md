@@ -68,13 +68,19 @@
 - Read-only questions use the registry in `src/modules/assistant/tools.ts`. No read-only tool
   may create, update, void, or delete a record, and read-only assistant code must not call a
   service that writes.
-- Sale proposals use the separate tool in `src/modules/assistant/sale-proposal.ts`. It may
-  read products and customers, price the draft with `priceSale`, and sign a proposal. It must
-  never call a write service or confirm its own proposal.
-- Only the separate confirmation server action may write a proposed sale. It must verify the
-  signed, user-bound, short-lived token; re-price the draft inside the sale transaction; and
-  reject the write if the preview the shopkeeper saw is stale. The model cannot confirm, and
-  no automatic retry or URL may write a sale.
+- Sale, expense, and payment proposals use separate tools in
+  `src/modules/assistant/sale-proposal.ts`, `expense-proposal.ts`, and `payment-proposal.ts`,
+  registered in `proposal-tools.ts`. They may read products, customers, or the khata balance,
+  price or validate the draft, and sign a proposal. They must never call a write service or
+  confirm their own proposal. One assistant answer carries at most one proposal.
+- Only the matching confirmation server action may write a proposal. It must verify the
+  signed, user-bound, short-lived token; re-price the sale, re-validate the expense, or
+  re-read the khata balance for a payment inside the write transaction; and reject the write
+  if the preview the shopkeeper saw is stale. The model cannot confirm, and no automatic retry
+  or URL may write a record.
+- Every confirmed proposal carries a nullable, unique proposal id on its row. The confirmation
+  must look up that id first and return the existing row on replay. For payments, the replay
+  lookup runs before the stale-balance check.
 - Every tool has a Zod input schema and is registered explicitly. Unknown tool names and
   invalid arguments are rejected before execution. Never let the model call an arbitrary
   function or generate SQL.
@@ -87,9 +93,9 @@
   assistant server action also calls `requireUser()`.
 - Never log secrets, API keys, full prompts, or shop figures. Log a provider failure on the
   server and return a short, safe message to the UI.
-- Chat history is not persisted. Phase 7 stores only a nullable, unique `Sale.proposalId` for
-  idempotent confirmations, not the conversation or the proposal. Saving chat history later
-  requires a documented retention and privacy decision.
+- Chat history is not persisted. Phase 7 stores only nullable, unique proposal ids on `Sale`,
+  `Expense`, and `Payment` for idempotent confirmations, not the conversation or the proposal.
+  Saving chat history later requires a documented retention and privacy decision.
 - Tests use a fake `ChatProvider`; no test may call a real AI endpoint. A provider or model
   change is configuration, not a code change, and `.env.example` stays blank by default.
 
@@ -109,7 +115,7 @@
 - `src/app/` — routes, layouts, and page-level composition only.
 - `src/modules/` — domain logic: `schema.ts`, `service.ts`, `queries.ts`, plus domain-only
   helpers. The assistant module also owns its read-only tool registry, range resolver, signed
-  sale-proposal tool, and confirmation service.
+  proposal tools, and confirmation services.
 - `src/lib/` — cross-domain infrastructure: db, auth, AI provider adapter and config, money,
   dates, formatting, results.
 - `src/components/` — reusable UI; `src/components/ui/` is shadcn-generated and protected.

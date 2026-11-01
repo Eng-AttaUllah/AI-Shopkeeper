@@ -17,6 +17,12 @@ import { createSaleSchema, type CreateSaleInput } from "@/modules/sales/schema";
 
 import type { SaleProposal } from "./proposal-schema";
 import { createSaleProposalToken } from "./proposal-token";
+import {
+  matchCustomer,
+  normalize,
+  normalizePhone,
+  type ProposalToolContext,
+} from "./resolve";
 
 /**
  * The one proposal tool. It is deliberately separate from the read-only tool
@@ -76,25 +82,12 @@ export const proposeSaleSchema = z.object({
 
 export type ProposeSaleInput = z.infer<typeof proposeSaleSchema>;
 
-export type ProposalToolContext = {
-  userId: string;
-  now: Date;
-};
-
 type ResolvedProduct = {
   id: string;
   name: string;
   barcode: string | null;
   aliases: string[];
 };
-
-function normalize(value: string): string {
-  return value.trim().toLowerCase().replace(/\s+/g, " ");
-}
-
-function normalizePhone(value: string): string {
-  return value.replace(/\D/g, "");
-}
 
 function matchProducts(
   products: ResolvedProduct[],
@@ -138,38 +131,6 @@ function productCandidates(matches: ResolvedProduct[]): string {
     .slice(0, 5)
     .map((product) => product.name)
     .join(", ");
-}
-
-function matchCustomer(
-  customers: Array<{
-    id: string;
-    name: string;
-    phone: string | null;
-  }>,
-  term: string,
-) {
-  const normalized = normalize(term);
-  const digits = normalizePhone(term);
-
-  const exact = customers.filter(
-    (customer) =>
-      normalize(customer.name) === normalized ||
-      (customer.phone !== null &&
-        digits.length >= 3 &&
-        normalizePhone(customer.phone) === digits),
-  );
-
-  if (exact.length > 0) {
-    return exact;
-  }
-
-  return customers.filter(
-    (customer) =>
-      normalize(customer.name).includes(normalized) ||
-      (customer.phone !== null &&
-        digits.length >= 3 &&
-        normalizePhone(customer.phone).includes(digits)),
-  );
 }
 
 async function resolveDraft(
@@ -265,23 +226,26 @@ async function resolveDraft(
   return ok(parsed.data);
 }
 
-export function proposalToolDefinitions(): ToolDefinition[] {
+export function saleProposalToolDefinition(): ToolDefinition {
   const parameters = {
     ...(z.toJSONSchema(proposeSaleSchema) as Record<string, unknown>),
   };
   delete parameters.$schema;
 
-  return [
-    {
-      type: "function",
-      function: {
-        name: PROPOSAL_TOOL_NAME,
-        description:
-          "Prepare a sale for the shopkeeper to confirm. This does not save anything. Use only when the shopkeeper clearly asks to record a sale and has given the items, quantities, and payment method; for credit, a customer is required. The shopkeeper must press Confirm sale on screen. Never say the sale is recorded.",
-        parameters,
-      },
+  return {
+    type: "function",
+    function: {
+      name: PROPOSAL_TOOL_NAME,
+      description:
+        "Prepare a sale for the shopkeeper to confirm. This does not save anything. Use only when the shopkeeper clearly asks to record a sale and has given the items, quantities, and payment method; for credit, a customer is required. The shopkeeper must press Confirm sale on screen. Never say the sale is recorded.",
+      parameters,
     },
-  ];
+  };
+}
+
+/** Kept for callers that only need the sale proposal tool. */
+export function proposalToolDefinitions(): ToolDefinition[] {
+  return [saleProposalToolDefinition()];
 }
 
 /** Validate and run the proposal tool. It reads and signs; it never writes. */

@@ -23,8 +23,8 @@ export default function AssistantPage() {
         </div>
         <p className="mt-2 text-sm text-ink-muted">
           Ask about sales, stock, credit, expenses, or cash. You can also ask
-          the assistant to prepare a sale; nothing is saved until you press
-          Confirm sale.
+          the assistant to prepare a sale, expense, or khata payment; nothing
+          is saved until you press the matching Confirm button.
         </p>
       </header>
 

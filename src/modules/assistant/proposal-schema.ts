@@ -1,5 +1,15 @@
 import { z } from "zod";
 
+import {
+  paymentPreviewSchema,
+  type PaymentPreview,
+} from "@/modules/customers/preview";
+import { paymentSchema } from "@/modules/customers/schema";
+import {
+  expensePreviewSchema,
+  type ExpensePreview,
+} from "@/modules/expenses/preview";
+import { expenseSchema } from "@/modules/expenses/schema";
 import { salePreviewSchema, type SalePreview } from "@/modules/sales/pricing";
 import { createSaleSchema } from "@/modules/sales/schema";
 
@@ -31,3 +41,57 @@ export type SaleProposal = {
   expiresAt: string;
   preview: SalePreview;
 };
+
+/** The signed payload behind an assistant expense proposal. */
+export const expenseProposalPayloadSchema = z.object({
+  v: z.literal(1),
+  kind: z.literal("expense"),
+  proposalId: z.string().min(1).max(100),
+  userId: z.string().min(1).max(100),
+  createdAt: z.string().datetime(),
+  expiresAt: z.string().datetime(),
+  draft: expenseSchema,
+  preview: expensePreviewSchema,
+});
+
+export type ExpenseProposalPayload = z.infer<
+  typeof expenseProposalPayloadSchema
+>;
+
+/** The object the browser receives for an expense proposal. */
+export type ExpenseProposal = {
+  token: string;
+  proposalId: string;
+  expiresAt: string;
+  preview: ExpensePreview;
+};
+
+/** The signed payload behind an assistant repayment proposal. */
+export const paymentProposalPayloadSchema = z.object({
+  v: z.literal(1),
+  kind: z.literal("payment"),
+  proposalId: z.string().min(1).max(100),
+  userId: z.string().min(1).max(100),
+  createdAt: z.string().datetime(),
+  expiresAt: z.string().datetime(),
+  draft: paymentSchema,
+  preview: paymentPreviewSchema,
+});
+
+export type PaymentProposalPayload = z.infer<
+  typeof paymentProposalPayloadSchema
+>;
+
+/** The object the browser receives for a repayment proposal. */
+export type PaymentProposal = {
+  token: string;
+  proposalId: string;
+  expiresAt: string;
+  preview: PaymentPreview;
+};
+
+/** Any proposal an assistant answer can carry. Only one is shown per answer. */
+export type AssistantProposal =
+  | { kind: "sale"; proposal: SaleProposal }
+  | { kind: "expense"; proposal: ExpenseProposal }
+  | { kind: "payment"; proposal: PaymentProposal };

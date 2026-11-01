@@ -13,10 +13,10 @@ No internet connection and no paid cloud service are required. Customers, produc
 credit, and reports all live in a single local database that is backed up daily.
 
 Phase 6 adds an English assistant that answers shop questions from real database figures.
-Phase 7 lets it prepare a sale proposal; the proposal is saved only when the shopkeeper
-explicitly confirms it. Later phases add Pashto language support, voice input, and
-camera-based suspicious-activity alerts. Those are explicitly out of scope for v1 and must
-not be built early `(see Scope)`.
+Phase 7 lets it prepare a sale, expense, or khata repayment proposal; the proposal is saved
+only when the shopkeeper explicitly confirms it. Later phases add Pashto language support,
+voice input, and camera-based suspicious-activity alerts. Those are explicitly out of scope
+for v1 and must not be built early `(see Scope)`.
 
 ## Goals
 
@@ -107,8 +107,8 @@ not be built early `(see Scope)`.
 ### Future Phases (not in v1)
 
 - Read-only English assistant (Phase 6, complete).
-- Conversational sale entry with explicit shopkeeper confirmation (Phase 7, sale proposals
-  complete; other record types not built).
+- Conversational sale, expense, and khata repayment entry with explicit shopkeeper
+  confirmation (Phase 7 complete; customer, product, and stock proposals not built).
 - Conversational assistant in Pashto (Phase 8).
 - Voice input.
 - Camera-based suspicious-activity alerts.
@@ -131,7 +131,7 @@ not be built early `(see Scope)`.
 - Pashto or any non-English interface, right-to-left layout, and translation layers.
 - Voice input and speech recognition.
 - The AI assistant and all conversational features in v1. The read-only English assistant
-  (Phase 6) and sale proposals (Phase 7) are separate post-v1 phases.
+  (Phase 6) and sale, expense, and repayment proposals (Phase 7) are separate post-v1 phases.
 - Camera, video processing, theft or suspicious-activity detection, and face recognition.
 - Supplier management, purchase orders, and goods returns.
 - Multi-shop, multi-branch, or multi-device cloud synchronisation.
@@ -189,49 +189,70 @@ questions about the shop using the same database the screens read.
    screens.
 2. The Phase 6 assistant cannot create, edit, void, or delete a record. Every tool is
    read-only, and unknown tools or invalid arguments are rejected before execution. (Phase 7
-   adds a separately confirmed sale proposal; it does not weaken this rule.)
+   adds separately confirmed sale, expense, and repayment proposals; it does not weaken this
+   rule.)
 3. Answers quote the formatted figures returned by the tools. If the data is missing, the
    assistant says so instead of estimating.
 4. With no provider configured, `/assistant` shows setup instructions and the rest of the app
    works normally. A provider failure shows a readable message and never a stack trace.
 5. `npm run typecheck`, `npm run lint`, `npm test`, and `npm run build` pass.
 
-## Phase 7 — Assistant sale proposals
+## Phase 7 — Assistant proposals
 
-Phase 7 lets the signed-in owner ask the assistant to prepare a sale in plain English. The
-assistant prepares a priced, signed proposal; nothing is saved until the owner presses
-**Confirm sale**.
+Phase 7 lets the signed-in owner ask the assistant to prepare a sale, an expense, or a khata
+repayment in plain English. The assistant prepares a signed proposal; nothing is saved until
+the owner presses the matching **Confirm** button.
 
 ### Scope
 
 - A `propose_sale` tool, separate from the read-only registry, that resolves product names,
   aliases, and barcodes plus a customer name or phone for credit sales.
-- A proposal card in the assistant chat showing the lines, unit prices, subtotal, discount,
-  total, payment method, customer, cash received, change, and expiry. The card is labelled
-  "Proposed sale — not saved yet".
-- A **Confirm sale** button that calls a separate server action. The action verifies a signed,
-  user-bound, 15-minute token; re-prices the draft inside one transaction; rejects a stale
-  price or stock change; and writes the sale with the existing sale service.
-- Idempotent confirmation: a nullable, unique `Sale.proposalId` makes a replay return the
-  existing sale instead of creating a second one.
-- An audit entry with the signed-in actor and `details.source = "assistant_proposal"`.
-- Other record types (expenses, payments, customer creation, product changes, stock
-  adjustments) are not proposed in this phase.
+- A `propose_expense` tool that resolves a category (rent, electricity, salaries, transport,
+  other), amount, note, and shop date (defaulting to today).
+- A `propose_payment` tool that resolves an existing customer by name or phone, reads the
+  current outstanding khata balance, and refuses an amount above it.
+- Proposal cards in the assistant chat:
+  - sale: lines, unit prices, subtotal, discount, total, payment method, customer, cash
+    received, change, and expiry;
+  - expense: category, amount, date, note, and expiry;
+  - payment: customer, amount, khata before, khata after, note, and expiry.
+  Each card is warning-tinted and labelled "Proposed … — not saved yet".
+- A separate confirmation action for each kind. Each verifies a signed, user-bound,
+  15-minute token and writes through the existing service:
+  - sale: re-prices the draft inside one transaction and rejects a stale price or stock
+    change;
+  - expense: writes the signed draft and audit row in one transaction;
+  - payment: re-reads the derived khata balance inside the transaction and rejects a stale
+    balance or an overpayment.
+- Idempotent confirmation: nullable, unique `Sale.proposalId`, `Expense.proposalId`, and
+  `Payment.proposalId` make a replay return the existing row instead of creating a duplicate.
+- An audit entry with the signed-in actor and `details.source = "assistant_proposal"` for
+  each confirmed proposal.
+- One proposal per assistant answer. Customer creation, product changes, and stock
+  adjustments are not proposed in this phase.
 
 ### Acceptance Criteria
 
 1. Asking "Sell 2 kg of sugar for cash" prepares a proposal with the current product price and
    total; the product stock and sale count do not change before confirmation.
-2. The proposal is bound to the signed-in user and expires after 15 minutes. A tampered,
+2. Asking "Record 500 rupees electricity expense" prepares an expense proposal; no expense or
+   audit row exists before confirmation. Confirming writes the expense at shop-local midnight
+   and records the signed-in actor.
+3. Asking "Ali paid 200 on his khata" prepares a payment proposal with the current balance
+   before and after; no payment exists before confirmation. Confirming reduces the balance by
+   exactly the amount. A balance change after the proposal is rejected with a readable
+   message.
+4. Each proposal is bound to the signed-in user and expires after 15 minutes. A tampered,
    expired, or wrong-user token is rejected without writing.
-3. Pressing **Confirm sale** writes exactly the preview the owner saw: sale, lines, stock
-   movements, decrements, audit row, and khata effect in one transaction. A price or stock
-   change after the proposal is rejected with a readable message.
-4. Confirming the same proposal twice returns the same sale and does not change stock twice.
-5. The model cannot write or confirm a sale; it can only prepare a proposal. Unknown products,
-   ambiguous names, missing customers for credit, and insufficient stock produce a readable
-   error or a clarifying question.
-6. `npm run typecheck`, `npm run lint`, `npm test`, and `npm run build` pass.
+5. Pressing **Confirm sale** writes exactly the preview the owner saw: sale, lines, stock
+   movements, decrements, audit row, and khata effect in one transaction. Pressing **Confirm
+   expense** or **Confirm payment** writes the preview and audit row in one transaction.
+6. Confirming the same proposal twice returns the same row and does not change stock, the
+   khata, or the expense count twice.
+7. The model cannot write or confirm a proposal; it can only prepare one. Unknown products or
+   customers, ambiguous names, missing categories, missing customers for credit, insufficient
+   stock, and overpayments produce a readable error or a clarifying question.
+8. `npm run typecheck`, `npm run lint`, `npm test`, and `npm run build` pass.
 
 ## Implementation Phases
 
@@ -245,7 +266,7 @@ assistant prepares a priced, signed proposal; nothing is saved until the owner p
 | 5 | Expenses and hardening | Net profit, voiding, audit log, and backups are complete |
 | 5.5 | Sign-in | Username/password sign-in, sessions, route protection, and audit attribution |
 | 6 | Assistant (read-only) | Shop questions in English are answered from real database figures |
-| 7 | Assistant sale proposals | A signed sale proposal is written only after the shopkeeper confirms it |
+| 7 | Assistant proposals | Signed sale, expense, and khata repayment proposals are written only after the shopkeeper confirms them |
 | 8 | Pashto support | Pashto interface, product aliases, and Pashto input handling |
 | 9 | Voice input | Spoken commands, after testing on real Pashto speakers |
 | 10 | Camera alerts | Suspicious-activity alerts with a saved clip, never automatic accusation |

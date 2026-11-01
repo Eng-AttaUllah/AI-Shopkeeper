@@ -4,18 +4,24 @@ Update this file after every meaningful implementation change.
 
 ## Current Phase
 
-- Phase 7 — Assistant sale proposals: **Complete** (sales only; other record types not built)
+- Phase 7 — Assistant proposals: **Complete** (sales, expenses, and khata repayments;
+  customer, product, and stock proposals not built)
 
 ## Current Goal
 
-- Nothing in progress. Phase 7 sale proposals are complete and verified end to end. The
-  assistant can prepare a signed, priced sale proposal, but only the signed-in shopkeeper can
-  confirm it. Next is Phase 8 — Pashto support, unless the owner first asks to extend Phase 7
-  to expenses, payments, customer creation, or stock adjustments; each needs its own
-  confirmation design.
+- Nothing in progress. Phase 7.1 expense and payment proposals are complete and verified end
+  to end. The assistant can prepare a signed sale, expense, or khata repayment; only the
+  signed-in shopkeeper can confirm it. Next is Phase 8 — Pashto support, unless the owner first
+  asks to extend Phase 7 to customer creation, product changes, or stock adjustments; each
+  needs its own confirmation design.
+- Branch `phase-7b-expense-payment-proposals` is stacked on the Phase 7 branch and pushed as
+  pull request #2 (base `phase-7-assistant-sale-proposals`). It has not been merged. Pull
+  request #1 for sale proposals remains open and unmerged. CI run 40818562612 is green for the
+  implementation commit.
 - Open follow-up: pull request #1 is green in CI, but the Vercel preview is blocked on missing
   repository and Vercel environment values, not on code. See the Phase 7 session notes for the
-  exact failure and prerequisites.
+  exact failure and prerequisites. The preview is deferred; a real friends test should use
+  Tailscale or Cloudflare Tunnel.
 
 ## Completed
 
@@ -349,6 +355,65 @@ Update this file after every meaningful implementation change.
   `live-owner`, `details.source = "assistant_proposal"`. `npm run typecheck`, `npm run lint`,
   `npm test`, and `npm run build` pass.
 
+### Phase 7.1 — Assistant expense and payment proposals (complete)
+
+- One additive schema change: `Expense.proposalId` and `Payment.proposalId`, both
+  `String? @unique`, migration `20261029120000_add_expense_payment_proposal_id`. Ordinary
+  expense-screen and customer-screen entries leave them null; a confirmed proposal stores its
+  id so a replay cannot duplicate the expense or credit the khata twice.
+- `src/modules/assistant/proposal-token-core.ts` — shared HMAC-SHA256 signing, 15-minute
+  metadata, and verification for every proposal. Each kind uses a purpose-specific key derived
+  from `AUTH_SECRET`, so a sale token cannot be replayed as an expense or payment.
+- `src/modules/assistant/proposal-token.ts` — `createSaleProposalToken` and
+  `verifySaleProposalToken` now wrap the shared core; added the expense and payment wrappers.
+- `src/modules/assistant/proposal-schema.ts` — signed sale, expense, and payment payloads plus
+  the `AssistantProposal` union the chat renders.
+- `src/modules/assistant/resolve.ts` — shared customer name/phone matching and
+  `ProposalToolContext`; `sale-proposal.ts` now uses it.
+- `src/modules/assistant/expense-proposal.ts` — `propose_expense` resolves category aliases,
+  amount, note, and a shop date defaulting to today. It signs the draft and preview but never
+  writes.
+- `src/modules/assistant/payment-proposal.ts` — `propose_payment` resolves an existing
+  customer, reads the derived outstanding balance, rejects zero/overpayment, and signs the
+  preview with `balanceBeforePaisa` and `balanceAfterPaisa`. It never writes.
+- `src/modules/assistant/proposal-tools.ts` — registers `propose_sale`, `propose_expense`, and
+  `propose_payment`, exposes the definitions to the service, and enforces one proposal per
+  answer.
+- `src/modules/assistant/service.ts` — the answer now carries `AssistantProposal`; the system
+  prompt explains all three proposal tools and still forbids direct writes. The one-proposal
+  guard applies across kinds.
+- `src/modules/expenses/preview.ts` and `src/modules/customers/preview.ts` — signed preview
+  schemas and comparison helpers.
+- `src/modules/expenses/service.ts` — `createExpenseWithStatus` supports `proposalId` and
+  `expectedPreview`, returns `alreadyConfirmed`, handles a concurrent unique conflict, and
+  records `details.source = "assistant_proposal"` plus the proposal id. `createExpense` keeps
+  its original contract.
+- `src/modules/customers/service.ts` — `recordPaymentWithStatus` supports `proposalId` and
+  `expectedPreview`, re-reads the khata balance inside the transaction, rejects a stale
+  balance or overpayment, checks replay before the balance check, and records the audit source
+  and proposal id. `recordPayment` keeps its original contract.
+- `src/modules/assistant/confirm-expense.ts` and `confirm-payment.ts` — verify the signed
+  token and call the corresponding service with the signed draft, preview, and proposal id.
+- `src/app/assistant/actions.ts` — added `confirmExpenseProposalAction` and
+  `confirmPaymentProposalAction`, both calling `requireUser()` and revalidating the affected
+  paths. The shared token guard rejects empty or oversized tokens.
+- `src/components/assistant/expense-proposal-card.tsx`,
+  `payment-proposal-card.tsx`, and `proposal-card.tsx` — warning-tinted confirmation cards for
+  each kind, with expiry, details, **Confirm**/**Dismiss**, pending/error states, and a success
+  panel with a link to the record. The chat renders the union through `ProposalCard`.
+- `/assistant` copy and suggestions now mention preparing an expense and a khata payment.
+- Tests: 190 passing across 23 files. New tests cover expense/payment token binding, preview
+  building, category/date validation, customer resolution, no-balance and overpayment
+  rejection, confirmation, audit actor/source, replay idempotency, stale-balance rejection, and
+  the one-proposal-per-answer rule.
+- Verified end to end with the real Gemini provider against the disposable test database:
+  "Record 500 rupees electricity expense for today." prepared an expense proposal and wrote
+  nothing; confirmation wrote Rs. 500.00 with actor `live-owner` and
+  `details.source = "assistant_proposal"`. "Live Ali paid 120 rupees on his khata." prepared a
+  payment proposal with a Rs. 320.00 balance before and Rs. 200.00 after; confirmation wrote
+  Rs. 120.00 and left the derived balance at Rs. 200.00. `npm run typecheck`, `npm run lint`,
+  `npm test`, and `npm run build` pass.
+
 ## In Progress
 
 - None.
@@ -356,10 +421,10 @@ Update this file after every meaningful implementation change.
 ## Next Up
 
 Phase 8 — Pashto support, unless the owner asks to extend Phase 7 to other record types first.
-The sale-proposal design is documented in `docs/architecture.md`; any expense, payment,
-customer, product, or stock-adjustment proposal needs its own explicit-confirmation design
-before a write tool is added. The read-only registry in `src/modules/assistant/tools.ts` must
-stay read-only.
+The sale, expense, and payment proposal designs are documented in `docs/architecture.md`; any
+customer-creation, product, or stock-adjustment proposal needs its own explicit-confirmation
+design before a write tool is added. The read-only registry in
+`src/modules/assistant/tools.ts` must stay read-only.
 
 ## Open Questions
 
@@ -375,12 +440,15 @@ stay read-only.
   signs in.
 - Should assistant answers be saved for review? Phase 6 deliberately keeps history in the
   browser only; a saved transcript would need a retention and privacy decision.
-- Should Phase 7 expand to expenses, payments, customer creation, product changes, or stock
-  adjustments? Each needs its own explicit-confirmation design; the current slice is sales
-  only.
+- Should Phase 7 expand to customer creation, product changes, or stock adjustments? Each
+  needs its own explicit-confirmation design; the current slice is sales, expenses, and khata
+  repayments only.
 - Should unconfirmed proposals be persisted for review, or remain signed, short-lived tokens?
-  The current choice stores nothing until confirmation; only the resulting sale keeps the
-  proposal id.
+  The current choice stores nothing until confirmation; only the resulting sale, expense, or
+  payment keeps the proposal id.
+- Should a payment proposal be allowed against a customer with no outstanding balance, for
+  example an advance? The current choice rejects it so the derived khata balance never goes
+  negative; an advance would need a new record type and reporting rule.
 - Is a 15-minute proposal expiry right for a busy counter? A shorter window is safer; a longer
   one is more convenient when a customer steps away.
 - Should a stale proposal be rejected (current) or re-priced and shown for a second
@@ -549,23 +617,28 @@ stay read-only.
   behind one nav link instead of making the phone header longer.
 
 - **The assistant is tool-based, not text-to-SQL.** Read-only questions use a closed list of
-  typed tools generated from Zod schemas. Phase 7 adds a separate signed sale-proposal tool;
-  the model never sees SQL or the database and cannot write directly. Unknown tools and
-  invalid arguments are rejected before execution. This keeps the invariants enforceable even
-  when the model is wrong.
-- **A sale proposal is signed, short-lived, user-bound, and not persisted.** The proposal tool
-  reads and prices the draft, then signs the draft and preview with an HMAC key derived from
-  `AUTH_SECRET`. It is bound to the signed-in user and expires after 15 minutes. Nothing is
-  written until the shopkeeper confirms; only the resulting sale stores the proposal id.
-- **Confirmation re-prices inside the write transaction and rejects a stale preview.**
-  `createSaleWithStatus` shares `priceSale` with the sell screen and compares the current
-  lines and totals with the signed preview before writing. A price or stock change produces a
-  readable rejection, so the owner never gets a different sale from the one they saw.
-- **`Sale.proposalId` is nullable and unique for idempotency.** A replayed confirmation
-  returns the existing sale instead of creating a second one. Ordinary sell-screen sales leave
-  it null. This is the only schema change Phase 7 adds.
-- **Only sales are proposed in this slice.** Expenses, payments, customer creation, product
-  changes, and stock adjustments remain out of scope until each has its own
+  typed tools generated from Zod schemas. Phase 7 adds separate signed proposal tools; the
+  model never sees SQL or the database and cannot write directly. Unknown tools and invalid
+  arguments are rejected before execution. This keeps the invariants enforceable even when the
+  model is wrong.
+- **A proposal is signed, short-lived, user-bound, and not persisted.** Each proposal tool
+  reads and prices or validates the draft, then signs the draft and preview with a
+  purpose-specific HMAC key derived from `AUTH_SECRET`. It is bound to the signed-in user and
+  expires after 15 minutes. Nothing is written until the shopkeeper confirms; only the
+  resulting sale, expense, or payment stores the proposal id.
+- **Confirmation re-checks the preview inside the write transaction.** `createSaleWithStatus`
+  shares `priceSale` with the sell screen and compares the current lines and totals with the
+  signed preview before writing. `recordPaymentWithStatus` re-reads the derived khata balance
+  and rejects a stale balance or overpayment. `createExpenseWithStatus` compares the signed
+  draft with the preview. A change produces a readable rejection, so the owner never gets a
+  different record from the one they saw.
+- **`Sale.proposalId`, `Expense.proposalId`, and `Payment.proposalId` are nullable and unique
+  for idempotency.** A replayed confirmation returns the existing row instead of creating a
+  second one. Ordinary screen entries leave them null. For payments the idempotency lookup
+  runs before the balance check, so a later repayment does not make the original confirmation
+  look stale.
+- **Only sales, expenses, and khata repayments are proposed in this slice.** Customer
+  creation, product changes, and stock adjustments remain out of scope until each has its own
   explicit-confirmation design.
 - **The AI provider is an OpenAI-compatible HTTP endpoint, not a vendor SDK.** One adapter in
   `src/lib/ai/openai-compatible.ts` works with OpenAI, OpenRouter, Groq, LM Studio, Ollama,
@@ -584,8 +657,9 @@ stay read-only.
   the sell screen share `priceSale`. The assistant cannot drift into a second set of reporting
   or pricing rules.
 - **The assistant has no chat persistence.** History is client state for the open page, capped
-  at six turns. There is no chat table and no transcript on disk. Phase 7 adds only
-  `Sale.proposalId` for idempotent confirmations, not a stored proposal or chat history.
+  at six turns. There is no chat table and no transcript on disk. Phase 7 adds only nullable,
+  unique proposal ids on `Sale`, `Expense`, and `Payment` for idempotent confirmations, not a
+  stored proposal or chat history.
 - **Assistant limits are deliberately small.** A question is at most 500 characters; one
   answer uses at most four model rounds and eight tool calls. This bounds latency and provider
   cost on a shop laptop and keeps a confused model from looping.
@@ -737,7 +811,7 @@ stay read-only.
   `details.source = "assistant_proposal"`. The next test run's global setup deletes that test
   database and rebuilds it.
 - Phase 7 work is on branch `phase-7-assistant-sale-proposals`, pushed in commits `c0d423a`,
-  `e5d525d`, and `442da3b`. Pull request #1 is open:
+  `e5d525d`, `442da3b`, and `f6b00fd`. Pull request #1 is open:
   https://github.com/Eng-AttaUllah/AI-Shopkeeper/pull/1. CI passed (typecheck, lint, test,
   build). The Vercel Preview Actions workflow failed at the deploy step because the
   `VERCEL_TOKEN` repository secret is not set; the Vercel Git integration deployment also
@@ -747,3 +821,13 @@ stay read-only.
   secret and the Vercel Preview environment values remain. Add them, then rerun the workflow
   or push a commit. The local environment has a GitHub credential but no `gh` binary; the PR
   was created through the GitHub API.
+- Phase 7.1 added migration `20261029120000_add_expense_payment_proposal_id`, applied to
+  `prisma/dev.db`; the Prisma client was regenerated. The migration only adds nullable
+  `proposalId` columns and unique indexes to `expenses` and `payments`. The test global setup
+  rebuilds `prisma/test.db` from all migrations on every run.
+- Phase 7.1 work is on branch `phase-7b-expense-payment-proposals`, stacked on the Phase 7
+  branch. Pull request #2 targets `phase-7-assistant-sale-proposals`:
+  https://github.com/Eng-AttaUllah/AI-Shopkeeper/pull/2. It is deliberately not merged. CI
+  passed via manual dispatch (run 40818562612 for the implementation commit, then
+  40818701633 for the docs commit). The live Gemini check used the disposable test database;
+  the test global setup replaced that data on the next run.
