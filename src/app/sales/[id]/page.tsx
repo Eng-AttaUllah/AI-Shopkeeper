@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { formatDateTime, formatPaisa } from "@/lib/format";
 import { formatQuantity } from "@/lib/quantity";
+import { readClientLocale, translate } from "@/lib/dictionary";
 import { getSale, saleSubtotalPaisa } from "@/modules/sales/queries";
 
 export const dynamic = "force-dynamic";
@@ -26,13 +27,18 @@ export default async function SaleReceiptPage({
   }
 
   const subtotalPaisa = saleSubtotalPaisa(sale);
+  const locale = readClientLocale();
+
+  function t(key: string, params?: Record<string, string>): string {
+    return translate(locale, key, params);
+  }
 
   return (
     <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-5 px-4 py-8">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-sm font-medium uppercase tracking-wide text-ink-muted">
-            Receipt
+            {t("receipt.receipt")}
           </p>
           <h1 className="mt-1 text-2xl font-semibold tabular-nums">
             {sale.number}
@@ -42,7 +48,7 @@ export default async function SaleReceiptPage({
           </p>
           {sale.customer ? (
             <p className="mt-1 text-sm font-medium">
-              Customer:{" "}
+              {t("receipt.customer")}:{" "}
               <Link
                 href={`/customers/${sale.customer.id}`}
                 className="text-brand hover:text-brand-hover"
@@ -53,7 +59,7 @@ export default async function SaleReceiptPage({
           ) : null}
         </div>
         <Badge variant="secondary">
-          {sale.paymentMethod === "CASH" ? "Cash" : "Credit"}
+          {sale.paymentMethod === "CASH" ? t("sales.cash") : t("sales.credit")}
         </Badge>
       </div>
 
@@ -85,29 +91,29 @@ export default async function SaleReceiptPage({
 
         <dl className="mt-4 flex flex-col gap-1 border-t border-line pt-4 text-sm">
           <div className="flex justify-between">
-            <dt className="text-ink-muted">Subtotal</dt>
+            <dt className="text-ink-muted">{t("receipt.subtotal")}</dt>
             <dd className="tabular-nums">{formatPaisa(subtotalPaisa)}</dd>
           </div>
           {sale.discountPaisa > 0 ? (
             <div className="flex justify-between">
-              <dt className="text-ink-muted">Discount</dt>
+              <dt className="text-ink-muted">{t("receipt.discount")}</dt>
               <dd className="tabular-nums">
                 − {formatPaisa(sale.discountPaisa)}
               </dd>
             </div>
           ) : null}
           <div className="mt-1 flex justify-between border-t border-line pt-3 text-lg font-semibold">
-            <dt>Total</dt>
+            <dt>{t("receipt.total")}</dt>
             <dd className="tabular-nums">{formatPaisa(sale.totalPaisa)}</dd>
           </div>
           {sale.paymentMethod === "CREDIT" ? (
             <>
               <div className="flex justify-between">
-                <dt className="text-ink-muted">Paid now</dt>
+                <dt className="text-ink-muted">{t("receipt.paidNow")}</dt>
                 <dd className="tabular-nums">{formatPaisa(sale.paidPaisa)}</dd>
               </div>
               <div className="flex justify-between font-medium">
-                <dt className="text-error">Added to khata</dt>
+                <dt className="text-error">{t("receipt.addedToKhata")}</dt>
                 <dd className="tabular-nums text-error">
                   {formatPaisa(sale.totalPaisa - sale.paidPaisa)}
                 </dd>
@@ -116,11 +122,11 @@ export default async function SaleReceiptPage({
           ) : (
             <>
               <div className="flex justify-between">
-                <dt className="text-ink-muted">Cash received</dt>
+                <dt className="text-ink-muted">{t("receipt.cashReceived")}</dt>
                 <dd className="tabular-nums">{formatPaisa(sale.paidPaisa)}</dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-ink-muted">Change</dt>
+                <dt className="text-ink-muted">{t("receipt.change")}</dt>
                 <dd className="tabular-nums">{formatPaisa(sale.changePaisa)}</dd>
               </div>
             </>
@@ -139,7 +145,7 @@ export default async function SaleReceiptPage({
           href="/sell"
           className={buttonVariants({ className: "h-11 px-4 text-base" })}
         >
-          New sale
+          {t("receipt.newSale")}
         </Link>
         <Link
           href="/sales"
@@ -148,16 +154,17 @@ export default async function SaleReceiptPage({
             className: "h-11 px-4 text-base",
           })}
         >
-          All sales
+          {t("sales.allSales")}
         </Link>
       </div>
 
       {!sale.voidedAt ? (
         <section className="rounded-xl border border-error/30 bg-error/5 p-5">
-          <h2 className="text-lg font-semibold text-error">Void this sale</h2>
+          <h2 className="text-lg font-semibold text-error">
+            {t("receipt.voidThisSale")}
+          </h2>
           <p className="mt-1 text-sm text-ink-muted">
-            Use this when the sale was entered by mistake. The receipt stays
-            visible, but the sale stops counting in reports and khata.
+            {t("receipt.voidNote")}
           </p>
           <div className="mt-4">
             <VoidSaleForm saleId={sale.id} action={voidSaleAction} />

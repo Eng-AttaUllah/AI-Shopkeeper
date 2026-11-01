@@ -10,6 +10,7 @@ import {
 } from "@/app/assistant/actions";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { formatDateTime } from "@/lib/format";
+import { readClientLocale, translate } from "@/lib/dictionary";
 import type { CustomerProposal } from "@/modules/assistant/proposal-schema";
 
 type CustomerProposalCardProps = {
@@ -26,6 +27,11 @@ export function CustomerProposalCard({ proposal }: CustomerProposalCardProps) {
   const [confirmed, setConfirmed] =
     useState<ConfirmCustomerProposalActionResult | null>(null);
   const [dismissed, setDismissed] = useState(false);
+  const locale = readClientLocale();
+
+  function t(key: string, params?: Record<string, string>): string {
+    return translate(locale, key, params);
+  }
 
   if (dismissed) {
     return null;
@@ -36,8 +42,8 @@ export function CustomerProposalCard({ proposal }: CustomerProposalCardProps) {
       <section className="mt-3 rounded-xl border border-success/30 bg-success/5 p-4">
         <p className="font-medium text-success">
           {confirmed.alreadyConfirmed
-            ? "This customer was already created."
-            : "Customer created."}
+            ? t("proposal.customerAlreadyRecorded")
+            : t("proposal.customerRecorded")}
         </p>
         <p className="mt-1 text-sm text-ink-muted">{confirmed.name}</p>
         <div className="mt-3">
@@ -48,7 +54,7 @@ export function CustomerProposalCard({ proposal }: CustomerProposalCardProps) {
               "min-h-11 px-4 text-base",
             )}
           >
-            View customer
+            {t("proposal.customerRecord")}
           </Link>
         </div>
       </section>
@@ -86,36 +92,36 @@ export function CustomerProposalCard({ proposal }: CustomerProposalCardProps) {
     <section className="mt-3 rounded-xl border border-warning/30 bg-warning/5 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="rounded-full bg-warning/10 px-2.5 py-1 text-sm font-medium text-warning">
-          Proposed customer — not saved yet
+          {t("proposal.notSaved", { kind: t("proposal.kind.customer") })}
         </span>
         <span className="text-sm text-ink-muted">
-          Expires {formatDateTime(new Date(proposal.expiresAt))}
+          {t("proposal.expires", {
+            date: formatDateTime(new Date(proposal.expiresAt)),
+          })}
         </span>
       </div>
 
       <dl className="mt-3 space-y-1 border-t border-line pt-3 text-sm">
         <div className="flex justify-between gap-3 text-base font-semibold">
-          <dt>Name</dt>
+          <dt className="text-ink-muted">{t("proposal.name")}</dt>
           <dd>{preview.name}</dd>
         </div>
         {preview.phone ? (
           <div className="flex justify-between gap-3">
-            <dt className="text-ink-muted">Phone</dt>
+            <dt className="text-ink-muted">{t("proposal.phone")}</dt>
             <dd>{preview.phone}</dd>
           </div>
         ) : null}
         {preview.note ? (
           <div className="flex justify-between gap-3">
-            <dt className="text-ink-muted">Note</dt>
+            <dt className="text-ink-muted">{t("proposal.note")}</dt>
             <dd>{preview.note}</dd>
           </div>
         ) : null}
       </dl>
 
       <p className="mt-3 rounded-lg bg-surface px-3 py-2 text-sm text-ink-muted">
-        Nothing has been saved. Press{" "}
-        <span className="font-medium text-ink">Confirm customer</span> to create
-        the customer. The assistant cannot confirm it for you.
+        {t("proposal.nothingSaved", { action: t("proposal.confirmCustomer") })}
       </p>
 
       {error ? (
@@ -134,7 +140,7 @@ export function CustomerProposalCard({ proposal }: CustomerProposalCardProps) {
           disabled={pending}
           className="min-h-11 px-4 text-base"
         >
-          {pending ? "Creating…" : "Confirm customer"}
+          {pending ? "Creating…" : t("proposal.confirmCustomer")}
         </Button>
         <Button
           type="button"
@@ -143,7 +149,7 @@ export function CustomerProposalCard({ proposal }: CustomerProposalCardProps) {
           disabled={pending}
           className="min-h-11 px-4 text-base"
         >
-          Dismiss
+          {t("proposal.dismiss")}
         </Button>
       </div>
     </section>

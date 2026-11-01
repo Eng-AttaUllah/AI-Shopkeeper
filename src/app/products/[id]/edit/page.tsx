@@ -12,17 +12,10 @@ import { Button } from "@/components/ui/button";
 import { formatDate, formatPaisa } from "@/lib/format";
 import { paisaToRupees } from "@/lib/money";
 import { formatQuantity, fromMilli } from "@/lib/quantity";
+import { t } from "@/lib/i18n";
 import { getProduct } from "@/modules/products/queries";
 
 export const dynamic = "force-dynamic";
-
-const REASON_LABELS: Record<string, string> = {
-  OPENING: "Opening stock",
-  RESTOCK: "New stock",
-  DAMAGE: "Damaged or lost",
-  CORRECTION: "Counting correction",
-  OTHER: "Other",
-};
 
 type EditProductPageProps = {
   params: Promise<{ id: string }>;
@@ -40,6 +33,14 @@ export default async function EditProductPage({
 
   const isLow = product.stockMilli <= product.lowStockMilli;
 
+  const reasonLabels = {
+    OPENING: await t("products.openingStockLabel"),
+    RESTOCK: await t("products.newStock"),
+    DAMAGE: await t("products.damagedOrLost"),
+    CORRECTION: await t("products.countingCorrection"),
+    OTHER: await t("products.other"),
+  };
+
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-8">
       <div>
@@ -47,25 +48,24 @@ export default async function EditProductPage({
           href="/products"
           className="text-sm text-ink-muted hover:text-ink"
         >
-          ← Back to products
+          {await t("products.backToProducts")}
         </Link>
         <h1 className="mt-2 text-2xl font-semibold">{product.name}</h1>
         <p className="mt-1 text-sm text-ink-muted">
-          {product.category ?? "Uncategorised"} ·{" "}
-          {product.isActive ? "On sale" : "Not on sale"}
+          {product.category ?? (await t("products.uncategorised"))} ·{" "}
+          {product.isActive ? (await t("products.onSale")) : (await t("products.notOnSale"))}
         </p>
       </div>
 
       <section className="rounded-xl border border-line bg-surface p-5">
-        <h2 className="text-lg font-semibold">Details</h2>
+        <h2 className="text-lg font-semibold">{await t("products.details")}</h2>
         <p className="mt-1 text-sm text-ink-muted">
-          Changing prices affects future sales only. Past sales keep the price
-          they were sold at.
+          {await t("products.priceNote")}
         </p>
         <div className="mt-5">
           <ProductForm
             action={updateProductAction}
-            submitLabel="Save changes"
+            submitLabel={await t("products.saveChanges")}
             values={{
               id: product.id,
               name: product.name,
@@ -83,9 +83,9 @@ export default async function EditProductPage({
 
       <section className="rounded-xl border border-line bg-surface p-5">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="text-lg font-semibold">Stock</h2>
+          <h2 className="text-lg font-semibold">{await t("products.stock")}</h2>
           <p className="text-sm text-ink-muted">
-            Low-stock level:{" "}
+            {await t("products.lowStockLevel")}:{" "}
             {formatQuantity(product.lowStockMilli, product.unit)}
           </p>
         </div>
@@ -95,7 +95,7 @@ export default async function EditProductPage({
         </p>
         {isLow ? (
           <p className="mt-1 text-sm text-warning">
-            This product is at or below its low-stock level.
+            {await t("products.atOrBelowLowStock")}
           </p>
         ) : null}
 
@@ -109,10 +109,14 @@ export default async function EditProductPage({
       </section>
 
       <section className="rounded-xl border border-line bg-surface p-5">
-        <h2 className="text-lg font-semibold">Recent stock changes</h2>
+        <h2 className="text-lg font-semibold">
+          {await t("products.recentStockChanges")}
+        </h2>
 
         {product.stockMovements.length === 0 ? (
-          <p className="mt-3 text-sm text-ink-muted">No stock changes yet.</p>
+          <p className="mt-3 text-sm text-ink-muted">
+            {await t("products.noStockChangesYet")}
+          </p>
         ) : (
           <ul className="mt-3 divide-y divide-line">
             {product.stockMovements.map((movement) => (
@@ -122,7 +126,7 @@ export default async function EditProductPage({
               >
                 <div>
                   <p className="font-medium">
-                    {REASON_LABELS[movement.reason] ?? movement.reason}
+                    {reasonLabels[movement.reason as keyof typeof reasonLabels] ?? movement.reason}
                   </p>
                   <p className="text-ink-muted">
                     {formatDate(movement.createdAt)}
@@ -140,9 +144,9 @@ export default async function EditProductPage({
       </section>
 
       <section className="rounded-xl border border-line bg-surface p-5">
-        <h2 className="text-lg font-semibold">Availability</h2>
+        <h2 className="text-lg font-semibold">{await t("products.availability")}</h2>
         <p className="mt-1 text-sm text-ink-muted">
-          Stopping a product hides it from the sale screen. Its history is kept.
+          {await t("products.stopHides")}
         </p>
         <form action={toggleProductActiveAction} className="mt-4">
           <input type="hidden" name="productId" value={product.id} />
@@ -156,13 +160,13 @@ export default async function EditProductPage({
             variant="outline"
             className="h-11 px-4 text-base"
           >
-            {product.isActive ? "Stop selling" : "Start selling again"}
+            {product.isActive ? (await t("products.stopSelling")) : (await t("products.startSellingAgain"))}
           </Button>
         </form>
       </section>
 
       <p className="text-sm text-ink-muted">
-        Cost price: {formatPaisa(product.costPricePaisa)} · Sale price:{" "}
+        {(await t("proposal.costPrice"))}: {formatPaisa(product.costPricePaisa)} · {(await t("proposal.salePrice"))}:{" "}
         {formatPaisa(product.salePricePaisa)}
       </p>
     </main>

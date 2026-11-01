@@ -11,6 +11,8 @@ import { Label } from "@/components/ui/label";
 import { formatPaisa } from "@/lib/format";
 import { multiplyPaisa, paisaToRupees, rupeesToPaisa } from "@/lib/money";
 import { formatQuantity, fromMilli, toMilli } from "@/lib/quantity";
+import { readClientLocale, translate } from "@/lib/dictionary";
+import { normalizeText } from "@/lib/text";
 import type { CustomerOption } from "@/modules/customers/queries";
 import type { SellableProduct } from "@/modules/products/queries";
 
@@ -61,6 +63,11 @@ export function SellScreen({ products, customers, action }: SellScreenProps) {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("CASH");
   const [customerId, setCustomerId] = useState("");
   const router = useRouter();
+  const locale = readClientLocale();
+
+  function t(key: string, params?: Record<string, string>): string {
+    return translate(locale, key, params);
+  }
 
   const error = state.ok ? undefined : state.error;
   const fieldErrors = (state.ok ? {} : state.fieldErrors) ?? {};
@@ -93,7 +100,7 @@ export function SellScreen({ products, customers, action }: SellScreenProps) {
   }, [router]);
 
   const filteredProducts = useMemo(() => {
-    const term = search.trim().toLowerCase();
+    const term = normalizeText(search);
 
     if (!term) {
       return products;
@@ -101,9 +108,9 @@ export function SellScreen({ products, customers, action }: SellScreenProps) {
 
     return products.filter(
       (product) =>
-        product.name.toLowerCase().includes(term) ||
-        product.category?.toLowerCase().includes(term) ||
-        product.aliases.some((alias) => alias.toLowerCase().includes(term)),
+        normalizeText(product.name).includes(term) ||
+        normalizeText(product.category ?? "").includes(term) ||
+        product.aliases.some((alias) => normalizeText(alias).includes(term)),
     );
   }, [products, search]);
 
@@ -221,27 +228,28 @@ export function SellScreen({ products, customers, action }: SellScreenProps) {
 
       <section className="flex flex-col gap-3">
         <Label htmlFor="product-search" className="sr-only">
-          Search products
+          {t("sell.searchProducts")}
         </Label>
         <Input
           id="product-search"
           value={search}
           onChange={(event) => setSearch(event.target.value)}
-          placeholder="Search by name, category, or other name"
+          placeholder={t("sell.searchPlaceholder")}
           autoComplete="off"
           className="h-11 text-base"
+          dir="auto"
         />
 
         {products.length === 0 ? (
           <div className="rounded-xl border border-dashed border-line bg-surface p-8 text-center">
-            <p className="font-medium">No products to sell yet.</p>
+            <p className="font-medium">{t("sell.noProductsToSell")}</p>
             <p className="mt-1 text-sm text-ink-muted">
-              Add products with stock before recording a sale.
+              {t("sell.addProductsBeforeSale")}
             </p>
           </div>
         ) : filteredProducts.length === 0 ? (
           <p className="rounded-xl border border-line bg-surface p-6 text-center text-sm text-ink-muted">
-            No product matches “{search}”.
+            {t("sell.noProductMatches", { search })}
           </p>
         ) : (
           <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -259,8 +267,11 @@ export function SellScreen({ products, customers, action }: SellScreenProps) {
                   </span>
                   <span className="text-xs text-ink-muted">
                     {product.stockMilli <= 0
-                      ? "Out of stock"
-                      : `${formatQuantity(product.stockMilli, product.unit)} left`}
+                      ? t("sell.outOfStock")
+                      : `${formatQuantity(
+                          product.stockMilli,
+                          product.unit,
+                        )} ${t("sell.available")}`}
                   </span>
                 </button>
               </li>
@@ -271,14 +282,14 @@ export function SellScreen({ products, customers, action }: SellScreenProps) {
 
       <aside className="flex flex-col gap-4 rounded-xl border border-line bg-surface p-4 lg:sticky lg:top-6 lg:self-start">
         <div className="flex items-center justify-between gap-2">
-          <h2 className="text-lg font-semibold">Cart</h2>
+          <h2 className="text-lg font-semibold">{t("sell.cart")}</h2>
           {cart.length > 0 ? (
             <button
               type="button"
               onClick={() => setCart([])}
               className="text-sm text-ink-muted transition-colors hover:text-error"
             >
-              Clear
+              {t("sell.clear")}
             </button>
           ) : null}
         </div>
@@ -297,9 +308,7 @@ export function SellScreen({ products, customers, action }: SellScreenProps) {
         ) : null}
 
         {cart.length === 0 ? (
-          <p className="text-sm text-ink-muted">
-            Tap a product to add it to the sale.
-          </p>
+          <p className="text-sm text-ink-muted">{t("sell.tapProduct")}</p>
         ) : (
           <ul className="divide-y divide-line">
             {cart.map((line) => {
@@ -316,7 +325,8 @@ export function SellScreen({ products, customers, action }: SellScreenProps) {
                       <p className="font-medium">{line.name}</p>
                       <p className="text-sm text-ink-muted">
                         {formatPaisa(line.unitPricePaisa)} each ·{" "}
-                        {formatQuantity(line.stockMilli, line.unit)} available
+                        {formatQuantity(line.stockMilli, line.unit)}{" "}
+                        {t("sell.available")}
                       </p>
                     </div>
                     <p className="tabular-nums">
@@ -332,7 +342,7 @@ export function SellScreen({ products, customers, action }: SellScreenProps) {
                       variant="outline"
                       className="size-11 text-base"
                       onClick={() => stepQuantity(line.productId, -1)}
-                      aria-label={`Less ${line.name}`}
+                      aria-label={t("sell.less", { name: line.name })}
                     >
                       −
                     </Button>
@@ -343,16 +353,17 @@ export function SellScreen({ products, customers, action }: SellScreenProps) {
                       }
                       inputMode="decimal"
                       autoComplete="off"
-                      aria-label={`Quantity of ${line.name}`}
+                      aria-label={t("sell.quantityOf", { name: line.name })}
                       aria-invalid={milli === null}
                       className="h-11 w-20 text-center text-base"
+                      dir="ltr"
                     />
                     <Button
                       type="button"
                       variant="outline"
                       className="size-11 text-base"
                       onClick={() => stepQuantity(line.productId, 1)}
-                      aria-label={`More ${line.name}`}
+                      aria-label={t("sell.more", { name: line.name })}
                     >
                       +
                     </Button>
@@ -361,7 +372,7 @@ export function SellScreen({ products, customers, action }: SellScreenProps) {
                       onClick={() => removeLine(line.productId)}
                       className="ml-auto text-sm text-ink-muted transition-colors hover:text-error"
                     >
-                      Remove
+                      {t("sell.remove")}
                     </button>
                   </div>
                 </li>
@@ -371,7 +382,7 @@ export function SellScreen({ products, customers, action }: SellScreenProps) {
         )}
 
         <div className="flex flex-col gap-2">
-          <Label htmlFor="discount">Discount (Rs.)</Label>
+          <Label htmlFor="discount">{t("sell.discount")}</Label>
           <Input
             id="discount"
             value={discount}
@@ -381,6 +392,7 @@ export function SellScreen({ products, customers, action }: SellScreenProps) {
             placeholder="0"
             aria-invalid={Boolean(fieldErrors.discount)}
             className="h-11 text-base"
+            dir="ltr"
           />
           {fieldErrors.discount ? (
             <p className="text-sm text-error">{fieldErrors.discount}</p>
@@ -389,25 +401,25 @@ export function SellScreen({ products, customers, action }: SellScreenProps) {
 
         <dl className="flex flex-col gap-1 border-t border-line pt-3 text-sm">
           <div className="flex justify-between">
-            <dt className="text-ink-muted">Subtotal</dt>
+            <dt className="text-ink-muted">{t("sell.subtotal")}</dt>
             <dd className="tabular-nums">{formatPaisa(subtotalPaisa)}</dd>
           </div>
           {discountPaisa > 0 ? (
             <div className="flex justify-between">
-              <dt className="text-ink-muted">Discount</dt>
+              <dt className="text-ink-muted">{t("sell.discount")}</dt>
               <dd className="tabular-nums">
                 − {formatPaisa(discountPaisa)}
               </dd>
             </div>
           ) : null}
           <div className="flex justify-between text-base font-semibold">
-            <dt>Total</dt>
+            <dt>{t("sell.total")}</dt>
             <dd className="tabular-nums">{formatPaisa(totalPaisa)}</dd>
           </div>
         </dl>
 
         <div className="flex flex-col gap-2">
-          <Label>Payment method</Label>
+          <Label>{t("sell.paymentMethod")}</Label>
           <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
@@ -422,7 +434,7 @@ export function SellScreen({ products, customers, action }: SellScreenProps) {
                   : "border-brand bg-brand-soft font-semibold text-brand"
               }`}
             >
-              Cash
+              {t("sell.cash")}
             </button>
             <button
               type="button"
@@ -437,7 +449,7 @@ export function SellScreen({ products, customers, action }: SellScreenProps) {
                   : "border-line bg-surface text-ink hover:bg-subtle"
               }`}
             >
-              Credit (khata)
+              {t("sell.creditKhata")}
             </button>
           </div>
         </div>
@@ -445,14 +457,14 @@ export function SellScreen({ products, customers, action }: SellScreenProps) {
         {isCredit ? (
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between">
-              <Label htmlFor="customer">Customer</Label>
+              <Label htmlFor="customer">{t("proposal.customer")}</Label>
               <Link
                 href="/customers/new"
                 target="_blank"
                 rel="noreferrer"
                 className="text-xs font-medium text-brand hover:text-brand-hover"
               >
-                + New customer
+                {t("sell.newCustomer")}
               </Link>
             </div>
             <select
@@ -462,7 +474,7 @@ export function SellScreen({ products, customers, action }: SellScreenProps) {
               className="h-11 w-full rounded-lg border border-line bg-surface px-3 text-base outline-none focus-visible:border-brand focus-visible:ring-3 focus-visible:ring-brand/20"
               aria-invalid={Boolean(fieldErrors.customerId)}
             >
-              <option value="">Choose a customer…</option>
+              <option value="">{t("sell.chooseCustomer")}</option>
               {customers.map((customer) => (
                 <option key={customer.id} value={customer.id}>
                   {customer.name}
@@ -474,14 +486,14 @@ export function SellScreen({ products, customers, action }: SellScreenProps) {
             </select>
             {customers.length === 0 ? (
               <p className="text-xs text-ink-muted">
-                No customers yet.{" "}
+                {t("sell.noCustomersYet")}{" "}
                 <Link
                   href="/customers/new"
                   target="_blank"
                   rel="noreferrer"
                   className="text-brand underline"
                 >
-                  Create a customer
+                  {t("sell.createCustomerFirst")}
                 </Link>{" "}
                 first.
               </p>
@@ -494,7 +506,7 @@ export function SellScreen({ products, customers, action }: SellScreenProps) {
 
         {isCredit ? (
           <div className="flex flex-col gap-2">
-            <Label htmlFor="paid">Cash received now (Rs., optional)</Label>
+            <Label htmlFor="paid">{t("sell.cashReceivedNow")}</Label>
             <Input
               id="paid"
               value={paid}
@@ -504,30 +516,29 @@ export function SellScreen({ products, customers, action }: SellScreenProps) {
               placeholder="0"
               aria-invalid={Boolean(fieldErrors.paid) || overpaidOnCredit}
               className="h-11 text-base"
+              dir="ltr"
             />
             <p className="text-sm text-ink-muted">
-              Leave empty (or 0) to put the full amount on credit, or enter what
-              was paid now.
+              {t("sell.leaveEmptyCredit")}
             </p>
             {fieldErrors.paid ? (
               <p className="text-sm text-error">{fieldErrors.paid}</p>
             ) : null}
             {overpaidOnCredit ? (
               <p className="text-sm text-error">
-                Cannot receive more than the total on credit. Record a cash sale
-                instead.
+                {t("sell.cannotReceiveMore")}
               </p>
             ) : (
               <div className="rounded-lg bg-subtle p-3 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-ink-muted">Added to khata</span>
+                  <span className="text-ink-muted">{t("sell.addedToKhata")}</span>
                   <span className="font-semibold tabular-nums text-error">
                     {formatPaisa(creditDuePaisa)}
                   </span>
                 </div>
                 {paidPaisa !== null && paidPaisa > 0 ? (
                   <div className="mt-1 flex justify-between text-xs text-ink-muted">
-                    <span>Paid now</span>
+                    <span>{t("sell.paidNow")}</span>
                     <span className="tabular-nums">
                       {formatPaisa(paidPaisa)}
                     </span>
@@ -538,7 +549,7 @@ export function SellScreen({ products, customers, action }: SellScreenProps) {
           </div>
         ) : (
           <div className="flex flex-col gap-2">
-            <Label htmlFor="paid">Cash received (Rs.)</Label>
+            <Label htmlFor="paid">{t("sell.cashReceived")}</Label>
             <Input
               id="paid"
               value={paid}
@@ -548,9 +559,10 @@ export function SellScreen({ products, customers, action }: SellScreenProps) {
               placeholder={String(paisaToRupees(totalPaisa))}
               aria-invalid={Boolean(fieldErrors.paid)}
               className="h-11 text-base"
+              dir="ltr"
             />
             <p className="text-sm text-ink-muted">
-              Leave empty when the customer pays the exact total.
+              {t("sell.leaveEmptyExact")}
             </p>
             {fieldErrors.paid ? (
               <p className="text-sm text-error">{fieldErrors.paid}</p>
@@ -564,8 +576,8 @@ export function SellScreen({ products, customers, action }: SellScreenProps) {
                 }
               >
                 {changePaisa < 0
-                  ? `Short by ${formatPaisa(Math.abs(changePaisa))}`
-                  : `Change ${formatPaisa(changePaisa)}`}
+                  ? t("sell.shortBy", { amount: formatPaisa(Math.abs(changePaisa)) })
+                  : t("sell.change", { amount: formatPaisa(changePaisa) })}
               </p>
             ) : null}
           </div>
@@ -580,8 +592,12 @@ export function SellScreen({ products, customers, action }: SellScreenProps) {
             {pending
               ? "Saving…"
               : isCredit
-                ? `Record credit sale · ${formatPaisa(creditDuePaisa)} on khata`
-                : `Complete sale · ${formatPaisa(totalPaisa)}`}
+                ? t("sell.recordCreditSale", {
+                    amount: formatPaisa(creditDuePaisa),
+                  })
+                : t("sell.completeSale", {
+                    amount: formatPaisa(totalPaisa),
+                  })}
           </Button>
         </div>
       </aside>
@@ -590,7 +606,7 @@ export function SellScreen({ products, customers, action }: SellScreenProps) {
         <div className="mx-auto flex max-w-6xl items-center gap-3">
           <div className="flex-1">
             <p className="text-xs text-ink-muted">
-              {isCredit ? "On khata" : "Total"}
+              {isCredit ? t("sell.onKhata") : t("sell.total")}
             </p>
             <p
               className={`text-lg font-semibold tabular-nums ${
@@ -608,8 +624,8 @@ export function SellScreen({ products, customers, action }: SellScreenProps) {
             {pending
               ? "Saving…"
               : isCredit
-                ? "Record credit"
-                : "Complete sale"}
+                ? t("sell.recordCredit")
+                : t("sell.completeSaleShort")}
           </Button>
         </div>
       </div>

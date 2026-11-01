@@ -109,10 +109,10 @@ alerts. Those are explicitly out of scope for v1 and must not be built early `(s
 - Read-only English assistant (Phase 6, complete).
 - Conversational sale, expense, khata repayment, customer, product, product-edit, and stock
   adjustment entry with explicit shopkeeper confirmation (Phase 7 complete).
-- Conversational assistant in Pashto (Phase 8).
+- Pashto support (Phase 8): conversational assistant in Pashto, Pashto user interface with
+  right-to-left layout, product aliases, and Pashto input handling.
 - Voice input.
 - Camera-based suspicious-activity alerts.
-- Pashto user interface and right-to-left layout.
 - Face recognition (research only, consent-based).
 - Suppliers, purchase orders, returns, multi-shop, thermal printing.
 
@@ -297,7 +297,8 @@ assistant prepares a signed proposal; nothing is saved until the owner presses t
 | 5.5 | Sign-in | Username/password sign-in, sessions, route protection, and audit attribution |
 | 6 | Assistant (read-only) | Shop questions in English are answered from real database figures |
 | 7 | Assistant proposals | Signed sale, expense, repayment, customer, product, product-edit, and stock-adjustment proposals are written only after the shopkeeper confirms them |
-| 8 | Pashto support | Pashto interface, product aliases, and Pashto input handling |
+| 8 | Pashto support | Pashto UI with right-to-left layout, conversational assistant in Pashto,
+| product aliases, and Pashto input handling |
 | 9 | Voice input | Spoken commands, after testing on real Pashto speakers |
 | 10 | Camera alerts | Suspicious-activity alerts with a saved clip, never automatic accusation |
 | 11 | Face recognition | Optional, consent-based research feature |

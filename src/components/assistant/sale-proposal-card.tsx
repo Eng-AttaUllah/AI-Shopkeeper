@@ -11,6 +11,7 @@ import {
 import { Button, buttonVariants } from "@/components/ui/button";
 import { formatDateTime, formatPaisa } from "@/lib/format";
 import { formatQuantity } from "@/lib/quantity";
+import { readClientLocale, translate } from "@/lib/dictionary";
 import type { SaleProposal } from "@/modules/assistant/proposal-schema";
 
 type SaleProposalCardProps = {
@@ -28,6 +29,11 @@ export function SaleProposalCard({ proposal }: SaleProposalCardProps) {
   const [confirmed, setConfirmed] =
     useState<ConfirmSaleProposalActionResult | null>(null);
   const [dismissed, setDismissed] = useState(false);
+  const locale = readClientLocale();
+
+  function t(key: string, params?: Record<string, string>): string {
+    return translate(locale, key, params);
+  }
 
   if (dismissed) {
     return null;
@@ -38,8 +44,8 @@ export function SaleProposalCard({ proposal }: SaleProposalCardProps) {
       <section className="mt-3 rounded-xl border border-success/30 bg-success/5 p-4">
         <p className="font-medium text-success">
           {confirmed.alreadyConfirmed
-            ? "This sale was already recorded."
-            : "Sale recorded."}
+            ? t("proposal.saleAlreadyRecorded")
+            : t("proposal.saleRecorded")}
         </p>
         <p className="mt-1 text-sm text-ink-muted">
           Receipt {confirmed.number} · {formatPaisa(confirmed.totalPaisa)}
@@ -52,7 +58,7 @@ export function SaleProposalCard({ proposal }: SaleProposalCardProps) {
               "min-h-11 px-4 text-base",
             )}
           >
-            View receipt
+            {t("proposal.receipt")}
           </Link>
         </div>
       </section>
@@ -90,10 +96,12 @@ export function SaleProposalCard({ proposal }: SaleProposalCardProps) {
     <section className="mt-3 rounded-xl border border-warning/30 bg-warning/5 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="rounded-full bg-warning/10 px-2.5 py-1 text-sm font-medium text-warning">
-          Proposed sale — not saved yet
+          {t("proposal.notSaved", { kind: t("proposal.kind.sale") })}
         </span>
         <span className="text-sm text-ink-muted">
-          Expires {formatDateTime(new Date(proposal.expiresAt))}
+          {t("proposal.expires", {
+            date: formatDateTime(new Date(proposal.expiresAt)),
+          })}
         </span>
       </div>
 
@@ -119,7 +127,7 @@ export function SaleProposalCard({ proposal }: SaleProposalCardProps) {
 
       <dl className="mt-3 space-y-1 border-t border-line pt-3 text-sm">
         <div className="flex justify-between gap-3">
-          <dt className="text-ink-muted">Subtotal</dt>
+          <dt className="text-ink-muted">{t("label.total")}</dt>
           <dd className="tabular-nums">{formatPaisa(preview.subtotalPaisa)}</dd>
         </div>
         {preview.discountPaisa > 0 ? (
@@ -137,35 +145,35 @@ export function SaleProposalCard({ proposal }: SaleProposalCardProps) {
         <div className="flex justify-between gap-3">
           <dt className="text-ink-muted">Payment</dt>
           <dd>
-            {preview.paymentMethod === "CREDIT" ? "Credit (khata)" : "Cash"}
+            {preview.paymentMethod === "CREDIT" ? t("proposal.paymentCredit") : t("proposal.paymentCash")}
           </dd>
         </div>
         {preview.customerName ? (
           <div className="flex justify-between gap-3">
-            <dt className="text-ink-muted">Customer</dt>
+            <dt className="text-ink-muted">{t("proposal.customer")}</dt>
             <dd>{preview.customerName}</dd>
           </div>
         ) : null}
         <div className="flex justify-between gap-3">
-          <dt className="text-ink-muted">Cash received</dt>
+          <dt className="text-ink-muted">{t("proposal.cashReceived")}</dt>
           <dd className="tabular-nums">{formatPaisa(preview.paidPaisa)}</dd>
         </div>
         {preview.changePaisa > 0 ? (
           <div className="flex justify-between gap-3">
-            <dt className="text-ink-muted">Change</dt>
+            <dt className="text-ink-muted">{t("proposal.change")}</dt>
             <dd className="tabular-nums">{formatPaisa(preview.changePaisa)}</dd>
           </div>
         ) : null}
       </dl>
 
       {preview.note ? (
-        <p className="mt-2 text-sm text-ink-muted">Note: {preview.note}</p>
+        <p className="mt-2 text-sm text-ink-muted">
+          {t("proposal.note")}: {preview.note}
+        </p>
       ) : null}
 
       <p className="mt-3 rounded-lg bg-surface px-3 py-2 text-sm text-ink-muted">
-        Nothing has been saved. Press{" "}
-        <span className="font-medium text-ink">Confirm sale</span> to record it.
-        The assistant cannot confirm it for you.
+        {t("proposal.nothingSaved", { action: t("proposal.confirmSale") })}
       </p>
 
       {error ? (
@@ -184,7 +192,7 @@ export function SaleProposalCard({ proposal }: SaleProposalCardProps) {
           disabled={pending}
           className="min-h-11 px-4 text-base"
         >
-          {pending ? "Recording…" : "Confirm sale"}
+          {pending ? "Recording…" : t("proposal.confirmSale")}
         </Button>
         <Button
           type="button"
@@ -193,7 +201,7 @@ export function SaleProposalCard({ proposal }: SaleProposalCardProps) {
           disabled={pending}
           className="min-h-11 px-4 text-base"
         >
-          Dismiss
+          {t("proposal.dismiss")}
         </Button>
       </div>
     </section>

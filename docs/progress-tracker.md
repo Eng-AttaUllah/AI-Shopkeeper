@@ -468,18 +468,45 @@ Update this file after every meaningful implementation change.
   The new cards have not yet been clicked in a browser; the service and action paths are
   covered by the tests.
 
-## In Progress
+## Current Phase
 
-- None.
+- Phase 8 — Pashto support: **Complete** (Pashto UI with RTL layout, conversational
+  assistant in Pashto, product aliases, Pashto input handling). Pull request #4 open.
+
+## Current Goal
+
+- Deliver Phase 8 as small, verifiable slices: language/RTL foundation → translated shell
+  and navigation → screen strings → assistant prompts/tool labels/cards → Pashto product and
+  customer input handling → QA in English and Pashto. Build nothing outside this scope
+  (voice, camera, thermal printing are later phases).
+- Phase 8 is complete and pushed on branch `phase-8-pashto-support`; pull request #4 is open
+  (https://github.com/Eng-AttaUllah/AI-Shopkeeper/pull/4) based on
+  `phase-7c-customer-product-stock-proposals`. Kept unmerged until the owner decides merge
+  order; PR #1, #2, and #3 remain unmerged.
 
 ## Next Up
 
-Phase 8 — Pashto support, unless the owner asks to extend Phase 7 further. The seven proposal
-designs are documented in `docs/architecture.md`; any new proposal kind, such as customer edits
-or product activation, needs its own explicit-confirmation design before a write tool is added.
-The read-only registry in `src/modules/assistant/tools.ts` must stay read-only.
+- Slice 8.0: docs resolution and Phase 8 scope/acceptance criteria (this session).
+- Slice 8.1: i18n/RTL foundation — locale cookie, `lang`/`dir`, Pashto font, translated shell
+  and navigation.
+- Slice 8.2: Pashto assistant — system prompt, suggestions, tool labels, proposal cards.
+- Slice 8.3: Pashto screens — all pages translated. **Complete.**
+- Slice 8.4: Pashto input/aliases — Unicode normalization, Pashto digits, bidi-safe inputs. **Complete.**
+- Slice 8.5: QA in English and Pashto at 360px and desktop; typecheck/lint/test/build pass. **Complete** (automated checks pass; browser check at 360px requires a real device).
 
 ## Open Questions
+
+- Locale storage: per-browser cookie (`shop_locale`), or a shop-wide database setting? Cookie
+  is recommended — no migration, survives across tabs/devices only per browser.
+- Numbers and currency: keep Latin digits and `Rs.` in both locales, or use Pashto digits and
+  `روپۍ`? Recommendation: keep Latin digits and `Rs.` so reconciliation and parsing stay
+  simple; Pashto labels surround them.
+- Error localization: fully Pashto server/validation errors, or accept English fallbacks for
+  now? Recommendation: typed error codes translated at the UI boundary.
+- Pashto dialect and reviewer: standard, Kandahari, or Peshawari — and who reviews the
+  translations?
+- Should `matchCustomer`/`matchProduct` normalization fold Arabic/Pashto character variants
+  (ي/ی, ك/ک, ZWNJ) and convert Pashto digits before matching?
 
 - Will the shop use a thermal receipt printer? If yes, which model and connection (USB,
   network, Bluetooth)? Needed before receipt printing is scheduled.
@@ -728,6 +755,30 @@ The read-only registry in `src/modules/assistant/tools.ts` must stay read-only.
   Ollama option for shops that want the data to stay on the laptop.
 - **The assistant is reached from the dashboard and More, not the main navigation.** It is a
   secondary tool, so adding it did not lengthen the phone header.
+
+- **Phase 8 uses a cookie locale, not a database setting.** A `shop_locale` cookie (`en` or
+  `ps`) defaults to English and is read on the server to set `lang`/`dir` and the dictionary.
+  No migration is needed; each browser remembers its own choice.
+- **Pashto is additive, not a rewrite.** English strings stay in place; a `t()` helper picks
+  the locale dictionary. Business data stored in the database is not translated — only labels,
+  headings, buttons, and assistant copy.
+- **RTL uses logical Tailwind utilities.** `ms`/`me`/`ps`/`pe`, `text-start`/`text-end`, and
+  `start`/`end` replace physical left/right classes where direction matters. Protected
+  `components/ui/*` shadcn files are not edited; RTL fixes for them live in `globals.css`.
+- **Money stays in Latin digits and `Rs.` in both locales.** Parsing, formatting, and
+  reconciliation keep using `formatPaisa` and `toMilli`; Pashto labels wrap them.
+- **Numbers and dates keep Gregorian/Latin form.** Dates stay `Asia/Karachi`; the UI does not
+  switch to a Pashto calendar.
+- **Inputs are bidi-safe.** Names, notes, and search use `dir="auto"`; money, quantity, phone,
+  receipt number, and barcode use `dir="ltr"`/`bdi`.
+- **Text inputs are normalized before matching.** Product/customer search, duplicate
+  detection, and assistant resolution fold Arabic/Pashto character variants (ي/ی, ك/ک, ZWNJ),
+  convert Pashto digits to Arabic digits, strip tatweel/diacritics, and collapse whitespace.
+- **The assistant answers in Pashto.** Tool descriptions stay English for the model; the
+  system prompt instructs Pashto answers and exact quoting of formatted figures. Proposal
+  tokens, write rules, and the one-proposal-per-answer guard are unchanged.
+- **No new schema or migration.** Phase 8 adds no database changes; proposal id fields and
+  alias parsing from Phase 7 are reused.
 
 ## Session Notes
 

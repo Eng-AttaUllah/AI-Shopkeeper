@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/table";
 import { formatPaisa } from "@/lib/format";
 import { formatQuantity } from "@/lib/quantity";
+import { readClientLocale, translate } from "@/lib/dictionary";
 import {
   inventoryValuePaisa,
   listProducts,
@@ -34,11 +35,17 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
     inventoryValuePaisa(),
   ]);
 
+  const locale = readClientLocale();
+
+  function t(key: string, params?: Record<string, string>): string {
+    return translate(locale, key, params);
+  }
+
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-8">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Products</h1>
+          <h1 className="text-2xl font-semibold">{await t("page.products")}</h1>
           <p className="mt-1 text-sm text-ink-muted">
             Items you buy and sell, with prices and current stock.
           </p>
@@ -47,25 +54,25 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
           href="/products/new"
           className={buttonVariants({ className: "h-11 px-4 text-base" })}
         >
-          Add product
+          {t("action.addProduct")}
         </Link>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="rounded-xl border border-line bg-surface p-4">
-          <p className="text-sm text-ink-muted">Products</p>
+          <p className="text-sm text-ink-muted">{t("page.products")}</p>
           <p className="mt-1 text-2xl font-semibold tabular-nums">
             {products.length}
           </p>
         </div>
         <div className="rounded-xl border border-line bg-surface p-4">
-          <p className="text-sm text-ink-muted">Low stock</p>
+          <p className="text-sm text-ink-muted">{t("products.lowStockLevel")}</p>
           <p className="mt-1 text-2xl font-semibold tabular-nums text-warning">
             {lowStock.length}
           </p>
         </div>
         <div className="rounded-xl border border-line bg-surface p-4">
-          <p className="text-sm text-ink-muted">Stock value (cost)</p>
+          <p className="text-sm text-ink-muted">{t("products.stockValueCost")}</p>
           <p className="mt-1 text-2xl font-semibold tabular-nums">
             {formatPaisa(inventoryValue)}
           </p>
@@ -76,7 +83,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
         <Input
           name="q"
           defaultValue={q ?? ""}
-          placeholder="Search by name, alias, category, or barcode"
+          placeholder={t("sell.searchPlaceholder")}
           className="h-11 text-base"
         />
         <button
@@ -86,19 +93,19 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
             className: "h-11 px-4 text-base",
           })}
         >
-          Search
+          {t("action.search")}
         </button>
       </form>
 
       {products.length === 0 ? (
         <div className="rounded-xl border border-dashed border-line bg-surface p-10 text-center">
           <p className="font-medium">
-            {q ? "No products match your search." : "No products yet."}
+            {q ? t("sell.noProductMatches", { search: q }) : t("products.noProductsYet")}
           </p>
           <p className="mt-1 text-sm text-ink-muted">
             {q
-              ? "Try a different word, or clear the search."
-              : "Add your first product to start tracking stock and prices."}
+              ? t("products.tryDifferentWord")
+              : t("products.addYourFirstProduct")}
           </p>
           {q ? (
             <Link
@@ -108,7 +115,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
                 className: "mt-4 h-11 px-4 text-base",
               })}
             >
-              Clear search
+              {t("action.clearSearch")}
             </Link>
           ) : (
             <Link
@@ -117,7 +124,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
                 className: "mt-4 h-11 px-4 text-base",
               })}
             >
-              Add product
+              {t("action.addProduct")}
             </Link>
           )}
         </div>
@@ -127,11 +134,11 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Product</TableHead>
-                  <TableHead>Cost</TableHead>
-                  <TableHead>Sale</TableHead>
-                  <TableHead>Stock</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>{t("products.productName")}</TableHead>
+                  <TableHead>{t("proposal.costPrice")}</TableHead>
+                  <TableHead>{t("proposal.salePrice")}</TableHead>
+                  <TableHead>{t("products.stock")}</TableHead>
+                  <TableHead className="text-right">{t("products.actions")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -143,7 +150,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
                       <TableCell>
                         <p className="font-medium">{product.name}</p>
                         <p className="text-sm text-ink-muted">
-                          {product.category ?? "Uncategorised"}
+                          {product.category ?? t("products.uncategorised")}
                         </p>
                       </TableCell>
                       <TableCell className="tabular-nums">
@@ -167,7 +174,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
                           href={`/products/${product.id}/edit`}
                           className="text-sm font-medium text-brand hover:text-brand-hover"
                         >
-                          Edit
+                          {t("products.edit")}
                         </Link>
                       </TableCell>
                     </TableRow>
@@ -190,14 +197,14 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
                     <div>
                       <p className="font-medium">{product.name}</p>
                       <p className="text-sm text-ink-muted">
-                        {product.category ?? "Uncategorised"}
+                        {product.category ?? t("products.uncategorised")}
                       </p>
                     </div>
                     {isLow ? <Badge variant="destructive">Low</Badge> : null}
                   </div>
                   <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-sm">
                     <span className="tabular-nums text-ink-muted">
-                      Sale {formatPaisa(product.salePricePaisa)}
+                      {t("products.saleShort")} {formatPaisa(product.salePricePaisa)}
                     </span>
                     <span className="tabular-nums">
                       {formatQuantity(product.stockMilli, product.unit)}
@@ -207,7 +214,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
                     href={`/products/${product.id}/edit`}
                     className="mt-3 inline-block text-sm font-medium text-brand hover:text-brand-hover"
                   >
-                    Edit product
+                    {t("products.editProduct")}
                   </Link>
                 </li>
               );

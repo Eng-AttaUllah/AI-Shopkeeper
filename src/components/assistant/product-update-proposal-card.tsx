@@ -11,6 +11,7 @@ import {
 import { Button, buttonVariants } from "@/components/ui/button";
 import { formatDateTime, formatPaisa } from "@/lib/format";
 import { formatQuantity } from "@/lib/quantity";
+import { readClientLocale, translate } from "@/lib/dictionary";
 import type { ProductUpdateProposal } from "@/modules/assistant/proposal-schema";
 import type { ProductSnapshot } from "@/modules/products/preview";
 
@@ -19,33 +20,36 @@ type ProductUpdateProposalCardProps = {
 };
 
 type Change = {
-  label: string;
+  labelKey: string;
   before: string;
   after: string;
 };
 
-function changes(before: ProductSnapshot, after: ProductSnapshot): Change[] {
+function changes(
+  before: ProductSnapshot,
+  after: ProductSnapshot,
+): Change[] {
   const rows: Change[] = [];
 
   if (before.name !== after.name) {
-    rows.push({ label: "Name", before: before.name, after: after.name });
+    rows.push({ labelKey: "proposal.name", before: before.name, after: after.name });
   }
 
   if (before.category !== after.category) {
     rows.push({
-      label: "Category",
+      labelKey: "proposal.category",
       before: before.category ?? "None",
       after: after.category ?? "None",
     });
   }
 
   if (before.unit !== after.unit) {
-    rows.push({ label: "Unit", before: before.unit, after: after.unit });
+    rows.push({ labelKey: "proposal.unit", before: before.unit, after: after.unit });
   }
 
   if (before.costPricePaisa !== after.costPricePaisa) {
     rows.push({
-      label: "Cost price",
+      labelKey: "proposal.costPrice",
       before: formatPaisa(before.costPricePaisa),
       after: formatPaisa(after.costPricePaisa),
     });
@@ -53,7 +57,7 @@ function changes(before: ProductSnapshot, after: ProductSnapshot): Change[] {
 
   if (before.salePricePaisa !== after.salePricePaisa) {
     rows.push({
-      label: "Sale price",
+      labelKey: "proposal.salePrice",
       before: formatPaisa(before.salePricePaisa),
       after: formatPaisa(after.salePricePaisa),
     });
@@ -61,7 +65,7 @@ function changes(before: ProductSnapshot, after: ProductSnapshot): Change[] {
 
   if (before.lowStockMilli !== after.lowStockMilli) {
     rows.push({
-      label: "Low-stock level",
+      labelKey: "proposal.lowStockLevel",
       before: formatQuantity(before.lowStockMilli, before.unit),
       after: formatQuantity(after.lowStockMilli, after.unit),
     });
@@ -69,7 +73,7 @@ function changes(before: ProductSnapshot, after: ProductSnapshot): Change[] {
 
   if (before.barcode !== after.barcode) {
     rows.push({
-      label: "Barcode",
+      labelKey: "proposal.barcode",
       before: before.barcode ?? "None",
       after: after.barcode ?? "None",
     });
@@ -77,7 +81,7 @@ function changes(before: ProductSnapshot, after: ProductSnapshot): Change[] {
 
   if (before.aliases.join("|") !== after.aliases.join("|")) {
     rows.push({
-      label: "Also called",
+      labelKey: "proposal.alsoCalled",
       before: before.aliases.join(", ") || "None",
       after: after.aliases.join(", ") || "None",
     });
@@ -98,6 +102,11 @@ export function ProductUpdateProposalCard({
   const [confirmed, setConfirmed] =
     useState<ConfirmProductUpdateProposalActionResult | null>(null);
   const [dismissed, setDismissed] = useState(false);
+  const locale = readClientLocale();
+
+  function t(key: string, params?: Record<string, string>): string {
+    return translate(locale, key, params);
+  }
 
   if (dismissed) {
     return null;
@@ -108,8 +117,8 @@ export function ProductUpdateProposalCard({
       <section className="mt-3 rounded-xl border border-success/30 bg-success/5 p-4">
         <p className="font-medium text-success">
           {confirmed.alreadyConfirmed
-            ? "These product changes were already applied."
-            : "Product updated."}
+            ? t("proposal.productChangesAlreadyRecorded")
+            : t("proposal.productChangesRecorded")}
         </p>
         <p className="mt-1 text-sm text-ink-muted">{confirmed.name}</p>
         <div className="mt-3">
@@ -120,7 +129,7 @@ export function ProductUpdateProposalCard({
               "min-h-11 px-4 text-base",
             )}
           >
-            View product
+            {t("proposal.productRecord")}
           </Link>
         </div>
       </section>
@@ -162,10 +171,12 @@ export function ProductUpdateProposalCard({
     <section className="mt-3 rounded-xl border border-warning/30 bg-warning/5 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="rounded-full bg-warning/10 px-2.5 py-1 text-sm font-medium text-warning">
-          Proposed product change — not saved yet
+          {t("proposal.notSaved", { kind: t("proposal.kind.product_update") })}
         </span>
         <span className="text-sm text-ink-muted">
-          Expires {formatDateTime(new Date(proposal.expiresAt))}
+          {t("proposal.expires", {
+            date: formatDateTime(new Date(proposal.expiresAt)),
+          })}
         </span>
       </div>
 
@@ -173,8 +184,8 @@ export function ProductUpdateProposalCard({
 
       <dl className="mt-2 space-y-2 border-t border-line pt-3 text-sm">
         {rows.map((row) => (
-          <div key={row.label}>
-            <dt className="text-ink-muted">{row.label}</dt>
+          <div key={row.labelKey}>
+            <dt className="text-ink-muted">{t(row.labelKey)}</dt>
             <dd className="flex flex-wrap items-center gap-2">
               <span className="text-ink-muted line-through">{row.before}</span>
               <span aria-hidden="true">→</span>
@@ -185,9 +196,7 @@ export function ProductUpdateProposalCard({
       </dl>
 
       <p className="mt-3 rounded-lg bg-surface px-3 py-2 text-sm text-ink-muted">
-        Nothing has been saved. Press{" "}
-        <span className="font-medium text-ink">Confirm changes</span> to apply
-        them. The assistant cannot confirm it for you.
+        {t("proposal.nothingSaved", { action: t("proposal.confirmChanges") })}
       </p>
 
       {error ? (
@@ -206,7 +215,7 @@ export function ProductUpdateProposalCard({
           disabled={pending}
           className="min-h-11 px-4 text-base"
         >
-          {pending ? "Saving…" : "Confirm changes"}
+          {pending ? "Saving…" : t("proposal.confirmChanges")}
         </Button>
         <Button
           type="button"
@@ -215,7 +224,7 @@ export function ProductUpdateProposalCard({
           disabled={pending}
           className="min-h-11 px-4 text-base"
         >
-          Dismiss
+          {t("proposal.dismiss")}
         </Button>
       </div>
     </section>

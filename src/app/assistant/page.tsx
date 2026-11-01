@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { AssistantChat } from "@/components/assistant/assistant-chat";
 import { isAssistantConfigured } from "@/lib/ai/config";
+import { t } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
@@ -9,22 +10,20 @@ export const metadata: Metadata = {
   title: "Assistant · AI Shopkeeper Assistant",
 };
 
-export default function AssistantPage() {
+export default async function AssistantPage() {
   const configured = isAssistantConfigured();
 
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-8">
       <header>
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-3xl font-semibold">Assistant</h1>
+          <h1 className="text-3xl font-semibold">{await t("page.assistant")}</h1>
           <span className="rounded-full bg-brand-soft px-2.5 py-1 text-sm font-medium text-brand">
-            Read-only · confirm to save
+            {await t("assistant.readOnlyBadge")}
           </span>
         </div>
         <p className="mt-2 text-sm text-ink-muted">
-          Ask about sales, stock, credit, expenses, or cash. You can also ask
-          the assistant to prepare a sale, expense, or khata payment; nothing
-          is saved until you press the matching Confirm button.
+          {await t("assistant.subtitle")}
         </p>
       </header>
 
@@ -39,19 +38,14 @@ export default function AssistantPage() {
   );
 }
 
-function AssistantSetupNotice() {
+async function AssistantSetupNotice() {
   return (
     <section className="rounded-xl border border-line bg-surface p-5">
       <h2 className="text-lg font-semibold">
-        The assistant is not configured yet
+        {await t("assistant.setup.title")}
       </h2>
       <p className="mt-2 text-sm text-ink-muted">
-        The rest of the app works normally. To turn the assistant on, add these
-        values to
-        <code className="mx-1 rounded bg-subtle px-1.5 py-0.5 font-mono text-sm">
-          .env
-        </code>
-        and restart the app:
+        {await t("assistant.setup.body")}
       </p>
 
       <pre className="mt-4 overflow-x-auto rounded-lg bg-subtle p-4 text-sm">

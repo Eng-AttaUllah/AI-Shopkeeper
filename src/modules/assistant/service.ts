@@ -8,6 +8,7 @@ import { KARACHI_TIME_ZONE } from "@/lib/dates";
 import { prisma } from "@/lib/db";
 import { formatDate } from "@/lib/format";
 import { fail, ok, type Result } from "@/lib/result";
+import type { Locale } from "@/lib/i18n";
 
 import type { AssistantProposal } from "./proposal-schema";
 import {
@@ -44,13 +45,21 @@ export type AssistantServiceInput = {
   now?: Date;
   /** The signed-in user id; required before a proposal can be prepared. */
   userId?: string;
+  /** The shopkeeper's chosen locale; the model answers in this language. */
+  locale?: Locale;
 };
 
-function systemPrompt(shopName: string, now: Date): string {
+function systemPrompt(
+  shopName: string,
+  now: Date,
+  locale: Locale,
+): string {
   return [
     `You are the AI Shopkeeper Assistant for ${shopName}, a single small shop in Pakistan.`,
     `Today is ${formatDate(now)} in the ${KARACHI_TIME_ZONE} timezone.`,
-    "Answer in English. The currency is PKR; money figures returned by tools are already formatted.",
+    locale === "ps"
+      ? "Answer in Pashto."
+      : "Answer in English. The currency is PKR; money figures returned by tools are already formatted.",
     "Use only the provided tools for shop figures. Never guess, estimate, or invent a number. If a tool returns no data, say so plainly.",
     "If a question is ambiguous, ask one short clarifying question instead of guessing.",
     "You cannot create, edit, void, or delete records directly. You may prepare a proposal with propose_sale, propose_expense, propose_payment, propose_customer, propose_product, propose_product_update, or propose_stock_adjustment, but nothing is saved until the shopkeeper presses the matching Confirm button on screen.",
@@ -99,7 +108,7 @@ export async function answerShopQuestion(
   );
 
   const messages: ChatMessage[] = [
-    { role: "system", content: systemPrompt(shop?.name ?? "the shop", now) },
+    { role: "system", content: systemPrompt(shop?.name ?? "the shop", now, input.locale ?? "en") },
     ...historyMessages,
     { role: "user", content: parsed.data.question },
   ];

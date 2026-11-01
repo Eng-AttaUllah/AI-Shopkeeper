@@ -10,6 +10,7 @@ import {
 } from "@/app/assistant/actions";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { formatDateTime, formatPaisa } from "@/lib/format";
+import { readClientLocale, translate } from "@/lib/dictionary";
 import type { PaymentProposal } from "@/modules/assistant/proposal-schema";
 
 type PaymentProposalCardProps = {
@@ -26,6 +27,11 @@ export function PaymentProposalCard({ proposal }: PaymentProposalCardProps) {
   const [confirmed, setConfirmed] =
     useState<ConfirmPaymentProposalActionResult | null>(null);
   const [dismissed, setDismissed] = useState(false);
+  const locale = readClientLocale();
+
+  function t(key: string, params?: Record<string, string>): string {
+    return translate(locale, key, params);
+  }
 
   if (dismissed) {
     return null;
@@ -36,8 +42,8 @@ export function PaymentProposalCard({ proposal }: PaymentProposalCardProps) {
       <section className="mt-3 rounded-xl border border-success/30 bg-success/5 p-4">
         <p className="font-medium text-success">
           {confirmed.alreadyConfirmed
-            ? "This payment was already recorded."
-            : "Payment recorded."}
+            ? t("proposal.paymentAlreadyRecorded")
+            : t("proposal.paymentRecorded")}
         </p>
         <p className="mt-1 text-sm text-ink-muted">
           {confirmed.customerName} · {formatPaisa(confirmed.amountPaisa)}
@@ -50,7 +56,7 @@ export function PaymentProposalCard({ proposal }: PaymentProposalCardProps) {
               "min-h-11 px-4 text-base",
             )}
           >
-            View customer
+            {t("proposal.customerRecord")}
           </Link>
         </div>
       </section>
@@ -88,46 +94,46 @@ export function PaymentProposalCard({ proposal }: PaymentProposalCardProps) {
     <section className="mt-3 rounded-xl border border-warning/30 bg-warning/5 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="rounded-full bg-warning/10 px-2.5 py-1 text-sm font-medium text-warning">
-          Proposed payment — not saved yet
+          {t("proposal.notSaved", { kind: t("proposal.kind.payment") })}
         </span>
         <span className="text-sm text-ink-muted">
-          Expires {formatDateTime(new Date(proposal.expiresAt))}
+          {t("proposal.expires", {
+            date: formatDateTime(new Date(proposal.expiresAt)),
+          })}
         </span>
       </div>
 
       <dl className="mt-3 space-y-1 border-t border-line pt-3 text-sm">
         <div className="flex justify-between gap-3">
-          <dt className="text-ink-muted">Customer</dt>
+          <dt className="text-ink-muted">{t("proposal.customer")}</dt>
           <dd>{preview.customerName}</dd>
         </div>
         <div className="flex justify-between gap-3 text-base font-semibold">
-          <dt>Amount</dt>
+          <dt className="text-ink-muted">{t("label.amount")}</dt>
           <dd className="tabular-nums">{formatPaisa(preview.amountPaisa)}</dd>
         </div>
         <div className="flex justify-between gap-3">
-          <dt className="text-ink-muted">Khata before</dt>
+          <dt className="text-ink-muted">{t("proposal.khataBefore")}</dt>
           <dd className="tabular-nums">
             {formatPaisa(preview.balanceBeforePaisa)}
           </dd>
         </div>
         <div className="flex justify-between gap-3">
-          <dt className="text-ink-muted">Khata after</dt>
+          <dt className="text-ink-muted">{t("proposal.khataAfter")}</dt>
           <dd className="tabular-nums">
             {formatPaisa(preview.balanceAfterPaisa)}
           </dd>
         </div>
         {preview.note ? (
           <div className="flex justify-between gap-3">
-            <dt className="text-ink-muted">Note</dt>
+            <dt className="text-ink-muted">{t("proposal.note")}</dt>
             <dd>{preview.note}</dd>
           </div>
         ) : null}
       </dl>
 
       <p className="mt-3 rounded-lg bg-surface px-3 py-2 text-sm text-ink-muted">
-        Nothing has been saved. Press{" "}
-        <span className="font-medium text-ink">Confirm payment</span> to record
-        it. The assistant cannot confirm it for you.
+        {t("proposal.nothingSaved", { action: t("proposal.confirmPayment") })}
       </p>
 
       {error ? (
@@ -146,7 +152,7 @@ export function PaymentProposalCard({ proposal }: PaymentProposalCardProps) {
           disabled={pending}
           className="min-h-11 px-4 text-base"
         >
-          {pending ? "Recording…" : "Confirm payment"}
+          {pending ? "Recording…" : t("proposal.confirmPayment")}
         </Button>
         <Button
           type="button"
@@ -155,7 +161,7 @@ export function PaymentProposalCard({ proposal }: PaymentProposalCardProps) {
           disabled={pending}
           className="min-h-11 px-4 text-base"
         >
-          Dismiss
+          {t("proposal.dismiss")}
         </Button>
       </div>
     </section>

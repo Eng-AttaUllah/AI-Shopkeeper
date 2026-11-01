@@ -10,16 +10,13 @@ import {
 } from "@/lib/dates";
 import { prisma } from "@/lib/db";
 import { formatDate, formatMonthYear, formatPaisa } from "@/lib/format";
+import { readClientLocale, translate } from "@/lib/dictionary";
 import { expenseTotalPaisa, listExpenses } from "@/modules/expenses/queries";
-import {
-  EXPENSE_CATEGORY_LABELS,
-  type ExpenseCategory,
-} from "@/modules/expenses/schema";
 
 export const dynamic = "force-dynamic";
 
-function categoryLabel(category: string): string {
-  return EXPENSE_CATEGORY_LABELS[category as ExpenseCategory] ?? category;
+function categoryLabel(category: string, t: (key: string) => string): string {
+  return t(`expense.category.${category}`) ?? category;
 }
 
 export default async function ExpensesPage() {
@@ -32,13 +29,21 @@ export default async function ExpensesPage() {
     expenseTotalPaisa(prisma, monthRange),
   ]);
 
+  const locale = readClientLocale();
+
+  function t(key: string, params?: Record<string, string>): string {
+    return translate(locale, key, params);
+  }
+
+  const categoryT = (category: string) => categoryLabel(category, t);
+
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-8">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-semibold">Expenses</h1>
+          <h1 className="text-3xl font-semibold">{await t("page.expenses")}</h1>
           <p className="mt-1 text-sm text-ink-muted">
-            Money paid out for the shop. Expenses reduce net profit.
+            {t("expenses.moneyPaidOut")}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -49,7 +54,7 @@ export default async function ExpensesPage() {
               className: "h-11 px-4 text-base",
             })}
           >
-            Reports
+            {await t("nav.reports")}
           </Link>
           <Link
             href="/"
@@ -58,51 +63,56 @@ export default async function ExpensesPage() {
               className: "h-11 px-4 text-base",
             })}
           >
-            Dashboard
+            {await t("nav.dashboard")}
           </Link>
         </div>
       </header>
 
       <section aria-label="Expense summary" className="grid gap-3 sm:grid-cols-2">
         <StatCard
-          label="This month"
+          label={t("reports.thisMonthShort")}
           value={formatPaisa(monthTotal)}
           hint={formatMonthYear(now)}
         />
         <StatCard
-          label="Expenses listed"
+          label={t("expenses.expensesListed")}
           value={String(expenses.length)}
-          hint="Last 50 records"
+          hint={t("expenses.last50Records")}
         />
       </section>
 
       <section className="rounded-xl border border-line bg-surface p-5">
-        <h2 className="text-lg font-semibold">Record an expense</h2>
+        <h2 className="text-lg font-semibold">{t("expenses.recordExpense")}</h2>
         <p className="mt-1 text-sm text-ink-muted">
-          Rent, bills, salaries, transport, and other shop costs.
+          {t("expenses.expenseTypes")}
         </p>
         <div className="mt-4">
-          <ExpenseForm action={createExpenseAction} today={todayKey} />
+          <ExpenseForm
+            today={todayKey}
+            action={createExpenseAction}
+            t={t}
+            categoryT={categoryT}
+          />
         </div>
       </section>
 
       <section className="rounded-xl border border-line bg-surface p-5">
         <div className="flex flex-wrap items-end justify-between gap-2">
           <div>
-            <h2 className="text-lg font-semibold">Recent expenses</h2>
-            <p className="text-sm text-ink-muted">Newest first.</p>
+            <h2 className="text-lg font-semibold">{t("expenses.recentExpenses")}</h2>
+            <p className="text-sm text-ink-muted">{t("expenses.newestFirst")}</p>
           </div>
           <p className="text-sm text-ink-muted">
             {expenses.length}{" "}
-            {expenses.length === 1 ? "expense" : "expenses"}
+            {expenses.length === 1 ? t("reports.product") : t("reports.items")}
           </p>
         </div>
 
         {expenses.length === 0 ? (
           <div className="mt-4 rounded-lg border border-dashed border-line p-6 text-center">
-            <p className="font-medium">No expenses recorded yet.</p>
+            <p className="font-medium">{t("expenses.noExpensesYet")}</p>
             <p className="mt-1 text-sm text-ink-muted">
-              Use the form above when you pay for something for the shop.
+              {t("expenses.useForm")}
             </p>
           </div>
         ) : (
@@ -113,9 +123,7 @@ export default async function ExpensesPage() {
                 className="flex items-start justify-between gap-3 py-3 first:pt-0 last:pb-0"
               >
                 <div>
-                  <p className="font-medium">
-                    {categoryLabel(expense.category)}
-                  </p>
+                  <p className="font-medium">{categoryT(expense.category)}</p>
                   <p className="text-sm text-ink-muted">
                     {formatDate(expense.spentAt)}
                     {expense.note ? ` · ${expense.note}` : ""}

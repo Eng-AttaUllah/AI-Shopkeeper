@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { getChatProvider, isAssistantConfigured } from "@/lib/ai/config";
+import { getLocale } from "@/lib/i18n";
 import { requireUser } from "@/lib/require-user";
 import { fail, ok, type Result } from "@/lib/result";
 import { confirmCustomerProposal } from "@/modules/assistant/confirm-customer";
@@ -69,6 +70,7 @@ export async function askAssistantAction(
       history: parsed.data.history,
       provider: getChatProvider(),
       userId: user.id,
+      locale: await getLocale(),
     });
   } catch (error) {
     console.error("Assistant action failed:", error);

@@ -11,6 +11,7 @@ import {
 import { Button, buttonVariants } from "@/components/ui/button";
 import { formatDateTime, formatPaisa } from "@/lib/format";
 import { formatQuantity } from "@/lib/quantity";
+import { readClientLocale, translate } from "@/lib/dictionary";
 import type { ProductProposal } from "@/modules/assistant/proposal-schema";
 
 type ProductProposalCardProps = {
@@ -27,6 +28,11 @@ export function ProductProposalCard({ proposal }: ProductProposalCardProps) {
   const [confirmed, setConfirmed] =
     useState<ConfirmProductProposalActionResult | null>(null);
   const [dismissed, setDismissed] = useState(false);
+  const locale = readClientLocale();
+
+  function t(key: string, params?: Record<string, string>): string {
+    return translate(locale, key, params);
+  }
 
   if (dismissed) {
     return null;
@@ -37,8 +43,8 @@ export function ProductProposalCard({ proposal }: ProductProposalCardProps) {
       <section className="mt-3 rounded-xl border border-success/30 bg-success/5 p-4">
         <p className="font-medium text-success">
           {confirmed.alreadyConfirmed
-            ? "This product was already created."
-            : "Product created."}
+            ? t("proposal.productAlreadyRecorded")
+            : t("proposal.productRecorded")}
         </p>
         <p className="mt-1 text-sm text-ink-muted">{confirmed.name}</p>
         <div className="mt-3">
@@ -49,7 +55,7 @@ export function ProductProposalCard({ proposal }: ProductProposalCardProps) {
               "min-h-11 px-4 text-base",
             )}
           >
-            View product
+            {t("proposal.productRecord")}
           </Link>
         </div>
       </section>
@@ -87,70 +93,70 @@ export function ProductProposalCard({ proposal }: ProductProposalCardProps) {
     <section className="mt-3 rounded-xl border border-warning/30 bg-warning/5 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="rounded-full bg-warning/10 px-2.5 py-1 text-sm font-medium text-warning">
-          Proposed product — not saved yet
+          {t("proposal.notSaved", { kind: t("proposal.kind.product") })}
         </span>
         <span className="text-sm text-ink-muted">
-          Expires {formatDateTime(new Date(proposal.expiresAt))}
+          {t("proposal.expires", {
+            date: formatDateTime(new Date(proposal.expiresAt)),
+          })}
         </span>
       </div>
 
       <dl className="mt-3 space-y-1 border-t border-line pt-3 text-sm">
         <div className="flex justify-between gap-3 text-base font-semibold">
-          <dt>Name</dt>
+          <dt className="text-ink-muted">{t("proposal.name")}</dt>
           <dd>{preview.name}</dd>
         </div>
         <div className="flex justify-between gap-3">
-          <dt className="text-ink-muted">Unit</dt>
+          <dt className="text-ink-muted">{t("proposal.unit")}</dt>
           <dd>{preview.unit}</dd>
         </div>
         {preview.category ? (
           <div className="flex justify-between gap-3">
-            <dt className="text-ink-muted">Category</dt>
+            <dt className="text-ink-muted">{t("proposal.category")}</dt>
             <dd>{preview.category}</dd>
           </div>
         ) : null}
         <div className="flex justify-between gap-3">
-          <dt className="text-ink-muted">Cost price</dt>
+          <dt className="text-ink-muted">{t("proposal.costPrice")}</dt>
           <dd className="tabular-nums">
             {formatPaisa(preview.costPricePaisa)}
           </dd>
         </div>
         <div className="flex justify-between gap-3">
-          <dt className="text-ink-muted">Sale price</dt>
+          <dt className="text-ink-muted">{t("proposal.salePrice")}</dt>
           <dd className="tabular-nums">
             {formatPaisa(preview.salePricePaisa)}
           </dd>
         </div>
         <div className="flex justify-between gap-3">
-          <dt className="text-ink-muted">Opening stock</dt>
+          <dt className="text-ink-muted">{t("proposal.openingStock")}</dt>
           <dd className="tabular-nums">
             {formatQuantity(preview.openingStockMilli, preview.unit)}
           </dd>
         </div>
         <div className="flex justify-between gap-3">
-          <dt className="text-ink-muted">Low-stock level</dt>
+          <dt className="text-ink-muted">{t("proposal.lowStockLevel")}</dt>
           <dd className="tabular-nums">
             {formatQuantity(preview.lowStockMilli, preview.unit)}
           </dd>
         </div>
         {preview.barcode ? (
           <div className="flex justify-between gap-3">
-            <dt className="text-ink-muted">Barcode</dt>
+            <dt className="text-ink-muted">{t("proposal.barcode")}</dt>
             <dd>{preview.barcode}</dd>
           </div>
         ) : null}
         {preview.aliases.length > 0 ? (
           <div className="flex justify-between gap-3">
-            <dt className="text-ink-muted">Also called</dt>
+            <dt className="text-ink-muted">{t("proposal.alsoCalled")}</dt>
             <dd>{preview.aliases.join(", ")}</dd>
           </div>
         ) : null}
       </dl>
 
       <p className="mt-3 rounded-lg bg-surface px-3 py-2 text-sm text-ink-muted">
-        Nothing has been saved. Press{" "}
-        <span className="font-medium text-ink">Confirm product</span> to create
-        it. The assistant cannot confirm it for you.
+        {t("proposal.nothingSaved", { action: t("proposal.confirmProduct") })}
       </p>
 
       {error ? (
@@ -169,7 +175,7 @@ export function ProductProposalCard({ proposal }: ProductProposalCardProps) {
           disabled={pending}
           className="min-h-11 px-4 text-base"
         >
-          {pending ? "Creating…" : "Confirm product"}
+          {pending ? "Creating…" : t("proposal.confirmProduct")}
         </Button>
         <Button
           type="button"
@@ -178,7 +184,7 @@ export function ProductProposalCard({ proposal }: ProductProposalCardProps) {
           disabled={pending}
           className="min-h-11 px-4 text-base"
         >
-          Dismiss
+          {t("proposal.dismiss")}
         </Button>
       </div>
     </section>

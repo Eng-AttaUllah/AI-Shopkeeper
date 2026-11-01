@@ -7,15 +7,20 @@ import { ProposalCard } from "@/components/assistant/proposal-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { AssistantProposal } from "@/modules/assistant/proposal-schema";
+import {
+  readClientLocale,
+  translate,
+  type Locale,
+} from "@/lib/dictionary";
 
-const SUGGESTIONS = [
-  "How much did I sell today?",
-  "What is low in stock?",
-  "Who owes me the most?",
-  "What was my net profit this month?",
-  "How much cash should be in the drawer?",
-  "Record 500 rupees electricity expense",
-  "Ali paid 200 on his khata",
+const SUGGESTION_KEYS = [
+  "assistant.suggestion.salesToday",
+  "assistant.suggestion.lowStock",
+  "assistant.suggestion.topDebt",
+  "assistant.suggestion.netProfit",
+  "assistant.suggestion.drawerCash",
+  "assistant.suggestion.expense",
+  "assistant.suggestion.payment",
 ] as const;
 
 type ChatMessage = {
@@ -40,6 +45,11 @@ export function AssistantChat() {
   const [question, setQuestion] = useState("");
   const [error, setError] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
+  const locale: Locale = readClientLocale();
+
+  function t(key: string): string {
+    return translate(locale, key);
+  }
 
   function askQuestion(rawQuestion: string) {
     const asked = rawQuestion.trim();
@@ -95,23 +105,26 @@ export function AssistantChat() {
       <div className="flex-1 overflow-y-auto bg-subtle p-4">
         {messages.length === 0 && !pending ? (
           <div className="mx-auto max-w-xl py-6 text-center">
-            <p className="text-base font-medium">What would you like to know?</p>
+            <p className="text-base font-medium">{t("assistant.empty.title")}</p>
             <p className="mt-1 text-sm text-ink-muted">
-              Try one of these, or ask me to prepare a sale, expense, or
-              payment. Nothing is saved until you confirm it.
+              {t("assistant.empty.body")}
             </p>
             <div className="mt-4 flex flex-wrap justify-center gap-2">
-              {SUGGESTIONS.map((suggestion) => (
-                <button
-                  key={suggestion}
-                  type="button"
-                  onClick={() => askQuestion(suggestion)}
-                  disabled={pending}
-                  className="min-h-11 rounded-full border border-line bg-surface px-3 py-2 text-sm transition-colors hover:bg-subtle disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {suggestion}
-                </button>
-              ))}
+              {SUGGESTION_KEYS.map((suggestionKey) => {
+                const suggestion = t(suggestionKey);
+
+                return (
+                  <button
+                    key={suggestionKey}
+                    type="button"
+                    onClick={() => askQuestion(suggestion)}
+                    disabled={pending}
+                    className="min-h-11 rounded-full border border-line bg-surface px-3 py-2 text-sm transition-colors hover:bg-subtle disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {suggestion}
+                  </button>
+                );
+              })}
             </div>
           </div>
         ) : null}
@@ -130,7 +143,7 @@ export function AssistantChat() {
                 }
               >
                 <p className="mb-1 text-sm font-medium text-ink-muted">
-                  {message.role === "user" ? "You" : "Assistant"}
+                  {message.role === "user" ? t("assistant.userLabel") : t("assistant.assistantLabel")}
                 </p>
                 <div
                   className={
@@ -143,7 +156,9 @@ export function AssistantChat() {
                 </div>
                 {message.tools && message.tools.length > 0 ? (
                   <div className="mt-2 flex flex-wrap items-center gap-1">
-                    <span className="text-sm text-ink-muted">Checked:</span>
+                    <span className="text-sm text-ink-muted">
+                      {t("assistant.checked")}
+                    </span>
                     {message.tools.map((tool) => (
                       <span
                         key={tool}
@@ -165,10 +180,10 @@ export function AssistantChat() {
             <div className="flex justify-start">
               <div className="max-w-[90%]">
                 <p className="mb-1 text-sm font-medium text-ink-muted">
-                  Assistant
+                  {t("assistant.assistantLabel")}
                 </p>
                 <div className="rounded-xl border border-line bg-surface px-4 py-3 text-base text-ink-muted">
-                  Checking the shop…
+                  {t("assistant.checking")}
                 </div>
               </div>
             </div>
@@ -195,7 +210,7 @@ export function AssistantChat() {
                 setError(null);
               }
             }}
-            placeholder="Ask about sales, stock, credit, or cash…"
+            placeholder={t("assistant.placeholder")}
             maxLength={500}
             minLength={2}
             required
@@ -209,7 +224,7 @@ export function AssistantChat() {
             disabled={pending || question.trim().length < 2}
             className="h-11 px-5 text-base"
           >
-            {pending ? "Thinking…" : "Ask"}
+            {pending ? "Thinking…" : t("assistant.askButton")}
           </Button>
         </div>
         {error ? (

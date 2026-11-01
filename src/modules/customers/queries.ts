@@ -1,6 +1,7 @@
 import type { Customer } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
 import { formatDate, formatPaisa } from "@/lib/format";
+import { normalizeDigits, normalizeText } from "@/lib/text";
 
 import { outstandingPaisa } from "./balance";
 
@@ -37,17 +38,21 @@ export async function listCustomersWithBalances(
 ): Promise<CustomerWithBalance[]> {
   const term = search?.trim();
 
-  const customers = await prisma.customer.findMany({
-    where: term
-      ? {
-          OR: [
-            { name: { contains: term } },
-            { phone: { contains: term } },
-          ],
-        }
-      : undefined,
+  let customers = await prisma.customer.findMany({
     orderBy: { name: "asc" },
   });
+
+  if (term) {
+    const normalized = normalizeText(term);
+    const digits = normalizeDigits(term).replace(/\D/g, "");
+
+    customers = customers.filter((customer) => {
+      const nameMatch = normalizeText(customer.name).includes(normalized);
+      const phone = customer.phone ?? "";
+      const phoneMatch = normalizeDigits(phone).replace(/\D/g, "").includes(digits);
+      return nameMatch || (digits.length >= 3 && phoneMatch);
+    });
+  }
 
   if (customers.length === 0) {
     return [];

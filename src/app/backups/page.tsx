@@ -10,6 +10,7 @@ import {
   listBackups,
 } from "@/lib/backup";
 import { formatDateTime } from "@/lib/format";
+import { readClientLocale, translate } from "@/lib/dictionary";
 
 export const dynamic = "force-dynamic";
 
@@ -31,14 +32,19 @@ export default async function BackupsPage() {
   });
 
   const backups = await listBackups();
+  const locale = readClientLocale();
+
+  function t(key: string, params?: Record<string, string>): string {
+    return translate(locale, key, params);
+  }
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-8">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-semibold">Backups</h1>
+          <h1 className="text-3xl font-semibold">{t("backups.backups")}</h1>
           <p className="mt-1 text-sm text-ink-muted">
-            A copy of the shop database you can keep somewhere safe.
+            {t("backups.copySafe")}
           </p>
         </div>
         <Link
@@ -48,14 +54,14 @@ export default async function BackupsPage() {
             className: "h-11 px-4 text-base",
           })}
         >
-          Dashboard
+          {await t("nav.dashboard")}
         </Link>
       </header>
 
       <section className="rounded-xl border border-line bg-surface p-5">
-        <h2 className="text-lg font-semibold">Back up now</h2>
+        <h2 className="text-lg font-semibold">{t("backups.backUpNow")}</h2>
         <p className="mt-1 text-sm text-ink-muted">
-          Makes a consistent copy while the app is running.
+          {t("backups.makesCopy")}
         </p>
         <div className="mt-4">
           <BackupButton action={createBackupAction} />
@@ -63,37 +69,39 @@ export default async function BackupsPage() {
       </section>
 
       <section className="rounded-xl border border-line bg-surface p-5">
-        <h2 className="text-lg font-semibold">Automatic daily backups</h2>
+        <h2 className="text-lg font-semibold">
+          {t("backups.automaticDaily")}
+        </h2>
         <p className="mt-2 text-sm text-ink-muted">
-          Opening the dashboard makes one backup per day. The last{" "}
-          {DAILY_BACKUP_RETENTION} daily backups are kept.
+          {t("backups.opensDashboard", { retention: String(DAILY_BACKUP_RETENTION) })}
         </p>
         <p className="mt-3 text-sm text-ink-muted">
-          Backups live in:
+          {t("backups.backupsLiveIn")}
         </p>
         <code className="mt-1 block overflow-x-auto rounded-md bg-subtle px-3 py-2 text-sm">
           {backupDirectory()}
         </code>
         <p className="mt-3 text-sm text-ink-muted">
-          Copy a backup to a USB drive or another computer regularly. If the
-          laptop is lost, a backup on the same laptop is lost with it.
+          {t("backups.copyRegularly")}
         </p>
       </section>
 
       <section className="rounded-xl border border-line bg-surface p-5">
         <div className="flex flex-wrap items-end justify-between gap-2">
           <div>
-            <h2 className="text-lg font-semibold">Backup files</h2>
-            <p className="text-sm text-ink-muted">Newest first.</p>
+            <h2 className="text-lg font-semibold">{t("backups.backupFiles")}</h2>
+            <p className="text-sm text-ink-muted">
+              {t("backups.newestFirst")}
+            </p>
           </div>
           <p className="text-sm text-ink-muted">
-            {backups.length} {backups.length === 1 ? "file" : "files"}
+            {backups.length} {backups.length === 1 ? t("backups.file") : t("backups.files")}
           </p>
         </div>
 
         {backups.length === 0 ? (
           <p className="mt-3 rounded-md bg-subtle px-3 py-2 text-sm text-ink-muted">
-            No backups yet. Use “Back up now” above.
+            {t("backups.noBackupsYet")}
           </p>
         ) : (
           <ul className="mt-3 divide-y divide-line">
@@ -118,18 +126,14 @@ export default async function BackupsPage() {
       </section>
 
       <section className="rounded-xl border border-line bg-surface p-5">
-        <h2 className="text-lg font-semibold">Restoring a backup</h2>
+        <h2 className="text-lg font-semibold">{t("backups.restoring")}</h2>
         <ol className="mt-2 flex list-decimal flex-col gap-2 pl-5 text-sm text-ink-muted">
-          <li>Stop the app.</li>
-          <li>
-            Copy the chosen backup file over{" "}
-            <code className="rounded bg-subtle px-1 py-0.5">prisma/dev.db</code>.
-          </li>
-          <li>Start the app again and check the dashboard.</li>
+          <li>{t("backups.stopApp")}</li>
+          <li>{t("backups.copyOver")}</li>
+          <li>{t("backups.startAgain")}</li>
         </ol>
         <p className="mt-3 text-sm text-ink-muted">
-          Restoring replaces every sale, product, and customer with the data in
-          the backup.
+          {t("backups.restoringReplaces")}
         </p>
       </section>
     </main>

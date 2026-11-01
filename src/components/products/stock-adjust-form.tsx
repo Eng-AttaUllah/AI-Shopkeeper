@@ -6,6 +6,7 @@ import type { ActionState } from "@/app/products/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { readClientLocale, translate } from "@/lib/dictionary";
 
 const REASON_OPTIONS = [
   { value: "RESTOCK", label: "New stock received" },
@@ -28,6 +29,26 @@ export function StockAdjustForm({
   const [state, formAction, pending] = useActionState(action, { ok: false });
   const error = state.ok ? undefined : state.error;
   const errors = (state.ok ? {} : state.fieldErrors) ?? {};
+  const locale = readClientLocale();
+
+  function t(key: string, params?: Record<string, string>): string {
+    return translate(locale, key, params);
+  }
+
+  function reasonLabel(value: string): string {
+    switch (value) {
+      case "RESTOCK":
+        return t("products.newStock");
+      case "DAMAGE":
+        return t("products.damagedOrLost");
+      case "CORRECTION":
+        return t("products.countingCorrection");
+      case "OTHER":
+        return t("products.other");
+      default:
+        return value;
+    }
+  }
 
   return (
     <form action={formAction} className="flex flex-col gap-4">
@@ -47,13 +68,13 @@ export function StockAdjustForm({
           role="status"
           className="rounded-lg border border-success/30 bg-success/5 px-3 py-2 text-sm text-success"
         >
-          Stock updated.
+          {t("products.stockUpdated")}
         </p>
       ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="flex flex-col gap-2">
-          <Label htmlFor="quantity">Quantity change ({unit})</Label>
+          <Label htmlFor="quantity">{t("products.quantityChange", { unit })}</Label>
           <Input
             id="quantity"
             name="quantity"
@@ -65,7 +86,7 @@ export function StockAdjustForm({
             aria-invalid={Boolean(errors.quantity)}
           />
           <p className="text-sm text-ink-muted">
-            Positive adds stock, negative removes it.
+            {t("products.positiveAdds")}
           </p>
           {errors.quantity ? (
             <p className="text-sm text-error">{errors.quantity}</p>
@@ -73,7 +94,7 @@ export function StockAdjustForm({
         </div>
 
         <div className="flex flex-col gap-2">
-          <Label htmlFor="reason">Reason</Label>
+          <Label htmlFor="reason">{t("products.reason")}</Label>
           <select
             id="reason"
             name="reason"
@@ -82,18 +103,18 @@ export function StockAdjustForm({
           >
             {REASON_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
-                {option.label}
+                {reasonLabel(option.value)}
               </option>
             ))}
           </select>
         </div>
 
         <div className="flex flex-col gap-2 sm:col-span-2">
-          <Label htmlFor="note">Note (optional)</Label>
+          <Label htmlFor="note">{t("products.noteOptional")}</Label>
           <Input
             id="note"
             name="note"
-            placeholder="Delivery from supplier"
+            placeholder={t("products.deliveryFromSupplier")}
             autoComplete="off"
             className="h-11 text-base"
           />
@@ -107,7 +128,7 @@ export function StockAdjustForm({
           disabled={pending}
           className="h-11 px-5 text-base"
         >
-          {pending ? "Updating…" : "Update stock"}
+          {pending ? t("products.updating") : t("products.updateStock")}
         </Button>
       </div>
     </form>

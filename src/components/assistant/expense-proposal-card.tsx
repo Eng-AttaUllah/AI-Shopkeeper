@@ -11,6 +11,7 @@ import {
 import { Button, buttonVariants } from "@/components/ui/button";
 import { karachiDateKeyToDate } from "@/lib/dates";
 import { formatDate, formatDateTime, formatPaisa } from "@/lib/format";
+import { readClientLocale, translate } from "@/lib/dictionary";
 import type { ExpenseProposal } from "@/modules/assistant/proposal-schema";
 import {
   EXPENSE_CATEGORY_LABELS,
@@ -35,6 +36,11 @@ export function ExpenseProposalCard({ proposal }: ExpenseProposalCardProps) {
   const [confirmed, setConfirmed] =
     useState<ConfirmExpenseProposalActionResult | null>(null);
   const [dismissed, setDismissed] = useState(false);
+  const locale = readClientLocale();
+
+  function t(key: string, params?: Record<string, string>): string {
+    return translate(locale, key, params);
+  }
 
   if (dismissed) {
     return null;
@@ -45,8 +51,8 @@ export function ExpenseProposalCard({ proposal }: ExpenseProposalCardProps) {
       <section className="mt-3 rounded-xl border border-success/30 bg-success/5 p-4">
         <p className="font-medium text-success">
           {confirmed.alreadyConfirmed
-            ? "This expense was already recorded."
-            : "Expense recorded."}
+            ? t("proposal.expenseAlreadyRecorded")
+            : t("proposal.expenseRecorded")}
         </p>
         <p className="mt-1 text-sm text-ink-muted">
           {categoryLabel(confirmed.category)} ·{" "}
@@ -60,7 +66,7 @@ export function ExpenseProposalCard({ proposal }: ExpenseProposalCardProps) {
               "min-h-11 px-4 text-base",
             )}
           >
-            View expenses
+            {t("proposal.expenses")}
           </Link>
         </div>
       </section>
@@ -99,38 +105,38 @@ export function ExpenseProposalCard({ proposal }: ExpenseProposalCardProps) {
     <section className="mt-3 rounded-xl border border-warning/30 bg-warning/5 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="rounded-full bg-warning/10 px-2.5 py-1 text-sm font-medium text-warning">
-          Proposed expense — not saved yet
+          {t("proposal.notSaved", { kind: t("proposal.kind.expense") })}
         </span>
         <span className="text-sm text-ink-muted">
-          Expires {formatDateTime(new Date(proposal.expiresAt))}
+          {t("proposal.expires", {
+            date: formatDateTime(new Date(proposal.expiresAt)),
+          })}
         </span>
       </div>
 
       <dl className="mt-3 space-y-1 border-t border-line pt-3 text-sm">
         <div className="flex justify-between gap-3">
-          <dt className="text-ink-muted">Category</dt>
+          <dt className="text-ink-muted">{t("proposal.category")}</dt>
           <dd>{categoryLabel(preview.category)}</dd>
         </div>
         <div className="flex justify-between gap-3 text-base font-semibold">
-          <dt>Amount</dt>
+          <dt className="text-ink-muted">{t("label.amount")}</dt>
           <dd className="tabular-nums">{formatPaisa(preview.amountPaisa)}</dd>
         </div>
         <div className="flex justify-between gap-3">
-          <dt className="text-ink-muted">Date</dt>
+          <dt className="text-ink-muted">{t("label.date")}</dt>
           <dd>{spentAt ? formatDate(spentAt) : preview.date}</dd>
         </div>
         {preview.note ? (
           <div className="flex justify-between gap-3">
-            <dt className="text-ink-muted">Note</dt>
+            <dt className="text-ink-muted">{t("proposal.note")}</dt>
             <dd>{preview.note}</dd>
           </div>
         ) : null}
       </dl>
 
       <p className="mt-3 rounded-lg bg-surface px-3 py-2 text-sm text-ink-muted">
-        Nothing has been saved. Press{" "}
-        <span className="font-medium text-ink">Confirm expense</span> to record
-        it. The assistant cannot confirm it for you.
+        {t("proposal.nothingSaved", { action: t("proposal.confirmExpense") })}
       </p>
 
       {error ? (
@@ -149,7 +155,7 @@ export function ExpenseProposalCard({ proposal }: ExpenseProposalCardProps) {
           disabled={pending}
           className="min-h-11 px-4 text-base"
         >
-          {pending ? "Recording…" : "Confirm expense"}
+          {pending ? "Recording…" : t("proposal.confirmExpense")}
         </Button>
         <Button
           type="button"
@@ -158,7 +164,7 @@ export function ExpenseProposalCard({ proposal }: ExpenseProposalCardProps) {
           disabled={pending}
           className="min-h-11 px-4 text-base"
         >
-          Dismiss
+          {t("proposal.dismiss")}
         </Button>
       </div>
     </section>
