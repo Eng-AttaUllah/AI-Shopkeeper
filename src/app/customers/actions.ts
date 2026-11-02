@@ -3,8 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { requireUser } from "@/lib/require-user";
+import { requireOwner } from "@/lib/require-user";
 import {
+  createAccountForCustomer,
   createCustomer,
   recordPayment,
   updateCustomer,
@@ -30,7 +31,7 @@ export async function createCustomerAction(
   _previousState: CustomerActionState,
   formData: FormData,
 ): Promise<CustomerActionState> {
-  await requireUser();
+  await requireOwner();
   const result = await createCustomer(formDataToObject(formData));
 
   if (!result.ok) {
@@ -46,7 +47,7 @@ export async function updateCustomerAction(
   _previousState: CustomerActionState,
   formData: FormData,
 ): Promise<CustomerActionState> {
-  await requireUser();
+  await requireOwner();
   const id = String(formData.get("customerId") ?? "");
   const result = await updateCustomer(id, formDataToObject(formData));
 
@@ -60,11 +61,30 @@ export async function updateCustomerAction(
   redirect(`/customers/${id}`);
 }
 
+export async function createCustomerAccountAction(
+  _previousState: CustomerActionState,
+  formData: FormData,
+): Promise<CustomerActionState> {
+  await requireOwner();
+  const customerId = String(formData.get("customerId") ?? "");
+  const password = String(formData.get("password") ?? "");
+
+  const result = await createAccountForCustomer(customerId, password);
+
+  if (!result.ok) {
+    return { ok: false, error: result.error, fieldErrors: result.fieldErrors };
+  }
+
+  revalidatePath(`/customers/${customerId}`);
+
+  return { ok: true };
+}
+
 export async function recordPaymentAction(
   _previousState: CustomerActionState,
   formData: FormData,
 ): Promise<CustomerActionState> {
-  const user = await requireUser();
+  const user = await requireOwner();
   const customerId = String(formData.get("customerId") ?? "");
   const result = await recordPayment(
     formDataToObject(formData),

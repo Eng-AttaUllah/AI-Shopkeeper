@@ -1,7 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { recordPaymentAction } from "@/app/customers/actions";
+import {
+  createCustomerAccountAction,
+  recordPaymentAction,
+} from "@/app/customers/actions";
+import { CustomerAccountForm } from "@/components/customers/customer-account-form";
 import { PaymentForm } from "@/components/customers/payment-form";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
@@ -29,10 +33,14 @@ export default async function CustomerPage({ params }: CustomerPageProps) {
     notFound();
   }
 
-  const [balancePaisa, history, shop] = await Promise.all([
+  const [balancePaisa, history, shop, linkedUser] = await Promise.all([
     customerBalancePaisa(id),
     customerHistory(id),
     prisma.shop.findFirst({ orderBy: { createdAt: "asc" } }),
+    prisma.user.findUnique({
+      where: { customerId: id },
+      select: { username: true },
+    }),
   ]);
 
   const statement = buildStatementText({
@@ -204,6 +212,34 @@ export default async function CustomerPage({ params }: CustomerPageProps) {
             ) : (
               <p className="mt-3 rounded-md bg-subtle px-3 py-2 text-sm text-ink-muted">
                 {await t("customers.nothingOutstanding")}
+              </p>
+            )}
+          </section>
+
+          <section className="rounded-xl border border-line bg-surface p-5">
+            <h2 className="text-lg font-semibold">
+              {await t("customerAccount.title")}
+            </h2>
+
+            {linkedUser ? (
+              <p className="mt-3 rounded-md bg-subtle px-3 py-2 text-sm text-ink-muted">
+                {await t("customerAccount.linkedAs", {
+                  username: linkedUser.username,
+                })}
+              </p>
+            ) : customer.phone ? (
+              <>
+                <p className="mt-1 mb-4 text-sm text-ink-muted">
+                  {await t("customerAccount.hint", { phone: customer.phone })}
+                </p>
+                <CustomerAccountForm
+                  customerId={customer.id}
+                  action={createCustomerAccountAction}
+                />
+              </>
+            ) : (
+              <p className="mt-3 rounded-md bg-subtle px-3 py-2 text-sm text-ink-muted">
+                {await t("customerAccount.noPhone")}
               </p>
             )}
           </section>
