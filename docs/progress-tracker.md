@@ -498,8 +498,13 @@ Update this file after every meaningful implementation change.
 
 ## Current Phase
 
-- Phase 9 — Voice input: **In progress** (browser Web Speech API → assistant pipeline;
+- Phase 9 — Voice input: **Complete** (browser Web Speech API → assistant pipeline;
   proposals still require explicit shopkeeper confirmation).
+
+## Current Goal
+
+- Phase 0 through Phase 9 are complete and merged into `main`.
+- Next possible phase is Phase 10 (camera alerts), pending owner decision.
 
 ## Current Goal
 
@@ -510,14 +515,16 @@ Update this file after every meaningful implementation change.
 
 ## Next Up
 
-- Slice 9.0: docs — Phase 9 scope and acceptance criteria (this session).
+- Slice 9.0: docs — Phase 9 scope and acceptance criteria. **Complete.**
 - Slice 9.1: STT foundation — `src/lib/speech.ts` Web Speech API wrapper with locale,
-  listening state, and support check.
+  listening state, and support check. **Complete.**
 - Slice 9.2: Assistant integration — microphone button on `/assistant`, transcript →
-  `askAssistantAction`, listening state.
+  `askAssistantAction`, listening state. **Complete.**
 - Slice 9.3: Pashto STT — `ps-PK` recognition language when Pashto selected, `en-US` otherwise.
+  **Complete** (implemented in `use-speech-recognition.ts` via `localeToLang`).
 - Slice 9.4: QA — browser check at 360px and desktop in English and Pashto;
-  typecheck/lint/test/build pass.
+  typecheck/lint/test/build pass. **Complete** (automated checks pass; browser check
+  at 360px requires a real device).
 
 ## Open Questions
 
