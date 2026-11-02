@@ -1,11 +1,16 @@
 import { Prisma } from "@/generated/prisma/client";
 import type { Customer, Payment, User } from "@/generated/prisma/client";
 import { LOCAL_ACTOR, writeAudit } from "@/lib/audit";
+import {
+  BCRYPT_COST,
+  customerRegistrationSchema,
+  hash,
+} from "@/lib/credentials";
 import { prisma } from "@/lib/db";
 import { formatPaisa } from "@/lib/format";
 import { rupeesToPaisa } from "@/lib/money";
-import { hash, BCRYPT_COST } from "@/lib/credentials";
 import { fail, ok, type Result } from "@/lib/result";
+import { normalizePhone } from "@/lib/text";
 import { fieldErrors } from "@/lib/zod";
 
 import { outstandingPaisa } from "./balance";
@@ -15,13 +20,7 @@ import {
   type CustomerPreview,
   type PaymentPreview,
 } from "./preview";
-import {
-  customerRegistrationSchema,
-} from "@/lib/credentials";
-import {
-  customerSchema,
-  paymentSchema,
-} from "./schema";
+import { customerSchema, paymentSchema } from "./schema";
 
 /** An error whose message is safe and useful to show the shopkeeper. */
 class ServiceError extends Error {
@@ -398,12 +397,15 @@ export async function createCustomerAccount(
   }
 
   const data = parsed.data;
+  // The phone doubles as the login name; store it without spaces or dashes so
+  // sign-in works however the customer types it.
+  const username = normalizePhone(data.phone);
 
   try {
     const outcome = await prisma.$transaction(async (tx) => {
       // Check if phone is already used as a username.
       const existingUser = await tx.user.findUnique({
-        where: { username: data.phone },
+        where: { username },
       });
 
       if (existingUser) {
@@ -445,7 +447,7 @@ export async function createCustomerAccount(
 
       const user = await tx.user.create({
         data: {
-          username: data.phone,
+          username,
           name: data.name,
           passwordHash: await hash(data.password, BCRYPT_COST),
           role: "CUSTOMER",

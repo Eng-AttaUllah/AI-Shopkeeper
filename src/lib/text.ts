@@ -84,3 +84,12 @@ export function normalizeDigits(value: string): string {
 export function containsArabicScript(value: string): boolean {
   return /[\u0600-\u06FF]/.test(value);
 }
+
+/**
+ * Normalize a phone number used as a login name: convert Arabic/Persian-Indic
+ * digits and remove spaces, dashes, and parentheses. A leading `+` is kept.
+ * "0300 123-4567" and "03001234567" both become "03001234567".
+ */
+export function normalizePhone(value: string): string {
+  return normalizeDigits(value).replace(/[\s\-()]/g, "");
+}

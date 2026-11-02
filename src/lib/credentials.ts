@@ -2,6 +2,7 @@ import { compare, hash } from "bcryptjs";
 import { z } from "zod";
 
 import { prisma } from "@/lib/db";
+import { normalizeDigits } from "@/lib/text";
 
 /**
  * Username/password checks shared by Auth.js, the seed script, and tests.
@@ -14,13 +15,33 @@ const BCRYPT_COST = 12;
 
 export { BCRYPT_COST, hash };
 
+/**
+ * Usernames are lowercased and trimmed. A phone-style username (digits and
+ * phone separators only, at least 7 digits) is additionally stripped of spaces,
+ * dashes, and parentheses, so "0300 123-4567" matches a stored "03001234567".
+ * Ordinary usernames such as "owner" are left unchanged.
+ */
+const usernameField = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .min(1, "Enter your username.")
+  .max(50, "Username is too long.")
+  .transform((value) => {
+    const normalizedDigits = normalizeDigits(value);
+
+    if (
+      /^[0-9+\-() ]+$/.test(normalizedDigits) &&
+      normalizedDigits.replace(/\D/g, "").length >= 7
+    ) {
+      return normalizedDigits.replace(/[\s\-()]/g, "");
+    }
+
+    return value;
+  });
+
 export const loginSchema = z.object({
-  username: z
-    .string()
-    .trim()
-    .toLowerCase()
-    .min(1, "Enter your username.")
-    .max(50, "Username is too long."),
+  username: usernameField,
   password: z
     .string()
     .min(1, "Enter your password.")
@@ -28,7 +49,7 @@ export const loginSchema = z.object({
 });
 
 export const ownerSchema = z.object({
-  username: loginSchema.shape.username,
+  username: usernameField,
   password: z
     .string()
     .min(8, "Use at least 8 characters.")

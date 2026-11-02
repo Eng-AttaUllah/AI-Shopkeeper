@@ -43,7 +43,7 @@ describe("customer accounts", () => {
     expect(customer.name).toBe("Ali Khan");
     expect(customer.phone).toBe("0300 1234567");
     expect(user.role).toBe("CUSTOMER");
-    expect(user.username).toBe("0300 1234567");
+    expect(user.username).toBe("03001234567");
     expect(user.customerId).toBe(customer.id);
     expect(user.passwordHash).not.toBe("secret-pass");
     expect(user.passwordHash.startsWith("$2")).toBe(true);
@@ -81,6 +81,23 @@ describe("customer accounts", () => {
     ).toBeNull();
   });
 
+  it("signs in with a differently formatted phone number", async () => {
+    expectOk(
+      await createCustomerAccount({
+        name: "Ali Khan",
+        phone: "0300 1234567",
+        password: "secret-pass",
+      }),
+    );
+
+    const signedIn = await verifyCredentials({
+      username: "0300-123-4567",
+      password: "secret-pass",
+    });
+
+    expect(signedIn?.role).toBe("CUSTOMER");
+  });
+
   it("rejects a phone number that is already registered", async () => {
     expectOk(
       await createCustomerAccount({
@@ -92,7 +109,7 @@ describe("customer accounts", () => {
 
     const second = await createCustomerAccount({
       name: "Second Person",
-      phone: "03001234567",
+      phone: "0300 123-4567",
       password: "another-pass",
     });
 
@@ -135,7 +152,7 @@ describe("customer accounts", () => {
 
     expect(customer.id).toBe(existing.id);
     expect(user.role).toBe("CUSTOMER");
-    expect(user.username).toBe("0321 9876543");
+    expect(user.username).toBe("03219876543");
     expect(user.customerId).toBe(existing.id);
   });
 
