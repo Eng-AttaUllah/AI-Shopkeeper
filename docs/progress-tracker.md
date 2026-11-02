@@ -498,33 +498,32 @@ Update this file after every meaningful implementation change.
 
 ## Current Phase
 
-- Phase 9 — Voice input: **Complete** (browser Web Speech API → assistant pipeline;
-  proposals still require explicit shopkeeper confirmation).
+- Phase 10 — Customer accounts: **In progress** (shopkeeper + customer user roles,
+  self-registration for customers, customer-only khata view, permission enforcement).
 
 ## Current Goal
 
-- Phase 0 through Phase 9 are complete and merged into `main`.
-- Next possible phase is Phase 10 (camera alerts), pending owner decision.
-
-## Current Goal
-
-- Phase 0 through Phase 8 are complete and merged into `main`. Phase 9 voice input is
-  next. Build slices in order: docs → STT foundation → assistant integration → Pashto STT → QA.
-- Build nothing outside this scope (text-to-speech, cloud transcription, camera alerts are
-  later phases).
+- Phase 0 through Phase 9 are complete and merged into `main`. Phase 10 adds customer
+  accounts with two user types: shopkeeper (full access) and customer (view-only access to
+  their own khata/debt). Build slices in order: docs → schema/migration → customer sign-up
+  → customer khata view → shopkeeper customer management → permission enforcement → QA.
+- Build nothing outside this scope (cashier role details, password change screen, thermal
+  printing, barcode scanner are later decisions).
 
 ## Next Up
 
-- Slice 9.0: docs — Phase 9 scope and acceptance criteria. **Complete.**
-- Slice 9.1: STT foundation — `src/lib/speech.ts` Web Speech API wrapper with locale,
-  listening state, and support check. **Complete.**
-- Slice 9.2: Assistant integration — microphone button on `/assistant`, transcript →
-  `askAssistantAction`, listening state. **Complete.**
-- Slice 9.3: Pashto STT — `ps-PK` recognition language when Pashto selected, `en-US` otherwise.
-  **Complete** (implemented in `use-speech-recognition.ts` via `localeToLang`).
-- Slice 9.4: QA — browser check at 360px and desktop in English and Pashto;
-  typecheck/lint/test/build pass. **Complete** (automated checks pass; browser check
-  at 360px requires a real device).
+- Slice 10.0: docs — customer account scope, role definitions, acceptance criteria.
+- Slice 10.1: schema + migration — add `CUSTOMER` role to `User`, link `User.customerId` to
+  `Customer`.
+- Slice 10.2: customer sign-up — self-registration page (name, phone, password), creates
+  `User` (CUSTOMER) linked to `Customer`.
+- Slice 10.3: customer khata view — customer dashboard showing balance, sales history,
+  payment history.
+- Slice 10.4: shopkeeper customer management — create/edit customer accounts from admin
+  side.
+- Slice 10.5: permission enforcement — route/action guards; CUSTOMER cannot access
+  sell/products/reports/etc.
+- Slice 10.6: QA — typecheck/lint/test/build pass.
 
 ## Open Questions
 
@@ -811,6 +810,35 @@ Update this file after every meaningful implementation change.
   tokens, write rules, and the one-proposal-per-answer guard are unchanged.
 - **No new schema or migration.** Phase 8 adds no database changes; proposal id fields and
   alias parsing from Phase 7 are reused.
+
+- **The assistant is reached from the dashboard and More, not the main navigation.** It is a
+  secondary tool, so adding it did not lengthen the phone header.
+
+- **Phase 10 uses two user roles: `OWNER` and `CUSTOMER`.** The `User.role` field already
+  supports `OWNER` | `CASHIER`; `CUSTOMER` is added as a third value. `OWNER` has full access
+  to all screens and actions. `CUSTOMER` has view-only access to their own khata (balance,
+  credit sales, repayment history) and cannot access sell, products, reports, or any write
+  path.
+- **Customer accounts are linked to existing `Customer` records.** `User.customerId` is a
+  nullable foreign key to `Customer.id`, one-to-one. Self-registration creates both a `User`
+  (role `CUSTOMER`) and a `Customer` record in one transaction. The shopkeeper can also create
+  customer accounts from the admin side.
+- **Self-registration is allowed for customers.** The "no self-registration" rule from Phase 5.5
+  applied to the shopkeeper owner only. Customer self-registration uses a separate sign-up page
+  (`/customers/sign-up`) with name, phone, and password. Phone is required so the customer can
+  be matched to their khata.
+- **Same login screen for both roles.** `/login` accepts any `User` role. After login, the UI
+  adapts: `OWNER` sees the full shop interface; `CUSTOMER` sees only their khata view.
+- **Permission enforcement is server-side.** Every server action and page checks the user's
+  role before serving data or accepting writes. `CUSTOMER` users are redirected away from
+  shopkeeper-only routes (sell, products, reports, expenses, etc.). The proxy protects pages;
+  server actions enforce the session and role.
+- **Customer view shows full khata history.** Customers see their current balance, all credit
+  sales (date, receipt number, amount, amount paid), and all repayments (date, amount, note).
+  The same `customerHistory` and `customerBalancePaisa` queries used by the shopkeeper side are
+  reused, filtered by the customer's own `Customer.id`.
+- **No schema change for voice input is affected.** Phase 10 is additive: new role value, new
+  foreign key column, new pages. Existing Phase 0–9 behavior is unchanged.
 
 ## Session Notes
 

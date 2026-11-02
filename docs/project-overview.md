@@ -358,6 +358,48 @@ or migration is required.
 - Voice outside the assistant chat (for example, voice on the sell screen).
 - Persisting voice transcripts — chat history remains client state only.
 
+## Phase 10 — Customer accounts
+
+Phase 10 adds two user account types so customers can view their own khata/debt online.
+
+### Scope
+
+- Two user roles on the `User` model: `OWNER` (full access) and `CUSTOMER` (view-only,
+  own khata only). `CASHIER` remains in the schema but is not yet built.
+- `User.customerId` (nullable, unique) links a `CUSTOMER` user to an existing `Customer`
+  record.
+- Customer self-registration page (`/customers/sign-up`): name, phone, password. Creates a
+  `User` (role `CUSTOMER`) and a `Customer` record in one transaction. Phone is required so
+  the customer can be matched to their khata.
+- Shopkeeper customer management: from the admin side, the shopkeeper can create customer
+  accounts and link them to existing `Customer` records.
+- Customer login uses the same `/login` screen. After login, role-based UI: `OWNER` sees the
+  full shop interface; `CUSTOMER` sees only their khata view.
+- Customer khata view (`/customers/khata`): current outstanding balance, full credit sales
+  history (date, receipt number, amount, amount paid), and repayment history (date, amount,
+  note). Reuses `customerBalancePaisa` and `customerHistory` queries.
+- Permission enforcement: `CUSTOMER` users cannot access sell, products, reports, expenses,
+  day-close, backups, audit, or any write path. Server actions enforce role before mutating;
+  pages redirect unauthorized users.
+
+### Acceptance Criteria
+
+1. A customer can self-register with name, phone, and password; a `User` (role `CUSTOMER`)
+   and `Customer` record are created and linked.
+2. The shopkeeper can create a customer account from the admin side and link it to an
+   existing `Customer`.
+3. A `CUSTOMER` user logging in sees only their khata balance and transaction history, not
+   shop data.
+4. A `CUSTOMER` user attempting to access shopkeeper-only routes is redirected with an error.
+5. `npm run typecheck`, `npm run lint`, `npm test`, and `npm run build` pass.
+
+### Out of Scope
+
+- Cashier role permissions (role exists in schema but no UI yet).
+- Customer editing their own profile or password inside the app.
+- Customer placing orders or making payments through the portal.
+- Separate login screen for customers.
+
 ## Implementation Phases
 
 | Phase | Name | Outcome |
@@ -376,8 +418,11 @@ or migration is required.
 | 9 | Voice input | Spoken commands converted to text via the browser's Web Speech API,
 | answered by the existing assistant tool pipeline; proposals still require
 | explicit shopkeeper confirmation |
-| 10 | Camera alerts | Suspicious-activity alerts with a saved clip, never automatic accusation |
-| 11 | Face recognition | Optional, consent-based research feature |
+| 10 | Customer accounts | Shopkeeper and customer user roles. Customers self-register or are
+| created by the shopkeeper; customers view only their own khata balance and
+| transaction history; shopkeeper retains full access |
+| 11 | Camera alerts | Suspicious-activity alerts with a saved clip, never automatic accusation |
+| 12 | Face recognition | Optional, consent-based research feature |
 
 Phases 0 to 5.5 constitute the sellable v1. Every later phase must be able to reuse the
 business logic built in phases 0 to 5.5 without rewriting it.
