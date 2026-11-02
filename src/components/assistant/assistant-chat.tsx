@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { Mic, MicOff } from "lucide-react";
 
 import { askAssistantAction } from "@/app/assistant/actions";
 import { ProposalCard } from "@/components/assistant/proposal-card";
+import { useSpeechRecognition } from "@/components/assistant/use-speech-recognition";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { AssistantProposal } from "@/modules/assistant/proposal-schema";
@@ -47,54 +49,85 @@ export function AssistantChat() {
   const endRef = useRef<HTMLDivElement>(null);
   const locale: Locale = readClientLocale();
 
+  const {
+    isSupported,
+    isListening,
+    transcript,
+    finalTranscript,
+    error: speechError,
+    start: startListening,
+    stop: stopListening,
+    clearFinal,
+  } = useSpeechRecognition();
+
   function t(key: string): string {
     return translate(locale, key);
   }
 
-  function askQuestion(rawQuestion: string) {
-    const asked = rawQuestion.trim();
+  const askQuestion = useCallback(
+    (rawQuestion: string) => {
+      const asked = rawQuestion.trim();
 
-    if (asked.length < 2 || pending) {
-      return;
+      if (asked.length < 2 || pending) {
+        return;
+      }
+
+      const history = messages
+        .slice(-6)
+        .map(({ role, content }) => ({ role, content }));
+
+      setMessages((previous) => [
+        ...previous,
+        { id: messageId(), role: "user", content: asked },
+      ]);
+      setQuestion("");
+      setError(null);
+
+      startTransition(async () => {
+        try {
+          const result = await askAssistantAction({
+            question: asked,
+            history,
+          });
+
+          if (result.ok) {
+            setMessages((previous) => [
+              ...previous,
+              {
+                id: messageId(),
+                role: "assistant",
+                content: result.data.answer,
+                tools: result.data.tools,
+                proposal: result.data.proposal,
+              },
+            ]);
+          } else {
+            setError(result.error);
+          }
+        } catch (requestError) {
+          console.error("Assistant request failed:", requestError);
+          setError(
+            "The assistant could not answer right now. Check the connection and try again.",
+          );
+        }
+      });
+    },
+    [messages, pending],
+  );
+
+  // Auto-submit a final voice transcript as a question.
+  useEffect(() => {
+    if (finalTranscript.trim().length < 2) {
+      return undefined;
     }
 
-    const history = messages
-      .slice(-6)
-      .map(({ role, content }) => ({ role, content }));
+    const timer = setTimeout(() => {
+      askQuestion(finalTranscript);
+      clearFinal();
+    }, 0);
 
-    setMessages((previous) => [
-      ...previous,
-      { id: messageId(), role: "user", content: asked },
-    ]);
-    setQuestion("");
-    setError(null);
-
-    startTransition(async () => {
-      try {
-        const result = await askAssistantAction({ question: asked, history });
-
-        if (result.ok) {
-          setMessages((previous) => [
-            ...previous,
-            {
-              id: messageId(),
-              role: "assistant",
-              content: result.data.answer,
-              tools: result.data.tools,
-              proposal: result.data.proposal,
-            },
-          ]);
-        } else {
-          setError(result.error);
-        }
-      } catch (requestError) {
-        console.error("Assistant request failed:", requestError);
-        setError(
-          "The assistant could not answer right now. Check the connection and try again.",
-        );
-      }
-    });
-  }
+    return () => clearTimeout(timer);
+  }, [finalTranscript, clearFinal, askQuestion]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -103,7 +136,7 @@ export function AssistantChat() {
   return (
     <section className="flex h-[60vh] min-h-[22rem] max-h-[36rem] flex-col overflow-hidden rounded-xl border border-line bg-surface">
       <div className="flex-1 overflow-y-auto bg-subtle p-4">
-        {messages.length === 0 && !pending ? (
+        {messages.length === 0 && !pending && !isListening ? (
           <div className="mx-auto max-w-xl py-6 text-center">
             <p className="text-base font-medium">{t("assistant.empty.title")}</p>
             <p className="mt-1 text-sm text-ink-muted">
@@ -189,6 +222,19 @@ export function AssistantChat() {
             </div>
           ) : null}
 
+          {isListening && transcript && (
+            <div className="flex justify-start">
+              <div className="max-w-[90%]">
+                <p className="mb-1 text-sm font-medium text-ink-muted">
+                  {t("assistant.assistantLabel")}
+                </p>
+                <div className="rounded-xl border border-line bg-surface px-4 py-3 text-base text-ink-muted">
+                  {transcript}
+                </div>
+              </div>
+            </div>
+          )}
+
           <div ref={endRef} />
         </div>
       </div>
@@ -201,6 +247,23 @@ export function AssistantChat() {
         className="border-t border-line p-3"
       >
         <div className="flex items-center gap-2">
+          {isSupported ? (
+            <Button
+              type="button"
+              onClick={isListening ? stopListening : startListening}
+              disabled={pending}
+              variant={isListening ? "destructive" : "outline"}
+              className="h-11 px-3"
+              aria-label={isListening ? "Stop listening" : "Start listening"}
+              title={isListening ? "Stop listening" : "Start listening"}
+            >
+              {isListening ? (
+                <MicOff className="h-4 w-4" />
+              ) : (
+                <Mic className="h-4 w-4" />
+              )}
+            </Button>
+          ) : null}
           <Input
             name="question"
             value={question}
@@ -233,6 +296,14 @@ export function AssistantChat() {
             className="mt-2 rounded-lg border border-error/30 bg-error/5 px-3 py-2 text-sm text-error"
           >
             {error}
+          </p>
+        ) : null}
+        {speechError ? (
+          <p
+            role="alert"
+            className="mt-2 rounded-lg border border-error/30 bg-error/5 px-3 py-2 text-sm text-error"
+          >
+            {speechError}
           </p>
         ) : null}
       </form>
