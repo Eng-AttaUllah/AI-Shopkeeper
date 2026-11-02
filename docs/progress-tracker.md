@@ -254,7 +254,8 @@ Update this file after every meaningful implementation change.
 - Migration `20261028020154_add_users_and_auth` adds the `User` model: unique lowercased
   `username`, optional `name`, bcrypt `passwordHash`, `role` (`OWNER` | `CASHIER`), and
   `tokenVersion`. The real `prisma/dev.db` has the migration applied and the single owner
-  seeded.
+  seeded. Phase 10 adds `CUSTOMER` and `customerId` (migration
+  `20261102000000_add_customer_user_role`).
 - `src/lib/credentials.ts` — Zod `loginSchema` and `ownerSchema`, `verifyCredentials` (the
   same null result for an unknown user or a wrong password), and `ensureOwner`. The owner
   seed is idempotent; changing `OWNER_PASSWORD` updates the hash and increments
@@ -488,42 +489,71 @@ Update this file after every meaningful implementation change.
 - Tests: 200 passing across 24 files. `npm run typecheck`, `npm run lint`, `npm test`, and
   `npm run build` pass.
 
-### Phase 9 — Voice input (in progress)
+### Phase 9 — Voice input (complete)
 
-- `src/lib/speech.ts` — planned Web Speech API wrapper: start/stop listening, locale,
-  listening state, support check.
-- Microphone button on `/assistant` — planned; transcript feeds into `askAssistantAction`.
+- `src/lib/speech.ts` — Web Speech API wrapper: start/stop listening, locale, listening
+  state, support check.
+- Microphone button on `/assistant`; transcript feeds into `askAssistantAction`.
 - Recognition language follows locale: `ps-PK` for Pashto, `en-US` for English.
 - Voice proposals still require explicit shopkeeper confirmation.
 
+### Phase 10 — Customer accounts (complete)
+
+- Migration `20261102000000_add_customer_user_role` adds `CUSTOMER` to the `User.role` values
+  and a nullable, unique `User.customerId` foreign key to `Customer` (`ON DELETE CASCADE`).
+  The migration rebuilds the SQLite `users` table because SQLite cannot alter a column.
+- `src/lib/credentials.ts` — `customerRegistrationSchema` (name, phone, password, optional
+  customerId) and `customerId` on the `AuthUser`/session types.
+- `src/modules/customers/service.ts` — `createCustomerAccount` creates a `Customer` and a
+  `User` (role `CUSTOMER`) in one transaction; `createAccountForCustomer` is the
+  shopkeeper-side helper that requires the customer to have a phone number. Both write an
+  audit row (`CUSTOMER_ACCOUNT_CREATED`).
+- `src/app/customers/sign-up/` — public self-registration page; on success the customer is
+  signed in and sent to `/customers/khata`.
+- `src/app/customers/khata/page.tsx` — customer-only view: outstanding balance, credit sales
+  (receipt number, date, amount, amount paid) and repayments (date, amount, note), reusing
+  `customerBalancePaisa` and `customerHistory`.
+- `src/app/customers/[id]/page.tsx` + `src/components/customers/customer-account-form.tsx` —
+  shopkeeper creates an account for an existing customer; the phone number is the username.
+- `src/lib/require-user.ts` — `requireOwner()`; all shopkeeper server actions use it instead of
+  `requireUser()`.
+- `src/proxy.ts` — role-aware redirects: `CUSTOMER` may only reach `/customers/khata`;
+  shopkeeper-only users are redirected away from it. `/customers/sign-up` is public.
+- `src/app/layout.tsx` — shop navigation is hidden for `CUSTOMER` users and the brand links to
+  their khata.
+- Tests: `tests/customer-accounts.test.ts` covers self-registration, login as a customer,
+  duplicate phone rejection, linking to an existing customer, the shopkeeper path, and the
+  missing-phone case. 217 tests pass across 26 files.
+
 ## Current Phase
 
-- Phase 10 — Customer accounts: **In progress** (shopkeeper + customer user roles,
-  self-registration for customers, customer-only khata view, permission enforcement).
+- Phase 10 — Customer accounts: **Complete** (shopkeeper + customer user roles,
+  self-registration for customers, shopkeeper-created accounts, customer-only khata view,
+  role-based permission enforcement). Automated checks pass; real-browser QA is still open.
 
 ## Current Goal
 
-- Phase 0 through Phase 9 are complete and merged into `main`. Phase 10 adds customer
-  accounts with two user types: shopkeeper (full access) and customer (view-only access to
-  their own khata/debt). Build slices in order: docs → schema/migration → customer sign-up
-  → customer khata view → shopkeeper customer management → permission enforcement → QA.
-- Build nothing outside this scope (cashier role details, password change screen, thermal
+- Phase 0 through Phase 10 are complete on `main`. The next possible phase is Phase 11
+  (camera alerts), pending an owner decision.
+- Build nothing outside this scope (cashier role details, customer password reset, thermal
   printing, barcode scanner are later decisions).
 
 ## Next Up
 
 - Slice 10.0: docs — customer account scope, role definitions, acceptance criteria.
+  **Complete.**
 - Slice 10.1: schema + migration — add `CUSTOMER` role to `User`, link `User.customerId` to
-  `Customer`.
+  `Customer`. **Complete** (`20261102000000_add_customer_user_role`).
 - Slice 10.2: customer sign-up — self-registration page (name, phone, password), creates
-  `User` (CUSTOMER) linked to `Customer`.
+  `User` (CUSTOMER) linked to `Customer`, then signs the customer in. **Complete.**
 - Slice 10.3: customer khata view — customer dashboard showing balance, sales history,
-  payment history.
-- Slice 10.4: shopkeeper customer management — create/edit customer accounts from admin
-  side.
-- Slice 10.5: permission enforcement — route/action guards; CUSTOMER cannot access
-  sell/products/reports/etc.
-- Slice 10.6: QA — typecheck/lint/test/build pass.
+  payment history. **Complete.**
+- Slice 10.4: shopkeeper customer management — create an account for an existing customer
+  from the customer detail page. **Complete.**
+- Slice 10.5: permission enforcement — proxy redirects and `requireOwner` guards; CUSTOMER
+  cannot access sell/products/reports/etc. **Complete.**
+- Slice 10.6: QA — typecheck/lint/test/build pass. **Complete** (217 tests). Real-browser
+  sign-up/login/khata check at 360px still to do.
 
 ## Open Questions
 
@@ -579,6 +609,19 @@ Update this file after every meaningful implementation change.
   the shop. Until one is chosen, the shopkeeper must correct it outside the app. A cash refund
   for a voided cash sale is also unrecorded: the void removes the sale from expected cash, so
   the refund is handled outside the app.
+- How should a customer reset a forgotten password? Today the shopkeeper creates the account
+  with a password; there is no reset screen and no email. Options: the shopkeeper can reset it
+  from the customer detail page, or the customer re-registers after the shopkeeper removes the
+  old account. A shopkeeper-side reset is the likely next step.
+- If the shopkeeper changes a customer's phone number, should the customer's login name change
+  too? Today the phone is the username and is copied at account creation, so the two can drift.
+  Options: keep them independent, or update the username in the same transaction when the phone
+  changes.
+- Should customers see the shop's other customers, product names on their sales, or only
+  totals? The current khata view shows receipt number, date, and amounts, but not line items.
+  Line items would expose product prices and margins, so they are deliberately omitted.
+- Should customers be able to change their own password or profile inside the app? Out of scope
+  for Phase 10.
 
 ## Architecture Decisions
 
@@ -595,8 +638,9 @@ Update this file after every meaningful implementation change.
   verification or password-reset email; the owner account is seeded from `.env`.
 - **The proxy is an optimistic gate; server actions enforce the session.** `src/proxy.ts`
   (Next 16's name for middleware) redirects signed-out requests, and every mutation calls
-  `requireUser()` before touching data. The proxy also re-reads the user so `tokenVersion`
-  invalidation applies to page reads.
+  `requireUser()` before touching data. Phase 10 adds `requireOwner()` for shopkeeper-only
+  mutations and role-based proxy redirects: a `CUSTOMER` may only reach `/customers/khata`.
+  The proxy also re-reads the user so `tokenVersion` invalidation applies to page reads.
 - **The audit actor is the signed-in username.** It is human-readable on `/audit` and stays
   stable for historical rows; services default to `local` outside a request so tests and seed
   code remain simple.
@@ -829,16 +873,18 @@ Update this file after every meaningful implementation change.
   be matched to their khata.
 - **Same login screen for both roles.** `/login` accepts any `User` role. After login, the UI
   adapts: `OWNER` sees the full shop interface; `CUSTOMER` sees only their khata view.
-- **Permission enforcement is server-side.** Every server action and page checks the user's
-  role before serving data or accepting writes. `CUSTOMER` users are redirected away from
-  shopkeeper-only routes (sell, products, reports, expenses, etc.). The proxy protects pages;
-  server actions enforce the session and role.
+- **Permission enforcement is server-side.** The proxy redirects pages by role, and every
+  shopkeeper server action calls `requireOwner()` before touching data. `CUSTOMER` users are
+  redirected away from shopkeeper-only routes (sell, products, reports, expenses, etc.), and
+  the khata page itself re-checks that the session role is `CUSTOMER`.
 - **Customer view shows full khata history.** Customers see their current balance, all credit
   sales (date, receipt number, amount, amount paid), and all repayments (date, amount, note).
   The same `customerHistory` and `customerBalancePaisa` queries used by the shopkeeper side are
-  reused, filtered by the customer's own `Customer.id`.
-- **No schema change for voice input is affected.** Phase 10 is additive: new role value, new
-  foreign key column, new pages. Existing Phase 0–9 behavior is unchanged.
+  reused, filtered by the customer's own `Customer.id`. Line items are deliberately omitted so
+  customers do not see product prices or margins.
+- **Phase 10 is additive.** It adds a role value, a nullable foreign key column, and new pages;
+  existing Phase 0–9 behavior is unchanged. Existing sessions pick up `customerId` on their next
+  request because the JWT callback re-reads the user.
 
 ## Session Notes
 

@@ -102,25 +102,33 @@ from `app`, and `lib` never imports from `modules`.
 ## Auth and Access Model
 
 - Every user signs in with username and password through Auth.js Credentials. Passwords are
-  stored only as bcrypt hashes in `src/lib/credentials.ts`. There is no self-registration.
+  stored only as bcrypt hashes in `src/lib/credentials.ts`. The shopkeeper owner account is
+  seeded from `.env`; customers may self-register at `/customers/sign-up`, where the phone
+  number becomes the username. The shopkeeper can also create a customer account from the
+  customer detail page. There is no shopkeeper self-registration.
 - Auth.js requires JWT session strategy with the Credentials provider. Sessions are signed
   cookies with an 8-hour lifetime, refreshed while the shopkeeper is active; a
   `tokenVersion` on the user invalidates sessions when a password changes. The JWT callback
   re-reads the user so a deleted user or a changed `tokenVersion` signs the session out.
 - `src/proxy.ts` (Next.js 16's replacement for `middleware.ts`) protects every route except
-  `/login`, the Auth.js endpoints, and static assets. Unauthenticated requests are redirected
-  to `/login` with the original path in `from`.
+  `/login`, `/customers/sign-up`, the Auth.js endpoints, and static assets. Unauthenticated
+  requests are redirected to `/login` with the original path in `from`. Signed-in `CUSTOMER`
+  users are redirected to `/customers/khata` from every other page, and shopkeeper-only users
+  are redirected away from `/customers/khata`.
 - The system is single-tenant: it serves exactly one shop. Ownership is implicit — every
   business record belongs to that shop. `settings` holds the shop identity.
-- `User.role` is `OWNER` or `CASHIER`. v1 seeds one `OWNER`. Cashiers are reserved for a
-  later phase and must not gain extra permissions without a documented decision.
+- `User.role` is `OWNER`, `CASHIER`, or `CUSTOMER`. v1 seeds one `OWNER`. `CASHIER` is
+  reserved for a later phase. `CUSTOMER` users are view-only: they can read their own khata
+  (balance, credit sales, repayments) and nothing else. `User.customerId` links a `CUSTOMER`
+  user to exactly one `Customer` record (unique, nullable).
 - The seed reads `OWNER_USERNAME`, `OWNER_PASSWORD`, and `OWNER_NAME` from `.env`. Re-running
   the seed with a different password updates the hash and increments `tokenVersion`.
 - All mutations happen on the server (server actions or route handlers). The browser never
   talks to the database, and no database credentials are exposed to the client.
 - Server-side code enforces authorisation on every mutation: every server action calls
-  `requireUser()` before changing data. The proxy is an optimistic gate only. Hiding a button
-  in the UI is never treated as access control.
+  `requireUser()` (any signed-in user) or `requireOwner()` (shopkeeper-only) before changing
+  data. The proxy is an optimistic gate only. Hiding a button in the UI is never treated as
+  access control. A `CUSTOMER` must never reach a shopkeeper mutation.
 - The audit actor is the signed-in username. The service functions accept an optional actor
   that defaults to `local`, so tests and seed code can run outside a session; server actions
   pass `session.user.username`.
