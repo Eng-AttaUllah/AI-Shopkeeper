@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { Metadata } from "next";
 
 import { LoginForm } from "./login-form";
@@ -40,6 +41,15 @@ export default async function LoginPage({
             signInButtonLabel={signInButtonLabel}
           />
         </div>
+        <p className="mt-4 text-sm text-ink-muted text-center">
+          {t("customerRegistration.haveAccount")}{" "}
+          <Link
+            href="/customers/sign-up"
+            className="text-brand underline hover:text-brand-hover"
+          >
+            {t("customerRegistration.signUpLink")}
+          </Link>
+        </p>
       </div>
     </main>
   );

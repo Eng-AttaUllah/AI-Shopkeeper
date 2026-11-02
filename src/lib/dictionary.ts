@@ -545,6 +545,17 @@ const en: Dictionary = {
   "backups.backupCreated": "Backup created: {name}",
   "backups.backingUp": "Backing up…",
 
+  // Customer registration
+  "customerRegistration.title": "Create account",
+  "customerRegistration.subtitle": "Create a customer account to view your khata (credit balance) online.",
+  "customerRegistration.name": "Full name",
+  "customerRegistration.phone": "Phone number",
+  "customerRegistration.password": "Password",
+  "customerRegistration.registerButton": "Create account",
+  "customerRegistration.haveAccount": "Already have an account?",
+  "customerRegistration.signIn": "Sign in",
+  "customerRegistration.signUpLink": "Create account",
+
   // Login
   "login.signIn": "Sign in",
   "login.useAccount": "Use the shopkeeper account to open the shop.",
