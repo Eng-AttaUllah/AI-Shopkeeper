@@ -43,6 +43,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.username = signedIn.username;
         token.role = signedIn.role;
         token.tokenVersion = signedIn.tokenVersion;
+        token.customerId = signedIn.customerId;
         return token;
       }
 
@@ -54,7 +55,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       // deleted user invalidates an existing signed cookie.
       const current = await prisma.user.findUnique({
         where: { id: token.sub },
-        select: { username: true, role: true, tokenVersion: true },
+        select: {
+          username: true,
+          role: true,
+          tokenVersion: true,
+          customerId: true,
+        },
       });
 
       if (!current || current.tokenVersion !== token.tokenVersion) {
@@ -63,6 +69,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
       token.username = current.username;
       token.role = current.role;
+      token.customerId = current.customerId;
 
       return token;
     },
@@ -71,6 +78,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.id = token.sub;
         session.user.username = token.username;
         session.user.role = token.role;
+        session.user.customerId = token.customerId;
       }
 
       return session;

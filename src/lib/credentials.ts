@@ -69,11 +69,12 @@ export type AuthUser = {
   username: string;
   role: string;
   tokenVersion: number;
+  customerId?: string | null;
 };
 
 export type SafeUser = Pick<
   AuthUser,
-  "id" | "username" | "role" | "tokenVersion"
+  "id" | "username" | "role" | "tokenVersion" | "customerId"
 >;
 
 export type EnsureOwnerResult = {
@@ -124,6 +125,7 @@ export async function verifyCredentials(
     username: user.username,
     role: user.role,
     tokenVersion: user.tokenVersion,
+    customerId: user.customerId,
   };
 }
 

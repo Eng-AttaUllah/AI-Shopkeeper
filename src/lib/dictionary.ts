@@ -555,6 +555,36 @@ const en: Dictionary = {
   "customerRegistration.haveAccount": "Already have an account?",
   "customerRegistration.signIn": "Sign in",
   "customerRegistration.signUpLink": "Create account",
+  "customerRegistration.newCustomer": "New customer?",
+  "customerRegistration.creating": "Creating account…",
+  "customerRegistration.phoneHint":
+    "Your phone number is your username. Use it to sign in.",
+
+  // Customer khata view
+  "customerKhata.title": "Your Khata",
+  "customerKhata.noAccount": "No customer account is linked to this user.",
+  "customerKhata.backToLogin": "← Back to sign in",
+  "customerKhata.yourKhata": "Your credit balance (khata)",
+  "customerKhata.refresh": "Refresh",
+  "customerKhata.outstandingBalance": "Outstanding balance",
+  "customerKhata.transactionHistory": "Transaction history",
+  "customerKhata.noTransactions": "No transactions yet.",
+  "customerKhata.sale": "Sale",
+  "customerKhata.payment": "Payment",
+  "customerKhata.cashPayment": "Cash payment",
+  "customerKhata.totalOutstanding": "Total outstanding",
+
+  // Customer account management (shopkeeper side)
+  "customerAccount.title": "Customer account",
+  "customerAccount.linkedAs": "This customer can sign in as {{username}}.",
+  "customerAccount.hint":
+    "Create a sign-in account so this customer can view their khata online. The username is their phone number ({{phone}}).",
+  "customerAccount.noPhone":
+    "Add a phone number to this customer before creating an account.",
+  "customerAccount.password": "Password",
+  "customerAccount.create": "Create account",
+  "customerAccount.creating": "Creating…",
+  "customerAccount.created": "Account created. The customer can now sign in.",
 
   // Login
   "login.signIn": "Sign in",
@@ -630,6 +660,46 @@ const ps: Dictionary = {
   "assistant.userLabel": "تاسو",
   "assistant.assistantLabel": "مددګر",
   "proposal.kind.sale": "فروخت",
+
+  // Customer registration (draft; needs native review)
+  "customerRegistration.title": "حساب جوړول",
+  "customerRegistration.subtitle":
+    "د خپل کتا (پور) آنلاین لیدو لپاره د مشتری حساب جوړ کړئ.",
+  "customerRegistration.name": "بشپړ نوم",
+  "customerRegistration.phone": "د تلیفون شمیره",
+  "customerRegistration.password": "پټنوم",
+  "customerRegistration.registerButton": "حساب جوړ کړئ",
+  "customerRegistration.haveAccount": "دمخه حساب لرئ؟",
+  "customerRegistration.newCustomer": "نوی مشتری؟",
+  "customerRegistration.signIn": "ننوتل",
+  "customerRegistration.creating": "حساب جوړیږي…",
+  "customerRegistration.phoneHint":
+    "ستاسو د تلیفون شمیره ستاسو کارن نوم دی. د ننوتلو لپاره یې وکاروئ.",
+
+  // Customer khata view (draft; needs native review)
+  "customerKhata.title": "ستاسو کتا",
+  "customerKhata.noAccount": "دې کارن ته هیڅ مشتری حساب نه دی تړل شوی.",
+  "customerKhata.yourKhata": "ستاسو د پور بیلانس (کتا)",
+  "customerKhata.refresh": "تازه کړئ",
+  "customerKhata.outstandingBalance": "پاتې بیلانس",
+  "customerKhata.transactionHistory": "د معاملو تاریخ",
+  "customerKhata.noTransactions": "تر اوسه هیڅ معامله نشته.",
+  "customerKhata.sale": "فروخت",
+  "customerKhata.payment": "تادیه",
+  "customerKhata.cashPayment": "نغدي تادیه",
+  "customerKhata.totalOutstanding": "ټول پاتې",
+
+  // Customer account management (draft; needs native review)
+  "customerAccount.title": "د مشتری حساب",
+  "customerAccount.linkedAs": "دا مشتری د {{username}} په نوم ننوتلی شي.",
+  "customerAccount.hint":
+    "د دې لپاره چې دا مشتری خپل کتا آنلاین وګوري، د ننوتلو حساب جوړ کړئ. کارن نوم د دوی د تلیفون شمیره ({{phone}}) ده.",
+  "customerAccount.noPhone":
+    "د حساب جوړولو دمخه دې مشتری ته د تلیفون شمیره ورزیاته کړئ.",
+  "customerAccount.password": "پټنوم",
+  "customerAccount.create": "حساب جوړ کړئ",
+  "customerAccount.creating": "جوړیږي…",
+  "customerAccount.created": "حساب جوړ شو. مشتری اوس ننوتلی شي.",
 };
 
 const DICTIONARIES: Record<Locale, Dictionary> = { en, ps };

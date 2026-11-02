@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { requireUser } from "@/lib/require-user";
+import { requireOwner } from "@/lib/require-user";
 import { createSale, voidSale } from "@/modules/sales/service";
 
 export type SaleActionState =
@@ -17,7 +17,7 @@ export async function createSaleAction(
   _previousState: SaleActionState,
   formData: FormData,
 ): Promise<SaleActionState> {
-  const user = await requireUser();
+  const user = await requireOwner();
   const payload = formData.get("payload");
 
   if (typeof payload !== "string" || payload.length === 0) {
@@ -49,7 +49,7 @@ export async function voidSaleAction(
   _previousState: SaleActionState,
   formData: FormData,
 ): Promise<SaleActionState> {
-  const user = await requireUser();
+  const user = await requireOwner();
   const saleId = String(formData.get("saleId") ?? "");
   const reason = formData.get("reason");
 

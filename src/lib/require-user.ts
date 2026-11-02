@@ -17,3 +17,17 @@ export async function requireUser() {
 
   return session.user;
 }
+
+/**
+ * Server-side role guard: only the shopkeeper (OWNER) may pass.
+ * Use for actions that mutate shop data (sales, products, expenses, etc.).
+ */
+export async function requireOwner() {
+  const user = await requireUser();
+
+  if (user.role !== "OWNER") {
+    redirect("/customers/khata");
+  }
+
+  return user;
+}

@@ -42,7 +42,7 @@ export default async function LoginPage({
           />
         </div>
         <p className="mt-4 text-sm text-ink-muted text-center">
-          {t("customerRegistration.haveAccount")}{" "}
+          {t("customerRegistration.newCustomer")}{" "}
           <Link
             href="/customers/sign-up"
             className="text-brand underline hover:text-brand-hover"

@@ -9,17 +9,19 @@ import { Label } from "@/components/ui/label";
 import { customerRegistrationAction, type CustomerRegistrationState } from "./actions";
 
 export function CustomerRegistrationForm({
-  from,
   nameLabel,
   phoneLabel,
   passwordLabel,
   registerButtonLabel,
+  pendingLabel,
+  hintLabel,
 }: {
-  from: string;
   nameLabel: string;
   phoneLabel: string;
   passwordLabel: string;
   registerButtonLabel: string;
+  pendingLabel: string;
+  hintLabel: string;
 }) {
   const [state, formAction, pending] = useActionState<CustomerRegistrationState, FormData>(
     customerRegistrationAction,
@@ -29,8 +31,6 @@ export function CustomerRegistrationForm({
 
   return (
     <form action={formAction} className="flex flex-col gap-4">
-      <input type="hidden" name="from" value={from} />
-
       {state?.error ? (
         <p
           role="alert"
@@ -92,16 +92,14 @@ export function CustomerRegistrationForm({
         ) : null}
       </div>
 
-      <p className="text-xs text-ink-muted">
-        Your phone number is your username. Use it to sign in.
-      </p>
+      <p className="text-xs text-ink-muted">{hintLabel}</p>
 
       <Button
         type="submit"
         disabled={pending}
         className="h-11 w-full px-5 text-base"
       >
-        {pending ? "Creating account…" : registerButtonLabel}
+        {pending ? pendingLabel : registerButtonLabel}
       </Button>
     </form>
   );

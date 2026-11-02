@@ -38,6 +38,7 @@ export default async function RootLayout({
 }) {
   const session = await auth();
   const user = session?.user;
+  const isCustomer = user?.role === "CUSTOMER";
   const locale: Locale = await getLocale();
   const dir = await getDirection(locale);
 
@@ -51,7 +52,7 @@ export default async function RootLayout({
         <header className="border-b border-line bg-surface">
           <div className="mx-auto flex min-h-14 w-full max-w-5xl flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2">
             <Link
-              href="/"
+              href={isCustomer ? "/customers/khata" : "/"}
               className="order-1 shrink-0 text-sm font-semibold"
             >
               AI Shopkeeper
@@ -77,7 +78,7 @@ export default async function RootLayout({
               </div>
             ) : null}
 
-            {user ? (
+            {user && !isCustomer ? (
               <nav
                 aria-label="Main"
                 className="order-3 flex w-full items-center gap-x-4 overflow-x-auto text-sm [scrollbar-width:none] sm:order-2 sm:w-auto sm:overflow-visible [&::-webkit-scrollbar]:hidden"

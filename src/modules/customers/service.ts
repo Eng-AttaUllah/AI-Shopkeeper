@@ -381,18 +381,15 @@ export async function recordPayment(
   return ok(result.data.payment);
 }
 
-export type CreateCustomerAccountOptions = {
-  /** The customer record to link the user to. If not provided, a new one is created. */
-  customerId?: string;
-};
-
 /** Create a customer account (User with CUSTOMER role) linked to a Customer record.
  *
- * Used for customer self-registration. Creates both a User and, if no customerId
- * is given, a Customer record in one transaction. The phone is used as the username.
+ * Used for customer self-registration and for accounts created by the
+ * shopkeeper. Creates both a User and, if no customerId is given, a Customer
+ * record in one transaction. The phone is used as the username.
  */
 export async function createCustomerAccount(
   input: unknown,
+  options: { source?: "self_registration" | "shopkeeper" } = {},
 ): Promise<Result<{ customer: Customer; user: User }>> {
   const parsed = customerRegistrationSchema.safeParse(input);
 
@@ -427,6 +424,14 @@ export async function createCustomerAccount(
           throw new ServiceError("Customer not found.");
         }
 
+        const linkedUser = await tx.user.findUnique({
+          where: { customerId: data.customerId },
+        });
+
+        if (linkedUser) {
+          throw new ServiceError("This customer already has an account.");
+        }
+
         customer = found;
       } else {
         customer = await tx.customer.create({
@@ -449,7 +454,7 @@ export async function createCustomerAccount(
       });
 
       await writeAudit(tx, {
-        actor: user.id,
+        actor: user.username,
         action: "CUSTOMER_ACCOUNT_CREATED",
         entityType: "User",
         entityId: user.id,
@@ -461,7 +466,7 @@ export async function createCustomerAccount(
           customerId: user.customerId,
         },
         details: {
-          source: "customer_registration",
+          source: options.source ?? "self_registration",
         },
       });
 
@@ -472,4 +477,39 @@ export async function createCustomerAccount(
   } catch (error) {
     return handleError(error);
   }
+}
+
+/**
+ * Shopkeeper-side helper: create an account for an existing customer using the
+ * customer's phone number as the login name. A phone number is required because
+ * it doubles as the username.
+ */
+export async function createAccountForCustomer(
+  customerId: string,
+  password: string,
+): Promise<Result<{ customer: Customer; user: User }>> {
+  const customer = await prisma.customer.findUnique({
+    where: { id: customerId },
+  });
+
+  if (!customer) {
+    return fail("Customer not found.");
+  }
+
+  if (!customer.phone) {
+    return fail(
+      "Add a phone number to this customer before creating an account.",
+      { phone: "A phone number is required for sign-in." },
+    );
+  }
+
+  return createCustomerAccount(
+    {
+      name: customer.name,
+      phone: customer.phone,
+      password,
+      customerId: customer.id,
+    },
+    { source: "shopkeeper" },
+  );
 }

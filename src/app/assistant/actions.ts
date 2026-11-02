@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { getChatProvider, isAssistantConfigured } from "@/lib/ai/config";
 import { getLocale } from "@/lib/i18n";
-import { requireUser } from "@/lib/require-user";
+import { requireOwner } from "@/lib/require-user";
 import { fail, ok, type Result } from "@/lib/result";
 import { confirmCustomerProposal } from "@/modules/assistant/confirm-customer";
 import { confirmExpenseProposal } from "@/modules/assistant/confirm-expense";
@@ -50,7 +50,7 @@ function invalidProposalToken(): Result<never> {
 export async function askAssistantAction(
   input: AssistantRequestInput,
 ): Promise<Result<AssistantAnswer>> {
-  const user = await requireUser();
+  const user = await requireOwner();
 
   const parsed = assistantRequestSchema.safeParse(input);
 
@@ -97,7 +97,7 @@ export type ConfirmSaleProposalActionResult = {
 export async function confirmSaleProposalAction(
   token: string,
 ): Promise<Result<ConfirmSaleProposalActionResult>> {
-  const user = await requireUser();
+  const user = await requireOwner();
 
   if (!isValidProposalToken(token)) {
     return invalidProposalToken();
@@ -150,7 +150,7 @@ export type ConfirmExpenseProposalActionResult = {
 export async function confirmExpenseProposalAction(
   token: string,
 ): Promise<Result<ConfirmExpenseProposalActionResult>> {
-  const user = await requireUser();
+  const user = await requireOwner();
 
   if (!isValidProposalToken(token)) {
     return invalidProposalToken();
@@ -203,7 +203,7 @@ export type ConfirmPaymentProposalActionResult = {
 export async function confirmPaymentProposalAction(
   token: string,
 ): Promise<Result<ConfirmPaymentProposalActionResult>> {
-  const user = await requireUser();
+  const user = await requireOwner();
 
   if (!isValidProposalToken(token)) {
     return invalidProposalToken();
@@ -256,7 +256,7 @@ export type ConfirmCustomerProposalActionResult = {
 export async function confirmCustomerProposalAction(
   token: string,
 ): Promise<Result<ConfirmCustomerProposalActionResult>> {
-  const user = await requireUser();
+  const user = await requireOwner();
 
   if (!isValidProposalToken(token)) {
     return invalidProposalToken();
@@ -302,7 +302,7 @@ export type ConfirmProductProposalActionResult = {
 export async function confirmProductProposalAction(
   token: string,
 ): Promise<Result<ConfirmProductProposalActionResult>> {
-  const user = await requireUser();
+  const user = await requireOwner();
 
   if (!isValidProposalToken(token)) {
     return invalidProposalToken();
@@ -351,7 +351,7 @@ export type ConfirmProductUpdateProposalActionResult = {
 export async function confirmProductUpdateProposalAction(
   token: string,
 ): Promise<Result<ConfirmProductUpdateProposalActionResult>> {
-  const user = await requireUser();
+  const user = await requireOwner();
 
   if (!isValidProposalToken(token)) {
     return invalidProposalToken();
@@ -403,7 +403,7 @@ export type ConfirmStockAdjustmentProposalActionResult = {
 export async function confirmStockAdjustmentProposalAction(
   token: string,
 ): Promise<Result<ConfirmStockAdjustmentProposalActionResult>> {
-  const user = await requireUser();
+  const user = await requireOwner();
 
   if (!isValidProposalToken(token)) {
     return invalidProposalToken();

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 import { CustomerRegistrationForm } from "./form";
 import { readClientLocale, translate } from "@/lib/dictionary";
@@ -7,13 +8,7 @@ export const metadata: Metadata = {
   title: "Create account · AI Shopkeeper Assistant",
 };
 
-export default async function CustomerRegistrationPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ from?: string | string[] }>;
-}) {
-  const params = await searchParams;
-  const from = typeof params.from === "string" ? params.from : "/";
+export default function CustomerRegistrationPage() {
   const locale = readClientLocale();
 
   function t(key: string, params?: Record<string, string>): string {
@@ -24,6 +19,8 @@ export default async function CustomerRegistrationPage({
   const phoneLabel = t("customerRegistration.phone");
   const passwordLabel = t("customerRegistration.password");
   const registerButtonLabel = t("customerRegistration.registerButton");
+  const pendingLabel = t("customerRegistration.creating");
+  const hintLabel = t("customerRegistration.phoneHint");
 
   return (
     <main className="flex flex-1 items-center justify-center px-4 py-10">
@@ -37,18 +34,22 @@ export default async function CustomerRegistrationPage({
         </p>
         <div className="mt-6">
           <CustomerRegistrationForm
-            from={from}
             nameLabel={nameLabel}
             phoneLabel={phoneLabel}
             passwordLabel={passwordLabel}
             registerButtonLabel={registerButtonLabel}
+            pendingLabel={pendingLabel}
+            hintLabel={hintLabel}
           />
         </div>
         <p className="mt-4 text-sm text-ink-muted text-center">
           {t("customerRegistration.haveAccount")}{" "}
-          <a href="/login" className="text-brand underline hover:text-brand-hover">
+          <Link
+            href="/login"
+            className="text-brand underline hover:text-brand-hover"
+          >
             {t("customerRegistration.signIn")}
-          </a>
+          </Link>
         </p>
       </div>
     </main>
