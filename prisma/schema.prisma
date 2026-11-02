@@ -13,7 +13,7 @@ datasource db {
   provider = "sqlite"
 }
 
-/// A shop user. v1 seeds one OWNER. Cashiers are a later phase.
+/// A shop user. v1 seeds one OWNER. Cashiers and customers are later phases.
 model User {
   id           String   @id @default(cuid())
   /// Lowercased login name, unique across the installation.
@@ -21,12 +21,16 @@ model User {
   name         String?
   /// bcrypt hash; the plain password is never stored.
   passwordHash String
-  /// OWNER | CASHIER
+  /// OWNER | CASHIER | CUSTOMER
   role         String   @default("OWNER")
   /// Incremented when the password changes, invalidating existing sessions.
   tokenVersion Int      @default(0)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  /// Link to the customer record for CUSTOMER role users. One-to-one.
+  customerId   String?   @unique
+  customer     Customer? @relation(fields: [customerId], references: [id], onDelete: Cascade)
 
   @@map("users")
 }
@@ -194,6 +198,7 @@ model Customer {
 
   sales    Sale[]
   payments Payment[]
+  user     User?
 
   @@index([name])
   @@index([phone])
