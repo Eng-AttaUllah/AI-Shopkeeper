@@ -1,9 +1,10 @@
 import { Prisma } from "@/generated/prisma/client";
-import type { Customer, Payment } from "@/generated/prisma/client";
+import type { Customer, Payment, User } from "@/generated/prisma/client";
 import { LOCAL_ACTOR, writeAudit } from "@/lib/audit";
 import { prisma } from "@/lib/db";
 import { formatPaisa } from "@/lib/format";
 import { rupeesToPaisa } from "@/lib/money";
+import { hash, BCRYPT_COST } from "@/lib/credentials";
 import { fail, ok, type Result } from "@/lib/result";
 import { fieldErrors } from "@/lib/zod";
 
@@ -14,7 +15,13 @@ import {
   type CustomerPreview,
   type PaymentPreview,
 } from "./preview";
-import { customerSchema, paymentSchema } from "./schema";
+import {
+  customerRegistrationSchema,
+} from "@/lib/credentials";
+import {
+  customerSchema,
+  paymentSchema,
+} from "./schema";
 
 /** An error whose message is safe and useful to show the shopkeeper. */
 class ServiceError extends Error {
@@ -372,4 +379,97 @@ export async function recordPayment(
   }
 
   return ok(result.data.payment);
+}
+
+export type CreateCustomerAccountOptions = {
+  /** The customer record to link the user to. If not provided, a new one is created. */
+  customerId?: string;
+};
+
+/** Create a customer account (User with CUSTOMER role) linked to a Customer record.
+ *
+ * Used for customer self-registration. Creates both a User and, if no customerId
+ * is given, a Customer record in one transaction. The phone is used as the username.
+ */
+export async function createCustomerAccount(
+  input: unknown,
+): Promise<Result<{ customer: Customer; user: User }>> {
+  const parsed = customerRegistrationSchema.safeParse(input);
+
+  if (!parsed.success) {
+    return fail("Please fix the highlighted fields.", fieldErrors(parsed.error));
+  }
+
+  const data = parsed.data;
+
+  try {
+    const outcome = await prisma.$transaction(async (tx) => {
+      // Check if phone is already used as a username.
+      const existingUser = await tx.user.findUnique({
+        where: { username: data.phone },
+      });
+
+      if (existingUser) {
+        throw new ServiceError(
+          "An account with this phone number already exists.",
+          { phone: "Already registered" },
+        );
+      }
+
+      let customer: Customer;
+
+      if (data.customerId) {
+        const found = await tx.customer.findUnique({
+          where: { id: data.customerId },
+        });
+
+        if (!found) {
+          throw new ServiceError("Customer not found.");
+        }
+
+        customer = found;
+      } else {
+        customer = await tx.customer.create({
+          data: {
+            name: data.name,
+            phone: data.phone,
+            note: null,
+          },
+        });
+      }
+
+      const user = await tx.user.create({
+        data: {
+          username: data.phone,
+          name: data.name,
+          passwordHash: await hash(data.password, BCRYPT_COST),
+          role: "CUSTOMER",
+          customerId: customer.id,
+        },
+      });
+
+      await writeAudit(tx, {
+        actor: user.id,
+        action: "CUSTOMER_ACCOUNT_CREATED",
+        entityType: "User",
+        entityId: user.id,
+        summary: `Customer account created for ${customer.name}`,
+        before: null,
+        after: {
+          username: user.username,
+          role: user.role,
+          customerId: user.customerId,
+        },
+        details: {
+          source: "customer_registration",
+        },
+      });
+
+      return { customer, user };
+    });
+
+    return ok(outcome);
+  } catch (error) {
+    return handleError(error);
+  }
 }

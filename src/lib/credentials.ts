@@ -12,6 +12,8 @@ import { prisma } from "@/lib/db";
 
 const BCRYPT_COST = 12;
 
+export { BCRYPT_COST, hash };
+
 export const loginSchema = z.object({
   username: z
     .string()
@@ -35,6 +37,30 @@ export const ownerSchema = z.object({
 });
 
 export type LoginInput = z.infer<typeof loginSchema>;
+
+/** Customer self-registration input. Phone is used as the username. */
+export const customerRegistrationSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(2, "Use at least 2 characters")
+    .max(80, "Use at most 80 characters"),
+  phone: z
+    .string()
+    .trim()
+    .min(1, "Enter a phone number")
+    .max(20, "Phone is too long")
+    .regex(/^[0-9+\-() ]*$/, "Use digits, spaces, +, or -"),
+  password: z
+    .string()
+    .min(8, "Use at least 8 characters")
+    .max(200, "Password is too long."),
+  customerId: z.string().min(1, "Invalid customer").optional(),
+});
+
+export type CustomerRegistrationInput = z.infer<
+  typeof customerRegistrationSchema
+>;
 
 /** The user fields Auth.js needs; never includes the password hash. */
 export type AuthUser = {
