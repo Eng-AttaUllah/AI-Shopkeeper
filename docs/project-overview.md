@@ -134,7 +134,9 @@ alerts. Those are explicitly out of scope for v1 and must not be built early `(s
   (Phase 6) and the signed proposals in Phase 7 are separate post-v1 phases.
 - Camera, video processing, theft or suspicious-activity detection, and face recognition.
 - Supplier management, purchase orders, and goods returns.
-- Multi-shop, multi-branch, or multi-device cloud synchronisation.
+- Multi-shop, multi-branch, or multi-device cloud synchronisation. Deferred to v2 by the
+  owner: shop self-registration, customers joining a shop to track their khata, and account
+  type chosen at account creation. Direction recorded in progress-tracker.md Open Questions.
 - Online payments, card payments, and tax filing.
 - Thermal receipt printing and barcode scanner hardware.
 - Public internet hosting and remote access.

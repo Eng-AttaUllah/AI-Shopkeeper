@@ -581,6 +581,12 @@ Update this file after every meaningful implementation change.
   signs in.
 - Should assistant answers be saved for review? Phase 6 deliberately keeps history in the
   browser only; a saved transcript would need a retention and privacy decision.
+- Multi-shop / social accounts (post-v1): everyone registers their own shop; customers can
+  join a specific shop to track their debt/khata there; account type is decided at account
+  creation. This contradicts the current single-tenant, single-shop invariant in
+  architecture.md and, when scheduled, would add shopId to every business table, a shop
+  registration/login flow, and customer invite/join flows. Capture as a v2 scope item, not a
+  v1 change: v1 stays one shop, one laptop.
 - Should Phase 7 expand further to customer edits, product activation/deactivation, or customer
   deletion? Each needs its own explicit-confirmation design; the current slice is sales,
   expenses, khata repayments, customer creation, product creation, product edits, and stock
