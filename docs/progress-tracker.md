@@ -525,35 +525,47 @@ Update this file after every meaningful implementation change.
   duplicate phone rejection, linking to an existing customer, the shopkeeper path, and the
   missing-phone case. 217 tests pass across 26 files.
 
+### Phase 11 — Camera alerts (in progress)
+
+- Owner decisions (recorded 2026-11-04):
+  - Camera source: the laptop webcam (built-in or USB) today; a separate/IP camera may
+    replace it later, so the capture design reads a configurable device rather than
+    hard-coding one.
+  - Detection: motion-based clips — record a short clip when motion is detected. No
+    accusation, no face recognition; clips exist for human review.
+  - Review UX: an owner-only `/alerts` page listing clips by time with mark-reviewed and
+    dismiss actions.
+- Confirms the architecture: the camera is a separate Python + OpenCV process under
+  `services/camera/`, communicating with the app over a local HTTP endpoint authenticated
+  with a shared secret; it holds no business data of its own. Clip metadata lives in SQLite;
+  video bytes live on disk in `media/camera/` (git-ignored).
+- Slices: 11.0 docs → 11.1 app-side intake/storage/review UI → 11.2 camera process →
+  11.3 QA.
+
 ## Current Phase
 
-- Phase 10 — Customer accounts: **Complete** (shopkeeper + customer user roles,
-  self-registration for customers, shopkeeper-created accounts, customer-only khata view,
-  role-based permission enforcement). Automated checks pass; real-browser QA is still open.
+- Phase 11 — Camera alerts: **In progress** (laptop webcam capture, motion-based clips,
+  owner-only alerts page; separate camera process posting to the app over local HTTP).
 
 ## Current Goal
 
-- Phase 0 through Phase 10 are complete on `main`. The next possible phase is Phase 11
-  (camera alerts), pending an owner decision.
+- Phase 0 through Phase 10 are complete on `main`. Phase 11 adds camera alerts: a separate
+  capture process records a clip on motion and posts alert metadata to the app; the
+  shopkeeper reviews clips on an alerts page. Build slices in order: docs → app data model,
+  alert intake, and review UI → camera capture service → QA.
 - Build nothing outside this scope (cashier role details, customer password reset, thermal
-  printing, barcode scanner are later decisions).
+  printing, barcode scanner, face recognition are later decisions).
 
 ## Next Up
 
-- Slice 10.0: docs — customer account scope, role definitions, acceptance criteria.
-  **Complete.**
-- Slice 10.1: schema + migration — add `CUSTOMER` role to `User`, link `User.customerId` to
-  `Customer`. **Complete** (`20261102000000_add_customer_user_role`).
-- Slice 10.2: customer sign-up — self-registration page (name, phone, password), creates
-  `User` (CUSTOMER) linked to `Customer`, then signs the customer in. **Complete.**
-- Slice 10.3: customer khata view — customer dashboard showing balance, sales history,
-  payment history. **Complete.**
-- Slice 10.4: shopkeeper customer management — create an account for an existing customer
-  from the customer detail page. **Complete.**
-- Slice 10.5: permission enforcement — proxy redirects and `requireOwner` guards; CUSTOMER
-  cannot access sell/products/reports/etc. **Complete.**
-- Slice 10.6: QA — typecheck/lint/test/build pass. **Complete** (217 tests). Real-browser
-  sign-up/login/khata check at 360px still to do.
+- Slice 11.0: docs — camera alert scope, owner decisions (camera source, detection, review
+  UX), acceptance criteria. **Complete.**
+- Slice 11.1: app side — `CameraAlert` model + migration, authenticated alert intake route
+  handler for the camera process, `src/modules/camera/` service and queries, `/alerts` page
+  (owner-only) with reviewed/dismissed actions, authenticated clip streaming route.
+- Slice 11.2: camera service — `services/camera/` Python + OpenCV process: frame capture,
+  motion detection, clip writing to `media/camera/`, alert posting with the shared token.
+- Slice 11.3: QA — typecheck/lint/test/build pass; manual end-to-end run instructions.
 
 ## Open Questions
 
@@ -891,6 +903,22 @@ Update this file after every meaningful implementation change.
 - **Phase 10 is additive.** It adds a role value, a nullable foreign key column, and new pages;
   existing Phase 0–9 behavior is unchanged. Existing sessions pick up `customerId` on their next
   request because the JWT callback re-reads the user.
+
+- **Phase 11 keeps the camera out of the app process.** A Python + OpenCV service under
+  `services/camera/` captures the laptop webcam (device index configurable so an IP camera can
+  replace it later), detects motion, writes short clips to `media/camera/`, and posts alert
+  metadata to the app over local HTTP. The service authenticates with a shared secret token
+  from `.env` (`CAMERA_ALERT_TOKEN`) and holds no business data of its own.
+- **Clip metadata lives in the database; video bytes live on disk.** A `CameraAlert` row stores
+  the clip path, capture time, duration, and review state. The file is never under `public/`:
+  the app streams it through an authenticated, owner-only route handler so a `CUSTOMER` session
+  or an anonymous request cannot fetch surveillance footage.
+- **Alerts are flagged, never judged.** Motion triggers a clip and a review task; only the
+  shopkeeper decides what it means. No automatic accusation, no face detection, no notification
+  beyond the in-app alerts page.
+- **Clips are disposable, metadata is accountable.** Retention keeps the newest clips and
+  deletes older files after posting a new one; review state and audit rows survive clip deletion
+  because the audit trail never depends on the media file.
 
 ## Session Notes
 

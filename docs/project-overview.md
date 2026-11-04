@@ -132,7 +132,8 @@ alerts. Those are explicitly out of scope for v1 and must not be built early `(s
 - Voice input and speech recognition.
 - The AI assistant and all conversational features in v1. The read-only English assistant
   (Phase 6) and the signed proposals in Phase 7 are separate post-v1 phases.
-- Camera, video processing, theft or suspicious-activity detection, and face recognition.
+- Camera, video processing, theft or suspicious-activity detection, and face recognition
+  (out of scope for v1; post-v1 Phases 11–12 schedule them).
 - Supplier management, purchase orders, and goods returns.
 - Multi-shop, multi-branch, or multi-device cloud synchronisation. Deferred to v2 by the
   owner: shop self-registration, customers joining a shop to track their khata, and account
@@ -401,6 +402,47 @@ Phase 10 adds two user account types so customers can view their own khata/debt 
 - Customer editing their own profile or password inside the app.
 - Customer placing orders or making payments through the portal.
 - Separate login screen for customers.
+
+## Phase 11 — Camera alerts
+
+Phase 11 adds camera-based suspicious-activity alerts with a saved clip, never automatic
+accusation. It is a post-v1 phase (v1's Out of Scope list excludes camera work; this phase
+supersedes that exclusion for its own scope).
+
+### Scope
+
+- Camera source (owner decision, 2026-11-04): the laptop webcam (built-in or USB) today; a
+  separate or IP camera may replace it later, so the capture reads a configurable device.
+- A separate Python + OpenCV process under `services/camera/` captures frames, detects
+  motion, writes short clips to `media/camera/`, and posts alert metadata to the app over a
+  local HTTP endpoint authenticated with a shared secret (`CAMERA_ALERT_TOKEN`). It holds no
+  business data of its own.
+- `CameraAlert` rows in SQLite store clip path, capture time, duration, and review state.
+  Video bytes never live in the database and never under `public/`.
+- Owner-only alerts page (`/alerts`): clips listed newest first, mark reviewed or dismissed;
+  clips stream through an authenticated route handler.
+- Retention: keep the newest clips and delete older files after posting a new alert; review
+  state and audit rows survive clip deletion.
+- Never automatic accusation: motion only flags a clip for human review. No face detection or
+  recognition (Phase 12 is a separate, consent-based research feature), no person/zone
+  detection beyond motion, no cloud upload, no live streaming.
+
+### Acceptance Criteria
+
+1. Running the camera service records a clip on motion and posts an alert; the alert appears
+   on `/alerts` for the shopkeeper.
+2. The shopkeeper can play a clip, then mark it reviewed or dismissed; the state persists.
+3. Only `OWNER` sessions can reach `/alerts` or fetch a clip; `CUSTOMER` sessions and
+   anonymous requests cannot.
+4. The camera service holds no business data; a missing clip file is handled gracefully.
+5. `npm run typecheck`, `npm run lint`, `npm test`, and `npm run build` pass.
+
+### Out of Scope
+
+- Face detection or recognition, person/zone detection beyond plain motion.
+- Multiple simultaneous cameras (the design allows one configurable device now).
+- Cloud upload, push notifications, and live streaming in the browser.
+- Customer-visible alerts.
 
 ## Implementation Phases
 
