@@ -525,7 +525,7 @@ Update this file after every meaningful implementation change.
   duplicate phone rejection, linking to an existing customer, the shopkeeper path, and the
   missing-phone case. 217 tests pass across 26 files.
 
-### Phase 11 — Camera alerts (in progress)
+### Phase 11 — Camera alerts (complete)
 
 - Owner decisions (recorded 2026-11-04):
   - Camera source: the laptop webcam (built-in or USB) today; a separate/IP camera may
@@ -540,42 +540,35 @@ Update this file after every meaningful implementation change.
   with a shared secret; it holds no business data of its own. Clip metadata lives in SQLite;
   video bytes live on disk in `media/camera/` (git-ignored).
 - Slices: 11.0 docs → 11.1 app-side intake/storage/review UI → 11.2 camera process →
-  11.3 QA.
+  11.3 QA. All complete.
 - End-to-end verified on 2026-11-04: the service opened the laptop webcam (`/dev/video0`),
   detected motion, wrote `clip-*.mp4` (H.264 via ffmpeg), and the app accepted the alert;
   the clip streamed to the owner session on `/alerts`. Customer and anonymous requests are
   rejected (403/401), and the intake route rejects missing or wrong tokens (401).
+- The service supports `CAMERA_DEVICE=selftest` (synthetic moving shape) so the shopkeeper
+  can verify the whole pipeline without a camera or a person in the room.
+- Still open: real-browser QA of `/alerts` at 360px on the phone, and a real overnight run
+  to tune the motion threshold and cooldown.
 
 ## Current Phase
 
-- Phase 11 — Camera alerts: **In progress** (laptop webcam capture, motion-based clips,
+- Phase 11 — Camera alerts: **Complete** (laptop webcam capture, motion-based clips,
   owner-only alerts page; separate camera process posting to the app over local HTTP).
+  Automated checks pass; real-browser QA on the phone (360px, clip playback) is still open.
 
 ## Current Goal
 
-- Phase 0 through Phase 10 are complete on `main`. Phase 11 adds camera alerts: a separate
-  capture process records a clip on motion and posts alert metadata to the app; the
-  shopkeeper reviews clips on an alerts page. Build slices in order: docs → app data model,
-  alert intake, and review UI → camera capture service → QA.
+- Phase 0 through Phase 11 are complete on `main`. The next possible phase is Phase 12
+  (face recognition — research only, consent-based), pending an owner decision.
 - Build nothing outside this scope (cashier role details, customer password reset, thermal
-  printing, barcode scanner, face recognition are later decisions).
+  printing, barcode scanner are later decisions).
 
 ## Next Up
 
-- Slice 11.0: docs — camera alert scope, owner decisions (camera source, detection, review
-  UX), acceptance criteria. **Complete.**
-- Slice 11.1: app side — `CameraAlert` model + migration, authenticated alert intake route
-  handler for the camera process, `src/modules/camera/` service and queries, `/alerts` page
-  (owner-only) with reviewed/dismissed actions, authenticated clip streaming route.
-  **Complete** (7 camera tests; 225 total).
-- Slice 11.2: camera service — `services/camera/` Python + OpenCV process: frame capture,
-  motion detection, clip writing to `media/camera/`, alert posting with the shared token.
-  **Complete** (verified end-to-end with the laptop webcam; a clip was recorded, transcoded
-  to H.264 with ffmpeg, posted, and reviewed on `/alerts`).
-- Slice 11.3: QA — typecheck/lint/test/build pass; manual end-to-end run instructions.
-- Slice 11.4: owner-only guard verification (customer/anonymous cannot reach `/alerts` or
-  clips). **Complete** (verified over HTTP: customer 403/307, anonymous 401, intake 401
-  without a valid token).
+- Phase 11 slices are all complete (see the Phase 11 section below).
+- Optional: real-browser QA of `/alerts` at 360px on the phone, and a real overnight run of
+  the camera service to tune `CAMERA_MOTION_THRESHOLD` and `CAMERA_COOLDOWN_SECONDS`.
+- Next phase (12) waits for the owner's decision.
 
 ## Open Questions
 
