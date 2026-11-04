@@ -586,6 +586,27 @@ const en: Dictionary = {
   "customerAccount.creating": "Creating…",
   "customerAccount.created": "Account created. The customer can now sign in.",
 
+  // Camera alerts
+  "more.alertsTitle": "Camera alerts",
+  "more.alertsBody": "Motion clips saved for the shopkeeper to review.",
+  "alerts.title": "Camera alerts",
+  "alerts.subtitle":
+    "Motion clips recorded by the shop camera. You decide what they mean.",
+  "alerts.backToMore": "← Back to More",
+  "alerts.notConfigured":
+    "Camera alerts are not configured. Set CAMERA_ALERT_TOKEN in .env and start the camera service.",
+  "alerts.noAlerts":
+    "No alerts yet. Clips appear here when the camera detects motion.",
+  "alerts.pending": "Pending review",
+  "alerts.reviewed": "Reviewed",
+  "alerts.dismissed": "Dismissed",
+  "alerts.duration": "Length",
+  "alerts.noteOptional": "Note (optional)",
+  "alerts.markReviewed": "Mark reviewed",
+  "alerts.dismiss": "Dismiss",
+  "alerts.saving": "Saving…",
+  "alerts.dismissedNote": "Dismissed without a note.",
+
   // Login
   "login.signIn": "Sign in",
   "login.useAccount": "Use the shopkeeper account to open the shop.",
@@ -700,6 +721,27 @@ const ps: Dictionary = {
   "customerAccount.create": "حساب جوړ کړئ",
   "customerAccount.creating": "جوړیږي…",
   "customerAccount.created": "حساب جوړ شو. مشتری اوس ننوتلی شي.",
+
+  // Camera alerts (draft; needs native review)
+  "more.alertsTitle": "د کیمرې خبرتیاوې",
+  "more.alertsBody": "د بیاکتنې لپاره د حرکت کلپونه خوندي شوي.",
+  "alerts.title": "د کیمرې خبرتیاوې",
+  "alerts.subtitle":
+    "د دوکان کیمرې له خوا ثبت شوي حرکت کلپونه. تاسو پرېکړه کوئ چې دا څه معنی لري.",
+  "alerts.backToMore": "← بېرته زیاتې ته",
+  "alerts.notConfigured":
+    "د کیمرې خبرتیاوې تنظیم نه دي. په .env کې CAMERA_ALERT_TOKEN وټاکئ او د کیمرې پروسه پیل کړئ.",
+  "alerts.noAlerts":
+    "تر اوسه خبرتیاوې نشته. کله چې کیمره حرکت وګوري، کلپونه دلته راځي.",
+  "alerts.pending": "د بیاکتنې په تمه",
+  "alerts.reviewed": "بیا کتل شوی",
+  "alerts.dismissed": "رد شوی",
+  "alerts.duration": "اوږدوالی",
+  "alerts.noteOptional": "یادښت (اختیاري)",
+  "alerts.markReviewed": "بیا کتل شوی وګړئ",
+  "alerts.dismiss": "رد کړئ",
+  "alerts.saving": "خوندي کیږي…",
+  "alerts.dismissedNote": "بې یادښته رد شوی.",
 };
 
 const DICTIONARIES: Record<Locale, Dictionary> = { en, ps };

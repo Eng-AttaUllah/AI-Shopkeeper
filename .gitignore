@@ -42,6 +42,9 @@ yarn-error.log*
 /backups/*
 !/backups/.gitkeep
 
+# camera alert clips (Phase 11); metadata lives in the database
+/media/*
+
 # vercel
 .vercel
 

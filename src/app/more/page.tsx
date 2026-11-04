@@ -19,6 +19,11 @@ const TOOLS = [
     descriptionKey: "more.dayCloseBody",
   },
   {
+    href: "/alerts",
+    titleKey: "more.alertsTitle",
+    descriptionKey: "more.alertsBody",
+  },
+  {
     href: "/backups",
     titleKey: "more.backupsTitle",
     descriptionKey: "more.backupsBody",

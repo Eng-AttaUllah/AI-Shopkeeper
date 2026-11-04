@@ -285,3 +285,26 @@ model CashReconciliation {
 
   @@map("cash_reconciliations")
 }
+
+/// A camera alert: motion triggered a saved clip that the shopkeeper reviews.
+/// The video bytes live on disk under media/camera/; only metadata is stored
+/// here. Alerts are flagged, never judged (Phase 11 invariant).
+model CameraAlert {
+  id         String   @id @default(cuid())
+  /// File name inside media/camera/, never a path with directories.
+  clipPath   String   @unique
+  /// When motion started (the clip's start time).
+  capturedAt DateTime
+  durationMs Int
+  /// PENDING | REVIEWED | DISMISSED
+  status     String   @default("PENDING")
+  /// Set when the shopkeeper marks the alert reviewed or dismissed.
+  reviewedAt DateTime?
+  /// Optional shopkeeper note recorded with the review decision.
+  reviewNote String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([capturedAt])
+  @@map("camera_alerts")
+}

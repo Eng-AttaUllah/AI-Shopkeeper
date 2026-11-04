@@ -51,8 +51,9 @@ export default auth((request) => {
 
 export const config = {
   matcher: [
-    // Protect pages and server actions; leave the Auth.js endpoints and
-    // static assets reachable while signed out.
-    "/((?!api/auth|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    // Protect pages and server actions; leave the Auth.js endpoints, the
+    // token-authenticated camera intake, and static assets reachable while
+    // signed out. Both /api/camera routes enforce access themselves.
+    "/((?!api/auth|api/camera|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };
