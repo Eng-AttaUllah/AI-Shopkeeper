@@ -550,7 +550,7 @@ Update this file after every meaningful implementation change.
 - Still open: real-browser QA of `/alerts` at 360px on the phone, and a real overnight run
   to tune the motion threshold and cooldown.
 
-### Phase 12 — Face recognition research spike (in progress)
+### Phase 12 — Face recognition research spike (complete)
 
 - Owner decisions (recorded 2026-11-04):
   - Goal: a research spike first — a local pipeline (detect face, compute embedding, match
@@ -566,33 +566,42 @@ Update this file after every meaningful implementation change.
   `services/face/`, like the camera service — the Next.js app never runs models. Everything
   runs offline (no cloud face APIs); model files are downloaded once and kept locally.
 - Slices: 12.0 docs → 12.1 prototype → 12.2 evaluation → 12.3 findings and go/no-go.
+  All complete.
+- Verified on 2026-11-04 (single consenting subject, the owner): enrollment, probe matches
+  at 0.894 / 0.785 / 0.794 cosine similarity against the 0.363 boundary (all strong
+  MATCHes, dim light, ~1 m), ~1.2 s per match, and deletion that removes both the
+  embedding and the reference photo. Findings and the go/no-go recommendation are in
+  `docs/face-recognition-findings.md`.
+- Key limitation recorded: the same-person vs different-person score gap was not measured
+  (one subject only) — any product feature must start with a multi-subject evaluation.
+- One consent event: the owner consented in-session to three webcam captures for the
+  spike; enrollment remains in place under `services/face/data/` (git-ignored) and can be
+  removed any time with `spike.py delete attaullah`.
 
 ## Current Phase
 
-- Phase 12 — Face recognition research spike: **In progress** (local offline pipeline,
-  no product UI; findings and a go/no-go recommendation are the deliverable).
+- Phase 12 — Face recognition research spike: **Complete** (local offline pipeline
+  verified on the shop laptop; findings and go/no-go in
+  `docs/face-recognition-findings.md`). No product UI was built, by design.
 
 ## Current Goal
 
-- Phase 0 through Phase 11 are complete on `main`. Phase 12 is a research spike: prove
-  whether local, offline face detection + embedding + matching works well enough on the
-  shop laptop to justify a product feature later. Build slices in order: docs →
-  environment/prototype → enrollment + matching evaluation → findings report.
-- Build nothing outside this scope (cashier role details, customer password reset, thermal
-  printing, barcode scanner, alert-clip labeling, counter identification are later
-  decisions).
+- Phase 0 through Phase 12 are complete on `main`. There is no next phase scheduled: the
+  planned phase list is finished. Remaining work is polish (real-browser QA at 360px,
+  Pashto review, overnight camera tuning) or new decisions (the Phase 12 follow-up feature,
+  multi-shop v2, cashier role).
+- Build nothing outside this scope without an owner decision first.
 
 ## Next Up
 
-- Slice 12.0: docs — spike scope, owner decisions (goal, consent, biometric data rules),
-  acceptance criteria. **Complete.**
-- Slice 12.1: prototype — `services/face/` separate process: face detection + embedding
-  with OpenCV's YuNet/SFace models (fully offline after a one-time model download),
-  enroll a small consented test set, match probe photos against it.
-- Slice 12.2: evaluation — measure match quality at counter-like distance/lighting, record
-  results and failure modes.
-- Slice 12.3: findings — report with a go/no-go recommendation for a product feature;
-  deletion of all biometric data must work before the spike ends.
+- Phase 12 slices are all complete (see the Phase 12 section below and
+  `docs/face-recognition-findings.md`).
+- Optional leftovers: real-browser QA of `/alerts` and customer flows at 360px on the
+  phone; native Pashto speaker review of the dictionary strings; a real overnight camera
+  run to tune the motion threshold and cooldown.
+- The Phase 12 recommendation is GO for a hint-only feature after a multi-subject
+  evaluation — that future feature is a new decision for the owner, not part of any
+  current phase.
 
 ## Open Questions
 

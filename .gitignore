@@ -49,6 +49,11 @@ yarn-error.log*
 /services/camera/.venv
 __pycache__/
 
+# face spike: model binaries and biometric data never belong in version control
+/services/face/.venv
+/services/face/models/
+/services/face/data/
+
 # vercel
 .vercel
 
