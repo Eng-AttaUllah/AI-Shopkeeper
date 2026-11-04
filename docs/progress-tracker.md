@@ -550,25 +550,49 @@ Update this file after every meaningful implementation change.
 - Still open: real-browser QA of `/alerts` at 360px on the phone, and a real overnight run
   to tune the motion threshold and cooldown.
 
+### Phase 12 — Face recognition research spike (in progress)
+
+- Owner decisions (recorded 2026-11-04):
+  - Goal: a research spike first — a local pipeline (detect face, compute embedding, match
+    against enrolled faces) with an honest evaluation of how well it works on this laptop.
+    No product UI, no alert integration, no counter identification in this phase.
+  - Consent: the intended product direction is shopkeeper-enrolls-with-consent (a visible
+    consent step on the customer detail page). For the spike itself, only the owner's and
+    any consenting staff faces are enrolled.
+  - Biometric data: store the numeric embedding plus the reference photo so match quality
+    can be checked; both are deletable on request, and deletion must actually work before
+    the spike ends. Embeddings are not reversible to a photo; photos never leave the laptop.
+- Confirms the architecture: face processing lives in a separate process under
+  `services/face/`, like the camera service — the Next.js app never runs models. Everything
+  runs offline (no cloud face APIs); model files are downloaded once and kept locally.
+- Slices: 12.0 docs → 12.1 prototype → 12.2 evaluation → 12.3 findings and go/no-go.
+
 ## Current Phase
 
-- Phase 11 — Camera alerts: **Complete** (laptop webcam capture, motion-based clips,
-  owner-only alerts page; separate camera process posting to the app over local HTTP).
-  Automated checks pass; real-browser QA on the phone (360px, clip playback) is still open.
+- Phase 12 — Face recognition research spike: **In progress** (local offline pipeline,
+  no product UI; findings and a go/no-go recommendation are the deliverable).
 
 ## Current Goal
 
-- Phase 0 through Phase 11 are complete on `main`. The next possible phase is Phase 12
-  (face recognition — research only, consent-based), pending an owner decision.
+- Phase 0 through Phase 11 are complete on `main`. Phase 12 is a research spike: prove
+  whether local, offline face detection + embedding + matching works well enough on the
+  shop laptop to justify a product feature later. Build slices in order: docs →
+  environment/prototype → enrollment + matching evaluation → findings report.
 - Build nothing outside this scope (cashier role details, customer password reset, thermal
-  printing, barcode scanner are later decisions).
+  printing, barcode scanner, alert-clip labeling, counter identification are later
+  decisions).
 
 ## Next Up
 
-- Phase 11 slices are all complete (see the Phase 11 section below).
-- Optional: real-browser QA of `/alerts` at 360px on the phone, and a real overnight run of
-  the camera service to tune `CAMERA_MOTION_THRESHOLD` and `CAMERA_COOLDOWN_SECONDS`.
-- Next phase (12) waits for the owner's decision.
+- Slice 12.0: docs — spike scope, owner decisions (goal, consent, biometric data rules),
+  acceptance criteria. **Complete.**
+- Slice 12.1: prototype — `services/face/` separate process: face detection + embedding
+  with OpenCV's YuNet/SFace models (fully offline after a one-time model download),
+  enroll a small consented test set, match probe photos against it.
+- Slice 12.2: evaluation — measure match quality at counter-like distance/lighting, record
+  results and failure modes.
+- Slice 12.3: findings — report with a go/no-go recommendation for a product feature;
+  deletion of all biometric data must work before the spike ends.
 
 ## Open Questions
 
@@ -922,6 +946,17 @@ Update this file after every meaningful implementation change.
 - **Clips are disposable, metadata is accountable.** Retention keeps the newest clips and
   deletes older files after posting a new one; review state and audit rows survive clip deletion
   because the audit trail never depends on the media file.
+
+- **Phase 12 is a spike, not a feature.** Face processing runs in a separate process under
+  `services/face/` (same boundary as the camera service); the Next.js app never runs models
+  and no product UI exists in this phase. Everything is offline — no cloud face APIs, models
+  downloaded once and kept local.
+- **Biometric data is minimal and deletable.** The spike stores a numeric face embedding plus
+  the consented reference photo, both deletable on request; deletion is verified before the
+  spike ends. Embeddings are not reversible to a photo, and photos never leave the laptop.
+- **Recognition never accuses.** A match is a hint for human review, exactly like motion
+  clips. The spike reports confidence numbers; it never names a person automatically in any
+  product surface.
 
 ## Session Notes
 

@@ -444,6 +444,47 @@ supersedes that exclusion for its own scope).
 - Cloud upload, push notifications, and live streaming in the browser.
 - Customer-visible alerts.
 
+## Phase 12 — Face recognition research spike
+
+Phase 12 is a research spike, not a product feature: prove whether local, offline face
+detection, embedding, and matching work well enough on the shop laptop to justify building
+something real later. The deliverable is a findings report with a go/no-go recommendation.
+
+### Scope
+
+- Goal (owner decision, 2026-11-04): a local pipeline — detect a face, compute an embedding,
+  match against enrolled faces — evaluated honestly at counter-like distance and lighting.
+  No product UI, no Phase 11 alert integration, no counter identification in this phase.
+- Consent (owner decision): the eventual product direction is shopkeeper-enrolls-with-consent
+  with a visible consent step. For the spike, only the owner's and consenting staff faces
+  are enrolled.
+- Biometric data (owner decision): numeric embedding plus the reference photo, both
+  deletable on request; deletion is demonstrated before the spike ends. Embeddings are not
+  reversible to a photo; photos never leave the laptop.
+- Implementation: a separate process under `services/face/` (same boundary as the camera
+  service), using OpenCV's YuNet face detection and SFace embedding models — fully offline
+  after a one-time model download. The Next.js app never runs models.
+- Findings report: match quality numbers, failure modes (lighting, angle, distance), storage
+  and deletion behaviour, and a clear go/no-go recommendation for a future product feature.
+
+### Acceptance Criteria
+
+1. The pipeline runs fully offline on the shop laptop after a one-time model download.
+2. A small consented test set is enrolled and probe photos are matched against it, with
+   measured results recorded in the findings report.
+3. Deleting an enrolled face removes both the embedding and the reference photo, verified
+   before the spike ends.
+4. No product UI, no alert integration, no cloud calls; biometric data stays on the laptop.
+5. `npm run typecheck`, `npm run lint`, `npm test`, and `npm run build` still pass (the
+   spike touches no app code).
+
+### Out of Scope
+
+- Any UI integration: alert-clip labeling, counter identification, customer self-enrollment.
+- Cloud face APIs of any kind.
+- Automatic accusation or naming a person in any product surface.
+- Liveness detection or anti-spoofing (researched only if the spike succeeds).
+
 ## Implementation Phases
 
 | Phase | Name | Outcome |
