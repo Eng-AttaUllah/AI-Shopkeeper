@@ -1,0 +1,3 @@
+# OpenCV wheels for the shop laptop's Python. The headless build has no GUI
+# dependencies, which is all the capture service needs.
+opencv-python-headless>=4.10

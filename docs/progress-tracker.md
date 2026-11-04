@@ -541,6 +541,10 @@ Update this file after every meaningful implementation change.
   video bytes live on disk in `media/camera/` (git-ignored).
 - Slices: 11.0 docs → 11.1 app-side intake/storage/review UI → 11.2 camera process →
   11.3 QA.
+- End-to-end verified on 2026-11-04: the service opened the laptop webcam (`/dev/video0`),
+  detected motion, wrote `clip-*.mp4` (H.264 via ffmpeg), and the app accepted the alert;
+  the clip streamed to the owner session on `/alerts`. Customer and anonymous requests are
+  rejected (403/401), and the intake route rejects missing or wrong tokens (401).
 
 ## Current Phase
 
@@ -563,9 +567,15 @@ Update this file after every meaningful implementation change.
 - Slice 11.1: app side — `CameraAlert` model + migration, authenticated alert intake route
   handler for the camera process, `src/modules/camera/` service and queries, `/alerts` page
   (owner-only) with reviewed/dismissed actions, authenticated clip streaming route.
+  **Complete** (7 camera tests; 225 total).
 - Slice 11.2: camera service — `services/camera/` Python + OpenCV process: frame capture,
   motion detection, clip writing to `media/camera/`, alert posting with the shared token.
+  **Complete** (verified end-to-end with the laptop webcam; a clip was recorded, transcoded
+  to H.264 with ffmpeg, posted, and reviewed on `/alerts`).
 - Slice 11.3: QA — typecheck/lint/test/build pass; manual end-to-end run instructions.
+- Slice 11.4: owner-only guard verification (customer/anonymous cannot reach `/alerts` or
+  clips). **Complete** (verified over HTTP: customer 403/307, anonymous 401, intake 401
+  without a valid token).
 
 ## Open Questions
 
@@ -924,8 +934,11 @@ Update this file after every meaningful implementation change.
 
 - Verified environment: Node.js v22.22.1, npm 9.2.0 (global prefix `/usr/local` is not
   writable, so npm was not upgraded), Python 3.14.4, ffmpeg 8.0.1, no PostgreSQL, no Docker.
-- Python 3.14 is too new for guaranteed OpenCV wheels; the camera phase must use its own
-  Python 3.12 environment. Nothing in v1 depends on Python.
+- Update (2026-11-04): `opencv-python-headless` now ships cp314 wheels — it installed
+  version 5.0.0 on the laptop's Python 3.14.4, so no separate Python 3.12 environment is
+  needed. The camera service uses a virtual environment in `services/camera/.venv` and
+  transcodes clips to H.264 with the ffmpeg already on the laptop (browsers cannot play
+  OpenCV's raw mp4v output).
 - `npm run dev` binds to the local network automatically; the start-up log prints a
   `Network:` URL that a phone on the same Wi-Fi can open.
 - The Prisma CLI installed project-local skills into `.agents/skills` and `skills-lock.json`.

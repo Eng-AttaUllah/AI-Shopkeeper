@@ -45,6 +45,10 @@ yarn-error.log*
 # camera alert clips (Phase 11); metadata lives in the database
 /media/*
 
+# camera service virtual environment and caches
+/services/camera/.venv
+__pycache__/
+
 # vercel
 .vercel
 
