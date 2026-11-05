@@ -607,6 +607,23 @@ const en: Dictionary = {
   "alerts.saving": "Saving…",
   "alerts.dismissedNote": "Dismissed without a note.",
 
+  // Settings
+  "more.settingsTitle": "Settings",
+  "more.settingsBody": "Change your password and account preferences.",
+  "settings.title": "Settings",
+  "settings.subtitle": "Your account and preferences.",
+  "settings.backToMore": "← Back to More",
+  "settings.signedInAs": "Signed in as",
+  "settings.changePassword": "Change password",
+  "settings.changePasswordHint":
+    "Changing the password signs out every device, including this one.",
+  "settings.currentPassword": "Current password",
+  "settings.newPassword": "New password",
+  "settings.confirmPassword": "Confirm new password",
+  "settings.change": "Change password",
+  "settings.changing": "Changing…",
+  "login.passwordChanged": "Password changed. Sign in with your new password.",
+
   // Login
   "login.signIn": "Sign in",
   "login.useAccount": "Use the shopkeeper account to open the shop.",
@@ -742,6 +759,23 @@ const ps: Dictionary = {
   "alerts.dismiss": "رد کړئ",
   "alerts.saving": "خوندي کیږي…",
   "alerts.dismissedNote": "بې یادښته رد شوی.",
+
+  // Settings (draft; needs native review)
+  "more.settingsTitle": "تنظیمات",
+  "more.settingsBody": "پسورد بدل کړئ او د حساب تنظیمات وګورئ.",
+  "settings.title": "تنظیمات",
+  "settings.subtitle": "ستاسو حساب او تنظیمات.",
+  "settings.backToMore": "← بېرته زیاتې ته",
+  "settings.signedInAs": "ننوتلی: ",
+  "settings.changePassword": "پسورد بدل کړئ",
+  "settings.changePasswordHint":
+    "پسورد بدلول هره دستگاه بندوي، په دې هم شامل.",
+  "settings.currentPassword": "اوسنی پسورد",
+  "settings.newPassword": "نوی پسورد",
+  "settings.confirmPassword": "نوی پسورد تایید کړئ",
+  "settings.change": "پسورد بدل کړئ",
+  "settings.changing": "بدلیږي…",
+  "login.passwordChanged": "پسورد بدل شو. خپل نوی پسورد وکاروئ.",
 };
 
 const DICTIONARIES: Record<Locale, Dictionary> = { en, ps };

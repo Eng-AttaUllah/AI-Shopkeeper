@@ -578,27 +578,43 @@ Update this file after every meaningful implementation change.
   spike; enrollment remains in place under `services/face/data/` (git-ignored) and can be
   removed any time with `spike.py delete attaullah`.
 
+### Post-phase unit — Settings and password change (complete)
+
+- Owner request (2026-11-05): a settings option in a suitable place, with a change-password
+  option, and the owner password rotated to a shorter one.
+- Built: `/settings` page (owner-only, linked from More) showing the signed-in account and
+  a change-password form (current password, new password, confirm). Business logic in
+  `src/modules/settings/`: verifies the current password, enforces the same 8-character
+  minimum as sign-up, rejects reuse of the current password, bcrypt-hashes, increments
+  `tokenVersion`, and writes a `PASSWORD_CHANGED` audit row — all in one transaction.
+- Changing the password signs out every device including the one that changed it; the user
+  lands on `/login?changed=1` with a confirmation flash. Customer password change/reset
+  remains a later decision.
+- Verified over HTTP: owner sees the page (200), customer is redirected to the khata view,
+  anonymous to login; the no-JS form path changed the password for real (tokenVersion
+  bumped, audit row written, old session invalidated); the login flash renders. 5 service
+  tests added (230 total).
+- The owner password was rotated twice during verification (via the real form action and
+  back); the live password is the `OWNER_PASSWORD` value in `.env`.
+
 ## Current Phase
 
-- Phase 12 — Face recognition research spike: **Complete** (local offline pipeline
-  verified on the shop laptop; findings and go/no-go in
-  `docs/face-recognition-findings.md`). No product UI was built, by design.
+- Post-phase unit — Settings and password change: **Complete** (`/settings` page with a
+  change-password form; owner password rotated to the value in `.env`).
 
 ## Current Goal
 
-- Phase 0 through Phase 12 are complete on `main`. There is no next phase scheduled: the
-  planned phase list is finished. Remaining work is polish (real-browser QA at 360px,
-  Pashto review, overnight camera tuning) or new decisions (the Phase 12 follow-up feature,
-  multi-shop v2, cashier role).
+- Phase 0 through Phase 12 are complete on `main`, plus the settings unit. Remaining work
+  is polish (real-browser QA at 360px, Pashto review, overnight camera tuning) or new
+  decisions (the Phase 12 follow-up feature, multi-shop v2, cashier role).
 - Build nothing outside this scope without an owner decision first.
 
 ## Next Up
 
-- Phase 12 slices are all complete (see the Phase 12 section below and
-  `docs/face-recognition-findings.md`).
-- Optional leftovers: real-browser QA of `/alerts` and customer flows at 360px on the
-  phone; native Pashto speaker review of the dictionary strings; a real overnight camera
-  run to tune the motion threshold and cooldown.
+- Real-browser QA at 360px on the phone (in progress): owner sign-in now uses the new
+  password from `.env`; every device was signed out by the rotation, so sign in again.
+- Optional: Pashto speaker review of the dictionary strings; overnight camera run to tune
+  the motion threshold and cooldown.
 - The Phase 12 recommendation is GO for a hint-only feature after a multi-subject
   evaluation — that future feature is a new decision for the owner, not part of any
   current phase.

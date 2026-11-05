@@ -11,10 +11,11 @@ export const metadata: Metadata = {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ from?: string | string[] }>;
+  searchParams: Promise<{ from?: string | string[]; changed?: string | string[] }>;
 }) {
   const params = await searchParams;
   const from = typeof params.from === "string" ? params.from : "/";
+  const passwordChanged = params.changed === "1";
   const locale = readClientLocale();
 
   function t(key: string, params?: Record<string, string>): string {
@@ -24,6 +25,7 @@ export default async function LoginPage({
   const usernameLabel = t("login.username");
   const passwordLabel = t("login.password");
   const signInButtonLabel = t("login.signInButton");
+  const passwordChangedLabel = t("login.passwordChanged");
 
   return (
     <main className="flex flex-1 items-center justify-center px-4 py-10">
@@ -33,6 +35,14 @@ export default async function LoginPage({
         <p className="mt-1 text-sm text-ink-muted">
           {t("login.useAccount")}
         </p>
+        {passwordChanged ? (
+          <p
+            role="status"
+            className="mt-3 rounded-lg border border-brand/30 bg-brand/5 px-3 py-2 text-sm text-brand"
+          >
+            {passwordChangedLabel}
+          </p>
+        ) : null}
         <div className="mt-6">
           <LoginForm
             from={from}
