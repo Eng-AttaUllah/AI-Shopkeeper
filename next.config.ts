@@ -9,6 +9,8 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: path.resolve(import.meta.dirname),
   },
+  // The floating dev-tools badge in the corner is noise on the shop laptop.
+  devIndicators: false,
 };
 
 export default nextConfig;

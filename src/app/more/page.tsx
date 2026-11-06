@@ -24,11 +24,6 @@ const TOOLS = [
     descriptionKey: "more.alertsBody",
   },
   {
-    href: "/settings",
-    titleKey: "more.settingsTitle",
-    descriptionKey: "more.settingsBody",
-  },
-  {
     href: "/backups",
     titleKey: "more.backupsTitle",
     descriptionKey: "more.backupsBody",

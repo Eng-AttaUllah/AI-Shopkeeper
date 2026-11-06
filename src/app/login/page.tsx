@@ -11,11 +11,16 @@ export const metadata: Metadata = {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ from?: string | string[]; changed?: string | string[] }>;
+  searchParams: Promise<{
+    from?: string | string[];
+    changed?: string | string[];
+    signedOutEverywhere?: string | string[];
+  }>;
 }) {
   const params = await searchParams;
   const from = typeof params.from === "string" ? params.from : "/";
   const passwordChanged = params.changed === "1";
+  const signedOutEverywhere = params.signedOutEverywhere === "1";
   const locale = readClientLocale();
 
   function t(key: string, params?: Record<string, string>): string {
@@ -26,6 +31,7 @@ export default async function LoginPage({
   const passwordLabel = t("login.password");
   const signInButtonLabel = t("login.signInButton");
   const passwordChangedLabel = t("login.passwordChanged");
+  const signedOutEverywhereLabel = t("login.signedOutEverywhere");
 
   return (
     <main className="flex flex-1 items-center justify-center px-4 py-10">
@@ -41,6 +47,14 @@ export default async function LoginPage({
             className="mt-3 rounded-lg border border-brand/30 bg-brand/5 px-3 py-2 text-sm text-brand"
           >
             {passwordChangedLabel}
+          </p>
+        ) : null}
+        {signedOutEverywhere ? (
+          <p
+            role="status"
+            className="mt-3 rounded-lg border border-brand/30 bg-brand/5 px-3 py-2 text-sm text-brand"
+          >
+            {signedOutEverywhereLabel}
           </p>
         ) : null}
         <div className="mt-6">

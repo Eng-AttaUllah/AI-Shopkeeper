@@ -4,6 +4,7 @@ import Link from "next/link";
 
 import { LocaleSwitcher } from "@/components/locale-switcher";
 import { signOutAction } from "@/app/auth-actions";
+import { SettingsMenu } from "@/components/settings/settings-menu";
 import { Button } from "@/components/ui/button";
 import { auth } from "@/lib/auth";
 import { getDirection, getLocale, type Locale, t } from "@/lib/i18n";
@@ -51,17 +52,33 @@ export default async function RootLayout({
       <body className="flex min-h-full flex-col bg-page font-sans text-ink">
         <header className="border-b border-line bg-surface">
           <div className="mx-auto flex min-h-14 w-full max-w-5xl flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2">
+            {user ? (
+              <SettingsMenu
+                labels={{
+                  open: await t("settings.menuOpen"),
+                  title: await t("settings.menuTitle"),
+                  account: await t("settings.account"),
+                  security: await t("settings.security"),
+                  changePassword: await t("settings.changePassword"),
+                  about: await t("settings.about"),
+                  close: await t("settings.menuClose"),
+                }}
+              />
+            ) : null}
+
             <Link
               href={isCustomer ? "/customers/khata" : "/"}
-              className="order-1 shrink-0 text-sm font-semibold"
+              className="order-2 shrink-0 text-sm font-semibold"
             >
               AI Shopkeeper
             </Link>
 
-            <LocaleSwitcher locale={locale} />
+            <div className="order-2 sm:order-4">
+              <LocaleSwitcher locale={locale} />
+            </div>
 
             {user ? (
-              <div className="order-2 ml-auto flex items-center gap-2 sm:order-3">
+              <div className="order-2 ml-auto flex items-center gap-2 sm:order-5">
                 <span className="text-sm text-ink-muted">
                   {await t("nav.signedInAs", { user: user.username })}
                 </span>
@@ -81,7 +98,7 @@ export default async function RootLayout({
             {user && !isCustomer ? (
               <nav
                 aria-label="Main"
-                className="order-3 flex w-full items-center gap-x-4 overflow-x-auto text-sm [scrollbar-width:none] sm:order-2 sm:w-auto sm:overflow-visible [&::-webkit-scrollbar]:hidden"
+                className="order-3 flex w-full items-center gap-x-4 overflow-x-auto text-sm [scrollbar-width:none] sm:order-3 sm:w-auto sm:overflow-visible [&::-webkit-scrollbar]:hidden"
               >
                 <Link
                   href="/"

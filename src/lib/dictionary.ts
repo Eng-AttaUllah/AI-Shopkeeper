@@ -608,12 +608,24 @@ const en: Dictionary = {
   "alerts.dismissedNote": "Dismissed without a note.",
 
   // Settings
-  "more.settingsTitle": "Settings",
-  "more.settingsBody": "Change your password and account preferences.",
+  "settings.menuOpen": "Open settings menu",
+  "settings.menuClose": "Close settings menu",
+  "settings.menuTitle": "Settings",
   "settings.title": "Settings",
   "settings.subtitle": "Your account and preferences.",
-  "settings.backToMore": "← Back to More",
-  "settings.signedInAs": "Signed in as",
+  "settings.back": "← Back",
+  "settings.account": "Account",
+  "settings.username": "Username",
+  "settings.name": "Name",
+  "settings.role": "Role",
+  "settings.phone": "Phone number",
+  "settings.phoneHint":
+    "Your phone number is your sign-in name. Ask the shopkeeper to change it.",
+  "settings.roleOwner": "Shopkeeper",
+  "settings.roleCashier": "Cashier",
+  "settings.roleCustomer": "Customer",
+  "settings.security": "Security",
+  "settings.securityHint": "Manage your password and signed-in devices.",
   "settings.changePassword": "Change password",
   "settings.changePasswordHint":
     "Changing the password signs out every device, including this one.",
@@ -622,7 +634,18 @@ const en: Dictionary = {
   "settings.confirmPassword": "Confirm new password",
   "settings.change": "Change password",
   "settings.changing": "Changing…",
+  "settings.signOutEverywhere": "Sign out everywhere",
+  "settings.signOutEverywhereHint":
+    "Signs out every device, including this one. Useful if you think someone else knows your password.",
+  "settings.signOutEverywhereButton": "Sign out everywhere",
+  "settings.about": "About",
+  "settings.aboutBody":
+    "AI Shopkeeper Assistant — offline-first shop management for one small retail shop: products, stock, sales, customers and credit, expenses, and reports.",
+  "settings.aboutOffline":
+    "Everything stays on this laptop. Nothing is sent to a server except the optional AI assistant, which you configure yourself.",
+  "settings.aboutVersion": "Phases 0–12 complete. English and Pashto interfaces.",
   "login.passwordChanged": "Password changed. Sign in with your new password.",
+  "login.signedOutEverywhere": "Signed out everywhere. Sign in again.",
 
   // Login
   "login.signIn": "Sign in",
@@ -761,12 +784,24 @@ const ps: Dictionary = {
   "alerts.dismissedNote": "بې یادښته رد شوی.",
 
   // Settings (draft; needs native review)
-  "more.settingsTitle": "تنظیمات",
-  "more.settingsBody": "پسورد بدل کړئ او د حساب تنظیمات وګورئ.",
+  "settings.menuOpen": "د تنظیماتو مینو پرانیزئ",
+  "settings.menuClose": "د تنظیماتو مینو بند کړئ",
+  "settings.menuTitle": "تنظیمات",
   "settings.title": "تنظیمات",
   "settings.subtitle": "ستاسو حساب او تنظیمات.",
-  "settings.backToMore": "← بېرته زیاتې ته",
-  "settings.signedInAs": "ننوتلی: ",
+  "settings.back": "← بېرته",
+  "settings.account": "حساب",
+  "settings.username": "د کارن نوم",
+  "settings.name": "نوم",
+  "settings.role": "رول",
+  "settings.phone": "د تلیفون شمیره",
+  "settings.phoneHint":
+    "ستاسو د تلیفون شمیره ستاسو د ننوتلو نوم دی. د بدلولو لپاره د دوکاندار څخه وپوښتئ.",
+  "settings.roleOwner": "دوکاندار",
+  "settings.roleCashier": "کاشیر",
+  "settings.roleCustomer": "مشتری",
+  "settings.security": "امنیت",
+  "settings.securityHint": "خپل پسورد او ننوتل شوې وسیلې مدیریت کړئ.",
   "settings.changePassword": "پسورد بدل کړئ",
   "settings.changePasswordHint":
     "پسورد بدلول هره دستگاه بندوي، په دې هم شامل.",
@@ -775,7 +810,18 @@ const ps: Dictionary = {
   "settings.confirmPassword": "نوی پسورد تایید کړئ",
   "settings.change": "پسورد بدل کړئ",
   "settings.changing": "بدلیږي…",
+  "settings.signOutEverywhere": "له هر چېرې ووځه",
+  "settings.signOutEverywhereHint":
+    "هره دستگاه بندوي، په دې هم شامل. ګټور دی که فکر کوئ چې یو بل ستاسو پسورد پېژني.",
+  "settings.signOutEverywhereButton": "له هر چېرې ووځه",
+  "settings.about": "په اړه",
+  "settings.aboutBody":
+    "د AI دوکاندار مرستیال — د یو کوچني دوکان لپاره آفلاین مدیریت: محصولات، ذخیره، پلور، مشتریان او حساب، لګښتونه، او راپورونه.",
+  "settings.aboutOffline":
+    "هر څه په دې لیپ ټاپ کې پاتې کیږي. پرته له اختیاري AI مرستیال چې تاسو یې تنظیموئ، هیچیرته نه لیږل کیږي.",
+  "settings.aboutVersion": "پړاوونه ۰–۱۲ بشپړ. انګلیسي او پښتو برخې.",
   "login.passwordChanged": "پسورد بدل شو. خپل نوی پسورد وکاروئ.",
+  "login.signedOutEverywhere": "له هر چېرې ووتل. بیا ننوځئ.",
 };
 
 const DICTIONARIES: Record<Locale, Dictionary> = { en, ps };

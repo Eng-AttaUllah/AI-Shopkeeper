@@ -2,8 +2,11 @@
 
 import { redirect } from "next/navigation";
 
-import { requireOwner } from "@/lib/require-user";
-import { changeUserPassword } from "@/modules/settings/service";
+import { requireUser } from "@/lib/require-user";
+import {
+  changeUserPassword,
+  signOutEverywhere,
+} from "@/modules/settings/service";
 
 export type ChangePasswordState =
   | { ok: true }
@@ -13,7 +16,7 @@ export async function changePasswordAction(
   _previousState: ChangePasswordState,
   formData: FormData,
 ): Promise<ChangePasswordState> {
-  const user = await requireOwner();
+  const user = await requireUser();
 
   const result = await changeUserPassword(user.id, {
     currentPassword: String(formData.get("currentPassword") ?? ""),
@@ -28,4 +31,12 @@ export async function changePasswordAction(
   // The tokenVersion bump has already signed out every session, including
   // this one, so the only useful next screen is sign-in.
   redirect("/login?changed=1");
+}
+
+export async function signOutEverywhereAction(): Promise<void> {
+  const user = await requireUser();
+
+  await signOutEverywhere(user.id);
+
+  redirect("/login?signedOutEverywhere=1");
 }

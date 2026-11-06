@@ -5,7 +5,10 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { BCRYPT_COST } from "@/lib/credentials";
 import { prisma } from "@/lib/db";
 import type { Result } from "@/lib/result";
-import { changeUserPassword } from "@/modules/settings/service";
+import {
+  changeUserPassword,
+  signOutEverywhere,
+} from "@/modules/settings/service";
 
 function expectOk<T>(result: Result<T>): T {
   if (!result.ok) {
@@ -127,6 +130,35 @@ describe("change password", () => {
       newPassword: "new-password-9",
       confirmPassword: "new-password-9",
     });
+
+    expect(result.ok).toBe(false);
+  });
+});
+
+describe("sign out everywhere", () => {
+  it("bumps tokenVersion and writes an audit row", async () => {
+    const user = await createUserWithPassword("old-password");
+
+    const result = await signOutEverywhere(user.id);
+
+    expectOk(result);
+
+    const updated = await prisma.user.findUnique({ where: { id: user.id } });
+
+    expect(updated?.tokenVersion).toBe(user.tokenVersion + 1);
+    // The password itself is untouched.
+    expect(await compare("old-password", updated!.passwordHash)).toBe(true);
+
+    const audit = await prisma.auditLog.findFirst({
+      where: { action: "SIGNED_OUT_EVERYWHERE" },
+    });
+
+    expect(audit?.actor).toBe("owner");
+    expect(audit?.entityId).toBe(user.id);
+  });
+
+  it("refuses an unknown user", async () => {
+    const result = await signOutEverywhere("does-not-exist");
 
     expect(result.ok).toBe(false);
   });

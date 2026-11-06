@@ -9,7 +9,7 @@ import { auth } from "@/lib/auth";
  * with `requireUser()` before changing data.
  *
  * Role-based routing:
- * - CUSTOMER users can only access /customers/khata (and login/sign-up).
+ * - CUSTOMER users can only access /customers/khata and /settings.
  * - OWNER/CASHIER users cannot access /customers/khata.
  */
 export default auth((request) => {
@@ -17,6 +17,7 @@ export default auth((request) => {
   const isLoginPage = nextUrl.pathname === "/login";
   const isSignUpPage = nextUrl.pathname === "/customers/sign-up";
   const isKhataPage = nextUrl.pathname === "/customers/khata";
+  const isSettingsPage = nextUrl.pathname === "/settings";
   const isSignedIn = Boolean(request.auth);
   const user = request.auth?.user;
   const isCustomer = user?.role === "CUSTOMER";
@@ -38,7 +39,7 @@ export default auth((request) => {
   }
 
   // Role-based routing
-  if (isCustomer && !isKhataPage) {
+  if (isCustomer && !isKhataPage && !isSettingsPage) {
     return NextResponse.redirect(new URL("/customers/khata", nextUrl));
   }
 

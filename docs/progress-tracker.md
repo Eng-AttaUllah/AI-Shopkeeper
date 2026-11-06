@@ -582,7 +582,7 @@ Update this file after every meaningful implementation change.
 
 - Owner request (2026-11-05): a settings option in a suitable place, with a change-password
   option, and the owner password rotated to a shorter one.
-- Built: `/settings` page (owner-only, linked from More) showing the signed-in account and
+- Built: `/settings` page (linked from the header menu) showing the signed-in account and
   a change-password form (current password, new password, confirm). Business logic in
   `src/modules/settings/`: verifies the current password, enforces the same 8-character
   minimum as sign-up, rejects reuse of the current password, bcrypt-hashes, increments
@@ -596,11 +596,20 @@ Update this file after every meaningful implementation change.
   tests added (230 total).
 - The owner password was rotated twice during verification (via the real form action and
   back); the live password is the `OWNER_PASSWORD` value in `.env`.
+- Follow-up (2026-11-06, owner request): the floating Next.js dev-tools badge is disabled
+  (`devIndicators: false`); a hamburger settings menu sits at the top-left of the header
+  (owner and customer) opening Account, Security, Change password, and About links; the
+  settings page gained role-aware Account details, a "Sign out everywhere" action
+  (`tokenVersion` bump + audit, tested), and an About section; the Settings card was
+  removed from More; customers may now open `/settings` (proxy allowlist updated) while
+  still being blocked from shop pages. Email was deliberately not added: nothing in the
+  offline app can use it. Verified over HTTP for both roles.
 
 ## Current Phase
 
-- Post-phase unit — Settings and password change: **Complete** (`/settings` page with a
-  change-password form; owner password rotated to the value in `.env`).
+- Post-phase unit — Settings and password change: **Complete** (`/settings` page with
+  Account, Security, and About sections; header hamburger menu; owner password rotated to
+  the value in `.env`).
 
 ## Current Goal
 
