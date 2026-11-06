@@ -604,12 +604,23 @@ Update this file after every meaningful implementation change.
   removed from More; customers may now open `/settings` (proxy allowlist updated) while
   still being blocked from shop pages. Email was deliberately not added: nothing in the
   offline app can use it. Verified over HTTP for both roles.
+- Follow-up (2026-11-06): the section bar marks the current section — brand-tinted pill,
+  brand text, an icon, and `aria-current="page"` — and every item gained a Lucide icon. The
+  bar is now a client component (`src/components/nav-bar.tsx`) because the active state needs
+  `usePathname()`. Nested pages keep their parent lit (`/customers/<id>` → Customers) and the
+  More tools (assistant, expenses, day close, alerts, backups, audit) light More. Verified
+  over HTTP on every section, a real sale and customer detail page, and the More tools.
+- Regression found and fixed during that verification: `/expenses` and `/day-close` returned
+  500 since the i18n commit because the pages passed `t`/`categoryT` functions as props to
+  client components, which Next.js forbids. Both forms now read the locale themselves with
+  `readClientLocale()`/`translate()` (the same pattern as the alert review form); the pages
+  render 200 again. This was invisible to the service tests and to the production build.
 
 ## Current Phase
 
 - Post-phase unit — Settings and password change: **Complete** (`/settings` page with
   Account, Security, and About sections; header hamburger menu; owner password rotated to
-  the value in `.env`).
+  the value in `.env`). Section bar active state: **Complete**.
 
 ## Current Goal
 

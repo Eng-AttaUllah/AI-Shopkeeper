@@ -108,6 +108,15 @@ as protected files:
 - **Sign-in:** a centered single-column card on the page background with the brand, username,
   password, and one primary **Sign in** button. Errors are inline. No app navigation is shown
   until the shopkeeper is signed in.
+- **Header and section bar:** every signed-in page shares one top header: the hamburger
+  settings menu at the inline start, the shop name, the section bar, the locale switcher, and
+  the signed-in user with sign-out. The section bar (Dashboard, Sell, Products, Sales,
+  Customers, Reports, More) marks the current section with a brand-tinted pill, brand-coloured
+  text, an icon, and `aria-current="page"`; inactive items are muted and gain a subtle hover
+  fill. Nested pages keep their parent lit (`/customers/123` highlights Customers) and the
+  More tools (assistant, expenses, day close, alerts, backups, audit) light More. Customers see
+  the header without the section bar. On narrow screens the bar scrolls horizontally instead
+  of wrapping.
 - **Assistant:** one card with a **Read-only · confirm to save** badge, a scrollable
   transcript, and a composer fixed to the bottom of the card. The empty state shows a short
   prompt and suggested prompts as large tap targets, including a sale, an expense, a khata

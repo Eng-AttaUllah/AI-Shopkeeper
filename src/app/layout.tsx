@@ -4,6 +4,7 @@ import Link from "next/link";
 
 import { LocaleSwitcher } from "@/components/locale-switcher";
 import { signOutAction } from "@/app/auth-actions";
+import { NavBar } from "@/components/nav-bar";
 import { SettingsMenu } from "@/components/settings/settings-menu";
 import { Button } from "@/components/ui/button";
 import { auth } from "@/lib/auth";
@@ -96,53 +97,17 @@ export default async function RootLayout({
             ) : null}
 
             {user && !isCustomer ? (
-              <nav
-                aria-label="Main"
-                className="order-3 flex w-full items-center gap-x-4 overflow-x-auto text-sm [scrollbar-width:none] sm:order-3 sm:w-auto sm:overflow-visible [&::-webkit-scrollbar]:hidden"
-              >
-                <Link
-                  href="/"
-                  className="whitespace-nowrap text-ink-muted transition-colors hover:text-ink"
-                >
-                  {await t("nav.dashboard")}
-                </Link>
-                <Link
-                  href="/sell"
-                  className="whitespace-nowrap text-ink-muted transition-colors hover:text-ink"
-                >
-                  {await t("nav.sell")}
-                </Link>
-                <Link
-                  href="/products"
-                  className="whitespace-nowrap text-ink-muted transition-colors hover:text-ink"
-                >
-                  {await t("nav.products")}
-                </Link>
-                <Link
-                  href="/sales"
-                  className="whitespace-nowrap text-ink-muted transition-colors hover:text-ink"
-                >
-                  {await t("nav.sales")}
-                </Link>
-                <Link
-                  href="/customers"
-                  className="whitespace-nowrap text-ink-muted transition-colors hover:text-ink"
-                >
-                  {await t("nav.customers")}
-                </Link>
-                <Link
-                  href="/reports"
-                  className="whitespace-nowrap text-ink-muted transition-colors hover:text-ink"
-                >
-                  {await t("nav.reports")}
-                </Link>
-                <Link
-                  href="/more"
-                  className="whitespace-nowrap text-ink-muted transition-colors hover:text-ink"
-                >
-                  {await t("nav.more")}
-                </Link>
-              </nav>
+              <NavBar
+                labels={{
+                  "/": await t("nav.dashboard"),
+                  "/sell": await t("nav.sell"),
+                  "/products": await t("nav.products"),
+                  "/sales": await t("nav.sales"),
+                  "/customers": await t("nav.customers"),
+                  "/reports": await t("nav.reports"),
+                  "/more": await t("nav.more"),
+                }}
+              />
             ) : null}
           </div>
         </header>
