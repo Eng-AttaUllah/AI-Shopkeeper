@@ -615,6 +615,12 @@ Update this file after every meaningful implementation change.
   client components, which Next.js forbids. Both forms now read the locale themselves with
   `readClientLocale()`/`translate()` (the same pattern as the alert review form); the pages
   render 200 again. This was invisible to the service tests and to the production build.
+- Follow-up (2026-11-06, owner request): the shop logo (teal rounded tile with a white E and a
+  detached bar) is now an SVG asset — `public/logo.svg`, recreated from the owner's image on a
+  512×512 viewBox, with `src/app/icon.svg` as the favicon (the default `favicon.ico` removed).
+  The header brand and the sign-in card show the logo beside the "AI Shopkeeper" wordmark
+  (28px and 32px). Verified over HTTP: `/logo.svg` and `/icon.svg` serve with the right content
+  type, both pages embed the image, and the favicon link is emitted.
 - Follow-up (2026-11-06, owner request): the shop name moved out of the nav cluster to the
   inline start (top-left) of the header. Desktop order is now brand, section bar, then the
   settings menu, locale switcher, and signed-in user; on mobile the actions sit to the right
@@ -1173,3 +1179,10 @@ Update this file after every meaningful implementation change.
   passed via manual dispatch (run 40818562612 for the implementation commit, then
   40818701633 for the docs commit). The live Gemini check used the disposable test database;
   the test global setup replaced that data on the next run.
+- 2026-11-06: Logo exploration — six directions (standalone mark plus app tile for each) are
+  in `logo/concepts/`, with `logo/preview.html` for side-by-side comparison and 512px PNG
+  previews in `logo/png/`. No app code was changed. The owner picked the Open Ledger and asked
+  for a modern Book-E version with the app name **EasyShop**; that second pass (B1 Spine-E,
+  B2 Folded-E, B3 Spine-E + spark, plus wordmark lockups) is in `logo/easyshop/` with its own
+  `preview.html`. Still no app code changed: the B-variant pick is pending, then the favicon,
+  app icons, header/sign-in placement, and the AI Shopkeeper → EasyShop rename follow.

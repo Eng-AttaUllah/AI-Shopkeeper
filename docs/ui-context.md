@@ -48,6 +48,15 @@ In code, the palette is exposed as Tailwind utilities: `bg-page`, `bg-surface`, 
 (`bg-primary`, `bg-muted`, `border-border`); `globals.css` maps those to the same palette, so
 `--primary` is the teal accent, `--muted` is the subtle surface, and `--accent` is soft teal.
 
+## Brand assets
+
+- **Logo:** `public/logo.svg` — a teal (`#0F766E`) rounded tile with a white "E" and a detached
+  vertical bar, on a 512×512 viewBox. Rendered at 28px in the header brand and 32px on the
+  sign-in card, always beside the "AI Shopkeeper" wordmark (`alt=""`; the text names the brand).
+- **Favicon:** `src/app/icon.svg` is the same artwork; Next.js serves it as `/icon.svg` and
+  links it automatically. The old `favicon.ico` was removed.
+- Keep the logo's own tile colour rather than recolouring it; it matches `--accent-primary`.
+
 ## Typography
 
 | Role      | Font              | Variable      |
@@ -110,13 +119,14 @@ as protected files:
   until the shopkeeper is signed in.
 - **Header and section bar:** every signed-in page shares one top header: the shop name at the
   inline start, the section bar, then the hamburger settings menu, the locale switcher, and the
-  signed-in user with sign-out. The section bar (Dashboard, Sell, Products, Sales,
-  Customers, Reports, More) marks the current section with a brand-tinted pill, brand-coloured
-  text, an icon, and `aria-current="page"`; inactive items are muted and gain a subtle hover
-  fill. Nested pages keep their parent lit (`/customers/123` highlights Customers) and the
-  More tools (assistant, expenses, day close, alerts, backups, audit) light More. Customers see
-  the header without the section bar. On narrow screens the bar scrolls horizontally instead
-  of wrapping.
+  signed-in user with sign-out. The brand is the logo tile (`public/logo.svg`, 28px) beside the
+  "AI Shopkeeper" wordmark; the same logo appears on the sign-in card (32px). The section bar
+  (Dashboard, Sell, Products, Sales, Customers, Reports, More) marks the current section with a
+  brand-tinted pill, brand-coloured text, an icon, and `aria-current="page"`; inactive items
+  are muted and gain a subtle hover fill. Nested pages keep their parent lit
+  (`/customers/123` highlights Customers) and the More tools (assistant, expenses, day close,
+  alerts, backups, audit) light More. Customers see the header without the section bar. On
+  narrow screens the bar scrolls horizontally instead of wrapping.
 - **Assistant:** one card with a **Read-only · confirm to save** badge, a scrollable
   transcript, and a composer fixed to the bottom of the card. The empty state shows a short
   prompt and suggested prompts as large tap targets, including a sale, an expense, a khata

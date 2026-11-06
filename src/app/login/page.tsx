@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import type { Metadata } from "next";
 
 import { LoginForm } from "./login-form";
@@ -36,7 +37,17 @@ export default async function LoginPage({
   return (
     <main className="flex flex-1 items-center justify-center px-4 py-10">
       <div className="w-full max-w-sm rounded-xl border border-line bg-surface p-6">
-        <p className="text-sm font-semibold text-brand">AI Shopkeeper</p>
+        <p className="flex items-center gap-2 text-sm font-semibold text-brand">
+          <Image
+            src="/logo.svg"
+            alt=""
+            width={32}
+            height={32}
+            unoptimized
+            className="size-8"
+          />
+          AI Shopkeeper
+        </p>
         <h1 className="mt-2 text-2xl font-semibold">{t("login.signIn")}</h1>
         <p className="mt-1 text-sm text-ink-muted">
           {t("login.useAccount")}

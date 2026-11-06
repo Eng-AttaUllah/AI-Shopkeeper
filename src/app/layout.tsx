@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Noto_Naskh_Arabic } from "next/font/google";
+import Image from "next/image";
 import Link from "next/link";
 
 import { LocaleSwitcher } from "@/components/locale-switcher";
@@ -55,8 +56,16 @@ export default async function RootLayout({
           <div className="mx-auto flex min-h-14 w-full max-w-5xl flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2">
             <Link
               href={isCustomer ? "/customers/khata" : "/"}
-              className="order-1 shrink-0 text-sm font-semibold"
+              className="order-1 flex shrink-0 items-center gap-2 text-sm font-semibold"
             >
+              <Image
+                src="/logo.svg"
+                alt=""
+                width={28}
+                height={28}
+                unoptimized
+                className="size-7"
+              />
               AI Shopkeeper
             </Link>
 

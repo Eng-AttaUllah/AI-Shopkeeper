@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="AI Shopkeeper">
+  <rect x="4" y="4" width="504" height="504" rx="112" fill="#0F766E" />
+  <rect x="178" y="128" width="16" height="256" rx="8" fill="#FFFFFF" />
+  <path
+    d="M202 113
+       A18 18 0 0 1 220 95
+       H358
+       A18 18 0 0 1 376 113
+       V158
+       A18 18 0 0 1 358 176
+       H274
+       A12 12 0 0 0 262 188
+       A12 12 0 0 1 274 200
+       H326
+       A18 18 0 0 1 344 218
+       V248
+       A18 18 0 0 1 326 266
+       H274
+       A12 12 0 0 0 262 278
+       V325
+       A12 12 0 0 1 274 337
+       H358
+       A18 18 0 0 1 376 355
+       V402
+       A18 18 0 0 1 358 420
+       H220
+       A18 18 0 0 1 202 402
+       V113
+       Z"
+    fill="#FFFFFF"
+  />
+</svg>
