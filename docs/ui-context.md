@@ -50,12 +50,15 @@ In code, the palette is exposed as Tailwind utilities: `bg-page`, `bg-surface`, 
 
 ## Brand assets
 
-- **Logo:** `public/logo.svg` — a teal (`#0F766E`) rounded tile with a white "E" and a detached
-  vertical bar, on a 512×512 viewBox. Rendered at 28px in the header brand and 32px on the
-  sign-in card, always beside the "AI Shopkeeper" wordmark (`alt=""`; the text names the brand).
+- **Logo:** `public/logo.svg` — the B1 Spine-E app tile from the logo work in
+  `logo/easyshop/concepts/b1-spine-e-tile.svg`: a teal (`#0F766E`) squircle tile with a white
+  E and a thin spine seam cut inside the stem, on a 48-unit grid. Rendered at 28px in the
+  header brand and 32px on the sign-in card, always beside the "AI Shopkeeper" wordmark
+  (`alt=""`; the text names the brand).
 - **Favicon:** `src/app/icon.svg` is the same artwork; Next.js serves it as `/icon.svg` and
   links it automatically. The old `favicon.ico` was removed.
 - Keep the logo's own tile colour rather than recolouring it; it matches `--accent-primary`.
+  The source of truth stays in `logo/easyshop/` (the winner is B1; B2 and B3 are alternatives).
 
 ## Typography
 

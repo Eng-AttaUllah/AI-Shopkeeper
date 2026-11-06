@@ -615,12 +615,15 @@ Update this file after every meaningful implementation change.
   client components, which Next.js forbids. Both forms now read the locale themselves with
   `readClientLocale()`/`translate()` (the same pattern as the alert review form); the pages
   render 200 again. This was invisible to the service tests and to the production build.
-- Follow-up (2026-11-06, owner request): the shop logo (teal rounded tile with a white E and a
-  detached bar) is now an SVG asset — `public/logo.svg`, recreated from the owner's image on a
-  512×512 viewBox, with `src/app/icon.svg` as the favicon (the default `favicon.ico` removed).
-  The header brand and the sign-in card show the logo beside the "AI Shopkeeper" wordmark
-  (28px and 32px). Verified over HTTP: `/logo.svg` and `/icon.svg` serve with the right content
-  type, both pages embed the image, and the favicon link is emitted.
+- Follow-up (2026-11-06, owner request): the shop logo is now used as an SVG asset — the B1
+  Spine-E app tile from the logo work (`logo/easyshop/concepts/b1-spine-e-tile.svg`), copied to
+  `public/logo.svg`, with `src/app/icon.svg` as the favicon (the default `favicon.ico`
+  removed). The header brand and the sign-in card show the logo beside the "AI Shopkeeper"
+  wordmark (28px and 32px). Verified over HTTP: `/logo.svg` and `/icon.svg` serve with the right
+  content type, both pages embed the image, and the favicon link is emitted.
+- The logo exploration assets (`logo/`, 480 KB — six archived concepts plus the three EasyShop
+  Book-E variants, lockups, previews, and `preview.html`) are committed so the work is
+  preserved. The EasyShop rename is still a separate, unstarted unit.
 - Follow-up (2026-11-06, owner request): the shop name moved out of the nav cluster to the
   inline start (top-left) of the header. Desktop order is now brand, section bar, then the
   settings menu, locale switcher, and signed-in user; on mobile the actions sit to the right
