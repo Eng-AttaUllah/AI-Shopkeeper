@@ -7,7 +7,6 @@ import { fail, ok, type Result } from "@/lib/result";
 import { fieldErrors } from "@/lib/zod";
 
 import { changePasswordSchema } from "./schema";
-
 /** An error whose message is safe and useful to show the user. */
 class ServiceError extends Error {
   constructor(
@@ -89,6 +88,44 @@ export async function changeUserPassword(
         entityType: "User",
         entityId: user.id,
         summary: `Password changed for "${user.username}"`,
+        before: null,
+        after: { username: user.username, role: user.role },
+      });
+    });
+
+    return ok({ signedOutEverywhere: true });
+  } catch (error) {
+    return handleError(error);
+  }
+}
+
+/**
+ * Sign the user out of every device by incrementing `tokenVersion`. The
+ * current session dies too, so the caller redirects to sign-in. One
+ * transaction with its audit row, like a password change.
+ */
+export async function signOutEverywhere(
+  userId: string,
+): Promise<Result<{ signedOutEverywhere: true }>> {
+  try {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+
+    if (!user) {
+      throw new ServiceError("Account not found.");
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: user.id },
+        data: { tokenVersion: { increment: 1 } },
+      });
+
+      await writeAudit(tx, {
+        actor: user.username,
+        action: "SIGNED_OUT_EVERYWHERE",
+        entityType: "User",
+        entityId: user.id,
+        summary: `Signed out every device for "${user.username}"`,
         before: null,
         after: { username: user.username, role: user.role },
       });
