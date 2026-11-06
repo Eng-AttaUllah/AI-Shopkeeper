@@ -87,12 +87,7 @@ export default async function ExpensesPage() {
           {t("expenses.expenseTypes")}
         </p>
         <div className="mt-4">
-          <ExpenseForm
-            today={todayKey}
-            action={createExpenseAction}
-            t={t}
-            categoryT={categoryT}
-          />
+          <ExpenseForm today={todayKey} action={createExpenseAction} />
         </div>
       </section>
 

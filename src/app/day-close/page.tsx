@@ -112,11 +112,7 @@ export default async function DayClosePage() {
           {t("dayClose.rerunUpdates")}
         </p>
         <div className="mt-4">
-          <CashCheckForm
-            action={recordCashCheckAction}
-            today={todayKey}
-            t={t}
-          />
+          <CashCheckForm action={recordCashCheckAction} today={todayKey} />
         </div>
       </section>
 

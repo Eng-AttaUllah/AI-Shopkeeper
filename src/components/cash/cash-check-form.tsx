@@ -6,6 +6,7 @@ import type { CashCheckState } from "@/app/day-close/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { readClientLocale, translate } from "@/lib/dictionary";
 import { formatPaisa } from "@/lib/format";
 
 type CashCheckFormProps = {
@@ -14,11 +15,16 @@ type CashCheckFormProps = {
     state: CashCheckState,
     formData: FormData,
   ) => Promise<CashCheckState>;
-  t: (key: string, params?: Record<string, string>) => string;
 };
 
-export function CashCheckForm({ today, action, t }: CashCheckFormProps) {
+export function CashCheckForm({ today, action }: CashCheckFormProps) {
   const [state, formAction, pending] = useActionState(action, { ok: false });
+  const locale = readClientLocale();
+
+  function t(key: string, params?: Record<string, string>): string {
+    return translate(locale, key, params);
+  }
+
   const error = state.ok ? undefined : state.error;
   const errors = (state.ok ? {} : state.fieldErrors) ?? {};
 

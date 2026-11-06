@@ -6,6 +6,7 @@ import type { ExpenseActionState } from "@/app/expenses/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { readClientLocale, translate } from "@/lib/dictionary";
 import { EXPENSE_CATEGORIES } from "@/modules/expenses/schema";
 
 type ExpenseFormProps = {
@@ -14,13 +15,20 @@ type ExpenseFormProps = {
     state: ExpenseActionState,
     formData: FormData,
   ) => Promise<ExpenseActionState>;
-  t: (key: string, params?: Record<string, string>) => string;
-  categoryT: (category: string) => string;
 };
 
-export function ExpenseForm({ today, action, t, categoryT }: ExpenseFormProps) {
+export function ExpenseForm({ today, action }: ExpenseFormProps) {
   const [state, formAction, pending] = useActionState(action, { ok: false });
   const formRef = useRef<HTMLFormElement>(null);
+  const locale = readClientLocale();
+
+  function t(key: string, params?: Record<string, string>): string {
+    return translate(locale, key, params);
+  }
+
+  function categoryT(category: string): string {
+    return t(`expense.category.${category}`) ?? category;
+  }
 
   const error = state.ok ? undefined : state.error;
   const errors = (state.ok ? {} : state.fieldErrors) ?? {};
