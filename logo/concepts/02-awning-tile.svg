@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="512" height="512" role="img" aria-labelledby="title">
+  <title id="title">AI Shopkeeper — Awning app tile</title>
+  <rect width="48" height="48" rx="9" fill="#0F766E"/>
+  <path fill="#FFFFFF" d="M9 18h30l-2.5 8a4.2 4.2 0 0 1-8.4 0 4.2 4.2 0 0 1-8.4 0 4.2 4.2 0 0 1-8.4 0Z"/>
+  <rect x="12" y="34.5" width="24" height="3" rx="1.5" fill="#FFFFFF"/>
+  <path fill="#FFFFFF" d="M37.5 6.5Q38 10 41.5 10.5Q38 11 37.5 14.5Q37 11 33.5 10.5Q37 10 37.5 6.5Z"/>
+</svg>

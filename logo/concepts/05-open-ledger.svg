@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="512" height="512" role="img" aria-labelledby="title">
+  <title id="title">AI Shopkeeper — Open Ledger mark</title>
+  <path fill="#0F766E" d="M8 17c4-2.2 10-2.2 15 .5V39c-5-2.6-11-2.6-15-.4Z"/>
+  <path fill="#0F766E" d="M40 17c-4-2.2-10-2.2-15 .5V39c5-2.6 11-2.6 15-.4Z"/>
+  <path d="M28.5 24l3.5 3.5-3.5 3.5" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M34 31h3.5" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round"/>
+</svg>

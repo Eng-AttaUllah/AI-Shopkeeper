@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="512" height="512" role="img" aria-labelledby="title">
+  <title id="title">AI Shopkeeper — Receipt Bubble app tile</title>
+  <rect width="48" height="48" rx="9" fill="#0F766E"/>
+  <path fill="#FFFFFF" d="M14 9h20a6 6 0 0 1 6 6v14a6 6 0 0 1-6 6h-9.6l-6.4 6.8V35H14a6 6 0 0 1-6-6V15a6 6 0 0 1 6-6Z"/>
+  <rect x="15" y="16" width="18" height="3" rx="1.5" fill="#0F766E"/>
+  <rect x="15" y="21.5" width="11" height="3" rx="1.5" fill="#0F766E"/>
+  <circle cx="15.5" cy="28.5" r="1.4" fill="#0F766E"/>
+  <circle cx="21" cy="28.5" r="1.4" fill="#0F766E"/>
+  <circle cx="26.5" cy="28.5" r="1.4" fill="#0F766E"/>
+  <circle cx="32" cy="28.5" r="1.4" fill="#0F766E"/>
+</svg>

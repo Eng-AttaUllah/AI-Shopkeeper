@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="512" height="512" role="img" aria-labelledby="title">
+  <title id="title">AI Shopkeeper — Price Tag Prompt app tile</title>
+  <rect width="48" height="48" rx="9" fill="#0F766E"/>
+  <path fill="#FFFFFF" fill-rule="evenodd" d="M12 9h16l12 15-12 15H12a4 4 0 0 1-4-4V13a4 4 0 0 1 4-4Zm2.5 6a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z"/>
+  <path d="M21 18l6 6-6 6" fill="none" stroke="#0F766E" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
