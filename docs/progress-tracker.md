@@ -615,6 +615,11 @@ Update this file after every meaningful implementation change.
   client components, which Next.js forbids. Both forms now read the locale themselves with
   `readClientLocale()`/`translate()` (the same pattern as the alert review form); the pages
   render 200 again. This was invisible to the service tests and to the production build.
+- Follow-up (2026-11-06, owner request): the shop name moved out of the nav cluster to the
+  inline start (top-left) of the header. Desktop order is now brand, section bar, then the
+  settings menu, locale switcher, and signed-in user; on mobile the actions sit to the right
+  of the brand and the section bar keeps its own full-width row. `docs/ui-context.md` was
+  updated to match.
 
 ## Current Phase
 

@@ -71,7 +71,7 @@ export function NavBar({ labels }: { labels: Record<string, string> }) {
   return (
     <nav
       aria-label="Main"
-      className="order-3 flex w-full items-center gap-1 overflow-x-auto text-sm [scrollbar-width:none] sm:order-3 sm:w-auto sm:overflow-visible [&::-webkit-scrollbar]:hidden"
+      className="order-3 flex w-full items-center gap-1 overflow-x-auto text-sm [scrollbar-width:none] sm:order-2 sm:w-auto sm:overflow-visible [&::-webkit-scrollbar]:hidden"
     >
       {ITEMS.map((item) => {
         const active = isActive(pathname, item);

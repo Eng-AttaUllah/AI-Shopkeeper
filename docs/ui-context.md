@@ -108,9 +108,9 @@ as protected files:
 - **Sign-in:** a centered single-column card on the page background with the brand, username,
   password, and one primary **Sign in** button. Errors are inline. No app navigation is shown
   until the shopkeeper is signed in.
-- **Header and section bar:** every signed-in page shares one top header: the hamburger
-  settings menu at the inline start, the shop name, the section bar, the locale switcher, and
-  the signed-in user with sign-out. The section bar (Dashboard, Sell, Products, Sales,
+- **Header and section bar:** every signed-in page shares one top header: the shop name at the
+  inline start, the section bar, then the hamburger settings menu, the locale switcher, and the
+  signed-in user with sign-out. The section bar (Dashboard, Sell, Products, Sales,
   Customers, Reports, More) marks the current section with a brand-tinted pill, brand-coloured
   text, an icon, and `aria-current="page"`; inactive items are muted and gain a subtle hover
   fill. Nested pages keep their parent lit (`/customers/123` highlights Customers) and the

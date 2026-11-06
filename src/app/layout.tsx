@@ -53,33 +53,49 @@ export default async function RootLayout({
       <body className="flex min-h-full flex-col bg-page font-sans text-ink">
         <header className="border-b border-line bg-surface">
           <div className="mx-auto flex min-h-14 w-full max-w-5xl flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2">
-            {user ? (
-              <SettingsMenu
+            <Link
+              href={isCustomer ? "/customers/khata" : "/"}
+              className="order-1 shrink-0 text-sm font-semibold"
+            >
+              AI Shopkeeper
+            </Link>
+
+            {user && !isCustomer ? (
+              <NavBar
                 labels={{
-                  open: await t("settings.menuOpen"),
-                  title: await t("settings.menuTitle"),
-                  account: await t("settings.account"),
-                  security: await t("settings.security"),
-                  changePassword: await t("settings.changePassword"),
-                  about: await t("settings.about"),
-                  close: await t("settings.menuClose"),
+                  "/": await t("nav.dashboard"),
+                  "/sell": await t("nav.sell"),
+                  "/products": await t("nav.products"),
+                  "/sales": await t("nav.sales"),
+                  "/customers": await t("nav.customers"),
+                  "/reports": await t("nav.reports"),
+                  "/more": await t("nav.more"),
                 }}
               />
             ) : null}
 
-            <Link
-              href={isCustomer ? "/customers/khata" : "/"}
-              className="order-2 shrink-0 text-sm font-semibold"
-            >
-              AI Shopkeeper
-            </Link>
+            {user ? (
+              <div className="order-2 ml-auto sm:order-3">
+                <SettingsMenu
+                  labels={{
+                    open: await t("settings.menuOpen"),
+                    title: await t("settings.menuTitle"),
+                    account: await t("settings.account"),
+                    security: await t("settings.security"),
+                    changePassword: await t("settings.changePassword"),
+                    about: await t("settings.about"),
+                    close: await t("settings.menuClose"),
+                  }}
+                />
+              </div>
+            ) : null}
 
             <div className="order-2 sm:order-4">
               <LocaleSwitcher locale={locale} />
             </div>
 
             {user ? (
-              <div className="order-2 ml-auto flex items-center gap-2 sm:order-5">
+              <div className="order-2 flex items-center gap-2 sm:order-5">
                 <span className="text-sm text-ink-muted">
                   {await t("nav.signedInAs", { user: user.username })}
                 </span>
@@ -94,20 +110,6 @@ export default async function RootLayout({
                   </Button>
                 </form>
               </div>
-            ) : null}
-
-            {user && !isCustomer ? (
-              <NavBar
-                labels={{
-                  "/": await t("nav.dashboard"),
-                  "/sell": await t("nav.sell"),
-                  "/products": await t("nav.products"),
-                  "/sales": await t("nav.sales"),
-                  "/customers": await t("nav.customers"),
-                  "/reports": await t("nav.reports"),
-                  "/more": await t("nav.more"),
-                }}
-              />
             ) : null}
           </div>
         </header>
