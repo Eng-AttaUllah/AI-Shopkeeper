@@ -624,6 +624,20 @@ Update this file after every meaningful implementation change.
 - The logo exploration assets (`logo/`, 480 KB — six archived concepts plus the three EasyShop
   Book-E variants, lockups, previews, and `preview.html`) are committed so the work is
   preserved. The EasyShop rename is still a separate, unstarted unit.
+- Follow-up (2026-11-07, owner request): the theme moved to a **white base** — page and cards
+  are both white (`--bg-base`), separated by the hairline border plus a soft `--card-shadow`
+  (applied automatically to the standard `rounded-xl border border-line bg-surface` card).
+  Added two accent colours: a **money amber** (`--accent-money` `#B45309`) for the sell
+  screen's Complete sale / Record credit sale CTA and mobile total and for the revenue stat
+  card's top accent, and a **mint tint** (`--bg-tint` / `--accent-soft` `#ECFDF5`) for the
+  active nav pill and the More card hover. Stat cards gained a tone-coloured top accent bar;
+  the sign-in card gained a teal top border; chart tokens were retuned (teal, amber, mint,
+  slate, ink). All AA contrast checks pass. Verified over HTTP: dashboard accents
+  (money/brand/brand/error), both sell CTAs, the More hover, and the login border.
+- Test infrastructure: the default Vitest timeout was raised from 5s to 15s. bcrypt hashing
+  was exceeding 5s whenever the laptop was loaded (dev server + browser + another session),
+  making `tests/auth.test.ts` and `tests/settings.test.ts` flake; with 15s the full suite
+  passes reliably (232/232) under load.
 - Follow-up (2026-11-06, owner request): the shop name moved out of the nav cluster to the
   inline start (top-left) of the header. Desktop order is now brand, section bar, then the
   settings menu, locale switcher, and signed-in user; on mobile the actions sit to the right
@@ -634,7 +648,8 @@ Update this file after every meaningful implementation change.
 
 - Post-phase unit — Settings and password change: **Complete** (`/settings` page with
   Account, Security, and About sections; header hamburger menu; owner password rotated to
-  the value in `.env`). Section bar active state: **Complete**.
+  the value in `.env`). Section bar active state: **Complete**. White-base palette with teal
+  + money amber + mint accents: **Complete**.
 
 ## Current Goal
 

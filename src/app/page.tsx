@@ -148,6 +148,7 @@ export default async function Home() {
           hint={`${today.salesCount} ${
             today.salesCount === 1 ? t("dashboard.sale") : t("dashboard.sales")
           }`}
+          accent="money"
         />
         <StatCard
           label={t("dashboard.todayProfit")}

@@ -587,7 +587,7 @@ export function SellScreen({ products, customers, action }: SellScreenProps) {
           <Button
             type="submit"
             disabled={!canSubmit}
-            className="h-12 w-full text-base"
+            className="h-12 w-full bg-money! text-base text-white! hover:bg-money-hover!"
           >
             {pending
               ? "Saving…"
@@ -610,7 +610,7 @@ export function SellScreen({ products, customers, action }: SellScreenProps) {
             </p>
             <p
               className={`text-lg font-semibold tabular-nums ${
-                isCredit ? "text-error" : ""
+                isCredit ? "text-error" : "text-money"
               }`}
             >
               {formatPaisa(isCredit ? creditDuePaisa : totalPaisa)}
@@ -619,7 +619,7 @@ export function SellScreen({ products, customers, action }: SellScreenProps) {
           <Button
             type="submit"
             disabled={!canSubmit}
-            className="h-12 px-5 text-base"
+            className="h-12 bg-money! px-5 text-base text-white! hover:bg-money-hover!"
           >
             {pending
               ? "Saving…"

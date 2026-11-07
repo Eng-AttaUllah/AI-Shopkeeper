@@ -54,7 +54,7 @@ export default function MorePage() {
           <Link
             key={tool.href}
             href={tool.href}
-            className="rounded-xl border border-line bg-surface p-5 transition-colors hover:border-brand/40 hover:bg-subtle"
+            className="rounded-xl border border-line bg-surface p-5 transition-colors hover:border-brand/40 hover:bg-tint"
           >
             <h2 className="text-lg font-semibold">{t(tool.titleKey)}</h2>
             <p className="mt-1 text-sm text-ink-muted">

@@ -13,15 +13,21 @@
  */
 :root {
   /* Project palette (names used in the documentation) */
-  --bg-base: #f7f7f5;
+  --bg-base: #ffffff;
   --bg-surface: #ffffff;
-  --bg-subtle: #f1f1ee;
+  --bg-subtle: #f7faf9;
+  --bg-tint: #ecfdf5;
   --text-primary: #17181a;
   --text-muted: #6b7280;
   --accent-primary: #0f766e;
   --accent-hover: #115e59;
-  --accent-soft: #e6f4f1;
-  --border-default: #e4e4e7;
+  --accent-soft: #ecfdf5;
+  --accent-money: #b45309;
+  --accent-money-hover: #92400e;
+  --accent-money-soft: #fef3c7;
+  --border-default: #e5e7eb;
+  --card-shadow:
+    0 1px 2px rgb(23 24 26 / 0.05), 0 2px 8px rgb(23 24 26 / 0.04);
   --state-error: #dc2626;
   --state-warning: #b45309;
   --state-success: #16a34a;
@@ -46,9 +52,9 @@
   --input: var(--border-default);
   --ring: var(--accent-primary);
   --chart-1: #0f766e;
-  --chart-2: #16a34a;
-  --chart-3: #b45309;
-  --chart-4: #6b7280;
+  --chart-2: #b45309;
+  --chart-3: #5eead4;
+  --chart-4: #64748b;
   --chart-5: #17181a;
   --radius: 0.75rem;
   --sidebar: var(--bg-surface);
@@ -71,10 +77,15 @@
   --color-brand: var(--accent-primary);
   --color-brand-hover: var(--accent-hover);
   --color-brand-soft: var(--accent-soft);
+  --color-tint: var(--bg-tint);
+  --color-money: var(--accent-money);
+  --color-money-hover: var(--accent-money-hover);
+  --color-money-soft: var(--accent-money-soft);
   --color-line: var(--border-default);
   --color-error: var(--state-error);
   --color-warning: var(--state-warning);
   --color-success: var(--state-success);
+  --shadow-card: var(--card-shadow);
 
   /* Typography */
   --font-sans: var(--font-geist-sans);
@@ -151,5 +162,16 @@ html[lang="ps"] {
   select,
   textarea {
     font-size: 16px;
+  }
+}
+
+@layer components {
+  /*
+   * The page and the cards are both white, so the standard card gets the
+   * hairline border plus a soft lift to stay distinct. Inputs and selects use
+   * `rounded-lg`, so they are not affected.
+   */
+  .rounded-xl.border.border-line.bg-surface {
+    box-shadow: var(--card-shadow);
   }
 }

@@ -22,31 +22,47 @@ All components must use these tokens — no hardcoded hex values.
 
 | Role            | CSS Variable       | Value     |
 | --------------- | ------------------ | --------- |
-| Page background | `--bg-base`        | `#F7F7F5` |
+| Page background | `--bg-base`        | `#FFFFFF` |
 | Surface         | `--bg-surface`     | `#FFFFFF` |
-| Subtle surface  | `--bg-subtle`      | `#F1F1EE` |
+| Subtle surface  | `--bg-subtle`      | `#F7FAF9` |
+| Mint tint       | `--bg-tint`        | `#ECFDF5` |
 | Primary text    | `--text-primary`   | `#17181A` |
 | Muted text      | `--text-muted`     | `#6B7280` |
 | Primary accent  | `--accent-primary` | `#0F766E` |
 | Accent hover    | `--accent-hover`   | `#115E59` |
-| Accent soft     | `--accent-soft`    | `#E6F4F1` |
-| Border          | `--border-default` | `#E4E4E7` |
+| Accent soft     | `--accent-soft`    | `#ECFDF5` |
+| Money accent    | `--accent-money`   | `#B45309` |
+| Money hover     | `--accent-money-hover` | `#92400E` |
+| Money soft      | `--accent-money-soft`  | `#FEF3C7` |
+| Border          | `--border-default` | `#E5E7EB` |
+| Card shadow     | `--card-shadow`    | soft two-layer shadow |
 | Error           | `--state-error`    | `#DC2626` |
 | Warning         | `--state-warning`  | `#B45309` |
 | Success         | `--state-success`  | `#16A34A` |
 
 Usage rules:
 
-- Primary buttons and active navigation use `--accent-primary` with white text.
+- White is the base: the page and every card are white. Cards are separated by the
+  `--border-default` hairline plus `--card-shadow` (the `.rounded-xl.border.border-line.bg-surface`
+  rule in `globals.css` applies it automatically; inputs and selects use `rounded-lg` and stay flat).
+- Primary buttons and active navigation use `--accent-primary` with white text. The active
+  section pill uses the mint tint (`bg-brand-soft`).
+- The **money accent** (deep amber) marks money moments only: the sell screen's
+  "Complete sale" / "Record credit sale" button, the mobile sale total, and the revenue stat
+  card's top accent. It is not used for warnings — those stay `--state-warning` (the same hex,
+  but a distinct token and meaning).
 - Money owed and destructive actions use `--state-error`. Paid and settled use
   `--state-success`. Low stock uses `--state-warning`.
 - Status is always reinforced with a label, never colour alone.
+- Contrast (AA): white on teal 5.5:1, white on money amber 4.6:1, muted text on white 4.8:1,
+  amber on white 4.6:1.
 
 In code, the palette is exposed as Tailwind utilities: `bg-page`, `bg-surface`, `bg-subtle`,
-`text-ink`, `text-ink-muted`, `bg-brand`, `text-brand`, `border-line`, `text-error`,
-`text-warning`, `text-success`. shadcn components use their own semantic tokens
-(`bg-primary`, `bg-muted`, `border-border`); `globals.css` maps those to the same palette, so
-`--primary` is the teal accent, `--muted` is the subtle surface, and `--accent` is soft teal.
+`bg-tint`, `text-ink`, `text-ink-muted`, `bg-brand`, `text-brand`, `bg-brand-soft`,
+`text-money`, `bg-money`, `bg-money-soft`, `border-line`, `text-error`, `text-warning`,
+`text-success`. shadcn components use their own semantic tokens (`bg-primary`, `bg-muted`,
+`border-border`); `globals.css` maps those to the same palette, so `--primary` is the teal
+accent, `--muted` is the subtle surface, and `--accent` is soft teal.
 
 ## Brand assets
 

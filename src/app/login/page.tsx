@@ -36,7 +36,7 @@ export default async function LoginPage({
 
   return (
     <main className="flex flex-1 items-center justify-center px-4 py-10">
-      <div className="w-full max-w-sm rounded-xl border border-line bg-surface p-6">
+      <div className="w-full max-w-sm rounded-xl border border-line border-t-4 border-t-brand bg-surface p-6">
         <p className="flex items-center gap-2 text-sm font-semibold text-brand">
           <Image
             src="/logo.svg"

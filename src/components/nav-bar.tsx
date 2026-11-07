@@ -83,7 +83,7 @@ export function NavBar({ labels }: { labels: Record<string, string> }) {
             aria-current={active ? "page" : undefined}
             className={`flex items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-2 transition-colors ${
               active
-                ? "bg-brand/10 font-medium text-brand"
+                ? "bg-brand-soft font-medium text-brand"
                 : "text-ink-muted hover:bg-subtle hover:text-ink"
             }`}
           >
