@@ -618,7 +618,7 @@ Update this file after every meaningful implementation change.
 - Follow-up (2026-11-06, owner request): the shop logo is now used as an SVG asset — the B1
   Spine-E app tile from the logo work (`logo/easyshop/concepts/b1-spine-e-tile.svg`), copied to
   `public/logo.svg`, with `src/app/icon.svg` as the favicon (the default `favicon.ico`
-  removed). The header brand and the sign-in card show the logo beside the "AI Shopkeeper"
+  removed). The header brand and the sign-in card show the logo beside the "EasyShop"
   wordmark (28px and 32px). Verified over HTTP: `/logo.svg` and `/icon.svg` serve with the right
   content type, both pages embed the image, and the favicon link is emitted.
 - The logo exploration assets (`logo/`, 480 KB — six archived concepts plus the three EasyShop
@@ -638,6 +638,16 @@ Update this file after every meaningful implementation change.
   was exceeding 5s whenever the laptop was loaded (dev server + browser + another session),
   making `tests/auth.test.ts` and `tests/settings.test.ts` flake; with 15s the full suite
   passes reliably (232/232) under load.
+- Follow-up (2026-11-07, owner request): renamed the product from **AI Shopkeeper** to
+  **EasyShop**. The header, sign-in card, customer sign-up, and khata brand lines now read
+  from `t("app.name")` (one source of truth instead of four hardcoded strings); browser
+  titles are `EasyShop`, `Sign in · EasyShop`, `Create account · EasyShop`, and
+  `Assistant · EasyShop`; the Settings → About text and the assistant system prompt
+  ("You are the EasyShop Assistant for …") are updated in both languages. Identifiers:
+  `package.json`/lock name `easyshop`, the Prisma schema header, the README title, and the
+  documented systemd service name (including the CD workflow default) are `easyshop`. The
+  Pashto interface keeps the Latin wordmark, per the owner. The GitHub repository and the
+  local folder keep their old names. Verified over HTTP in both locales.
 - Follow-up (2026-11-06, owner request): the shop name moved out of the nav cluster to the
   inline start (top-left) of the header. Desktop order is now brand, section bar, then the
   settings menu, locale switcher, and signed-in user; on mobile the actions sit to the right
@@ -649,7 +659,7 @@ Update this file after every meaningful implementation change.
 - Post-phase unit — Settings and password change: **Complete** (`/settings` page with
   Account, Security, and About sections; header hamburger menu; owner password rotated to
   the value in `.env`). Section bar active state: **Complete**. White-base palette with teal
-  + money amber + mint accents: **Complete**.
+  + money amber + mint accents: **Complete**. Renamed to **EasyShop**: **Complete**.
 
 ## Current Goal
 

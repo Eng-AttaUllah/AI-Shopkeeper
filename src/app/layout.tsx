@@ -29,7 +29,7 @@ const notoNaskhArabic = Noto_Naskh_Arabic({
 });
 
 export const metadata: Metadata = {
-  title: "AI Shopkeeper Assistant",
+  title: "EasyShop",
   description:
     "Offline-first shop management: products, sales, customers, credit, and reports.",
 };
@@ -66,7 +66,7 @@ export default async function RootLayout({
                 unoptimized
                 className="size-7"
               />
-              AI Shopkeeper
+              {await t("app.name")}
             </Link>
 
             {user && !isCustomer ? (

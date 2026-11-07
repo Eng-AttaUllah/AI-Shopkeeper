@@ -5,7 +5,7 @@ import { CustomerRegistrationForm } from "./form";
 import { readClientLocale, translate } from "@/lib/dictionary";
 
 export const metadata: Metadata = {
-  title: "Create account · AI Shopkeeper Assistant",
+  title: "Create account · EasyShop",
 };
 
 export default function CustomerRegistrationPage() {
@@ -25,7 +25,7 @@ export default function CustomerRegistrationPage() {
   return (
     <main className="flex flex-1 items-center justify-center px-4 py-10">
       <div className="w-full max-w-sm rounded-xl border border-line bg-surface p-6">
-        <p className="text-sm font-semibold text-brand">AI Shopkeeper</p>
+        <p className="text-sm font-semibold text-brand">{t("app.name")}</p>
         <h1 className="mt-2 text-2xl font-semibold">
           {t("customerRegistration.title")}
         </h1>

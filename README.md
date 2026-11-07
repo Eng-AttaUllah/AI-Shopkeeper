@@ -1,4 +1,4 @@
-# AI Shopkeeper Assistant
+# EasyShop
 
 [![CI](https://github.com/Eng-AttaUllah/AI-Shopkeeper/actions/workflows/ci.yml/badge.svg)](https://github.com/Eng-AttaUllah/AI-Shopkeeper/actions/workflows/ci.yml)
 
@@ -92,8 +92,8 @@ CD prerequisites:
 - a self-hosted runner with labels `self-hosted`, `linux`, and `shop-laptop`
 - repository variable `DEPLOY_PATH` pointing at the live git checkout
 - `.env` in that checkout with `DATABASE_URL` and `AUTH_SECRET`
-- a systemd service named `ai-shopkeeper` (override with the `SERVICE_NAME` variable)
-- passwordless sudo for `systemctl restart ai-shopkeeper`
+- a systemd service named `easyshop` (override with the `SERVICE_NAME` variable)
+- passwordless sudo for `systemctl restart easyshop`
 - `curl` on the runner
 
 The CD job is manual by default, so a shop laptop never redeploys while the shop is open. Run

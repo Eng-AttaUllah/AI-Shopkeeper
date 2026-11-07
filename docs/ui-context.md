@@ -69,7 +69,7 @@ accent, `--muted` is the subtle surface, and `--accent` is soft teal.
 - **Logo:** `public/logo.svg` — the B1 Spine-E app tile from the logo work in
   `logo/easyshop/concepts/b1-spine-e-tile.svg`: a teal (`#0F766E`) squircle tile with a white
   E and a thin spine seam cut inside the stem, on a 48-unit grid. Rendered at 28px in the
-  header brand and 32px on the sign-in card, always beside the "AI Shopkeeper" wordmark
+  header brand and 32px on the sign-in card, always beside the "EasyShop" wordmark
   (`alt=""`; the text names the brand).
 - **Favicon:** `src/app/icon.svg` is the same artwork; Next.js serves it as `/icon.svg` and
   links it automatically. The old `favicon.ico` was removed.
@@ -139,7 +139,7 @@ as protected files:
 - **Header and section bar:** every signed-in page shares one top header: the shop name at the
   inline start, the section bar, then the hamburger settings menu, the locale switcher, and the
   signed-in user with sign-out. The brand is the logo tile (`public/logo.svg`, 28px) beside the
-  "AI Shopkeeper" wordmark; the same logo appears on the sign-in card (32px). The section bar
+  "EasyShop" wordmark; the same logo appears on the sign-in card (32px). The section bar
   (Dashboard, Sell, Products, Sales, Customers, Reports, More) marks the current section with a
   brand-tinted pill, brand-coloured text, an icon, and `aria-current="page"`; inactive items
   are muted and gain a subtle hover fill. Nested pages keep their parent lit

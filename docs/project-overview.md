@@ -1,8 +1,8 @@
-# AI Shopkeeper Assistant
+# EasyShop
 
 ## Overview
 
-AI Shopkeeper Assistant is an offline-first shop management system for a single small
+EasyShop is an offline-first shop management system for a single small
 retail shop. It replaces the paper register and the handwritten credit book (khata) with a
 fast, phone-friendly application: the shopkeeper records sales in seconds, keeps stock and
 prices accurate, tracks customer credit without losing a single entry, and sees sales and

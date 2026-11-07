@@ -8,8 +8,8 @@
 # - A self-hosted runner with labels: self-hosted, linux, shop-laptop
 # - Repository variable DEPLOY_PATH: absolute path to the live git checkout
 # - .env in DEPLOY_PATH with DATABASE_URL and AUTH_SECRET
-# - systemd service `ai-shopkeeper` (override with the SERVICE_NAME variable)
-# - passwordless sudo for `systemctl restart ai-shopkeeper`
+# - systemd service `easyshop` (override with the SERVICE_NAME variable)
+# - passwordless sudo for `systemctl restart easyshop`
 # - curl on the runner
 #
 # The deploy discards local tracked changes in DEPLOY_PATH. Ignored files
@@ -40,7 +40,7 @@ permissions:
 
 env:
   DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
-  SERVICE_NAME: ${{ vars.SERVICE_NAME || 'ai-shopkeeper' }}
+  SERVICE_NAME: ${{ vars.SERVICE_NAME || 'easyshop' }}
   SERVICE_PORT: ${{ vars.SERVICE_PORT || '3000' }}
   NEXT_TELEMETRY_DISABLED: "1"
 

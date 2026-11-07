@@ -55,7 +55,7 @@ function systemPrompt(
   locale: Locale,
 ): string {
   return [
-    `You are the AI Shopkeeper Assistant for ${shopName}, a single small shop in Pakistan.`,
+    `You are the EasyShop Assistant for ${shopName}, a single small shop in Pakistan.`,
     `Today is ${formatDate(now)} in the ${KARACHI_TIME_ZONE} timezone.`,
     locale === "ps"
       ? "Answer in Pashto."

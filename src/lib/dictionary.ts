@@ -37,8 +37,8 @@ type Dictionary = Record<string, string>;
 
 const en: Dictionary = {
   // Brand
-  "app.name": "AI Shopkeeper",
-  "app.title": "AI Shopkeeper Assistant",
+  "app.name": "EasyShop",
+  "app.title": "EasyShop",
 
   // Main navigation
   "nav.dashboard": "Dashboard",
@@ -640,7 +640,7 @@ const en: Dictionary = {
   "settings.signOutEverywhereButton": "Sign out everywhere",
   "settings.about": "About",
   "settings.aboutBody":
-    "AI Shopkeeper Assistant — offline-first shop management for one small retail shop: products, stock, sales, customers and credit, expenses, and reports.",
+    "EasyShop — offline-first shop management for one small retail shop: products, stock, sales, customers and credit, expenses, and reports.",
   "settings.aboutOffline":
     "Everything stays on this laptop. Nothing is sent to a server except the optional AI assistant, which you configure yourself.",
   "settings.aboutVersion": "Phases 0–12 complete. English and Pashto interfaces.",
@@ -670,8 +670,8 @@ const en: Dictionary = {
 
 const ps: Dictionary = {
   // Brand
-  "app.name": "AI Shopkeeper",
-  "app.title": "د دکنی AI مددګر",
+  "app.name": "EasyShop",
+  "app.title": "EasyShop",
 
   // Main navigation
   "nav.dashboard": "داشبورد",
@@ -816,7 +816,7 @@ const ps: Dictionary = {
   "settings.signOutEverywhereButton": "له هر چېرې ووځه",
   "settings.about": "په اړه",
   "settings.aboutBody":
-    "د AI دوکاندار مرستیال — د یو کوچني دوکان لپاره آفلاین مدیریت: محصولات، ذخیره، پلور، مشتریان او حساب، لګښتونه، او راپورونه.",
+    "EasyShop — د یو کوچني دوکان لپاره آفلاین مدیریت: محصولات، ذخیره، پلور، مشتریان او حساب، لګښتونه، او راپورونه.",
   "settings.aboutOffline":
     "هر څه په دې لیپ ټاپ کې پاتې کیږي. پرته له اختیاري AI مرستیال چې تاسو یې تنظیموئ، هیچیرته نه لیږل کیږي.",
   "settings.aboutVersion": "پړاوونه ۰–۱۲ بشپړ. انګلیسي او پښتو برخې.",

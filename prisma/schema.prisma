@@ -1,4 +1,4 @@
-// Prisma schema for AI Shopkeeper Assistant.
+// Prisma schema for EasyShop.
 // See docs/architecture.md for the storage model and invariants.
 //
 // Quantities are stored as integer thousandths of a unit (1.5 kg = 1500) so

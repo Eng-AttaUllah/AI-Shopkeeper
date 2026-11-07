@@ -2,7 +2,7 @@
 
 ## What this project is
 
-AI Shopkeeper Assistant — an offline-first shop management system for one small retail shop,
+EasyShop — an offline-first shop management system for one small retail shop,
 running on a laptop and used from a phone browser on the shop's local network. Version 1 is
 English-only and covers products, stock, sales, customers and credit (khata), expenses,
 reports, and backups.

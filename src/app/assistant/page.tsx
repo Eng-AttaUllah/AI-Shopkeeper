@@ -7,7 +7,7 @@ import { t } from "@/lib/i18n";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Assistant · AI Shopkeeper Assistant",
+  title: "Assistant · EasyShop",
 };
 
 export default async function AssistantPage() {

@@ -6,7 +6,7 @@ import { LoginForm } from "./login-form";
 import { readClientLocale, translate } from "@/lib/dictionary";
 
 export const metadata: Metadata = {
-  title: "Sign in · AI Shopkeeper Assistant",
+  title: "Sign in · EasyShop",
 };
 
 export default async function LoginPage({
@@ -46,7 +46,7 @@ export default async function LoginPage({
             unoptimized
             className="size-8"
           />
-          AI Shopkeeper
+          {t("app.name")}
         </p>
         <h1 className="mt-2 text-2xl font-semibold">{t("login.signIn")}</h1>
         <p className="mt-1 text-sm text-ink-muted">
