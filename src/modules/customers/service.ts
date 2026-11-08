@@ -397,12 +397,77 @@ export async function recordPayment(
   return ok(result.data.payment);
 }
 
-/** Create a customer account (User with CUSTOMER account type) linked to a Customer record.
- *
- * Used for customer self-registration and for accounts created by the
- * shopkeeper. Creates both a User and a ShopMembership (role CUSTOMER, status
- * ACTIVE) linked to the Customer record, in one transaction. The phone is used
- * as the username.
+/** Create a customer user account (CUSTOMER account type) without any shop
+ * link. Used for customer self-registration; the customer joins a shop later
+ * and gets a ShopMembership at that point. The phone is used as the username.
+ */
+export async function createCustomerUser(
+  input: unknown,
+): Promise<Result<{ user: User }>> {
+  const parsed = customerRegistrationSchema.safeParse(input);
+
+  if (!parsed.success) {
+    return fail("Please fix the highlighted fields.", fieldErrors(parsed.error));
+  }
+
+  const data = parsed.data;
+  // The phone doubles as the login name; store it without spaces or dashes so
+  // sign-in works however the customer types it.
+  const username = normalizePhone(data.phone);
+
+  try {
+    const outcome = await prisma.$transaction(async (tx) => {
+      // Check if phone is already used as a username.
+      const existingUser = await tx.user.findUnique({
+        where: { username },
+      });
+
+      if (existingUser) {
+        throw new ServiceError(
+          "An account with this phone number already exists.",
+          { phone: "Already registered" },
+        );
+      }
+
+      const user = await tx.user.create({
+        data: {
+          username,
+          name: data.name,
+          passwordHash: await hash(data.password, BCRYPT_COST),
+          accountType: "CUSTOMER",
+        },
+      });
+
+      await writeAudit(tx, {
+        actor: user.username,
+        action: "CUSTOMER_ACCOUNT_CREATED",
+        entityType: "User",
+        entityId: user.id,
+        summary: `Customer account created for ${user.name}`,
+        before: null,
+        after: {
+          username: user.username,
+          accountType: user.accountType,
+        },
+        details: {
+          source: "self_registration",
+        },
+      });
+
+      return { user };
+    });
+
+    return ok(outcome);
+  } catch (error) {
+    return handleError(error);
+  }
+}
+
+/** Create a customer account (User with CUSTOMER account type) linked to an
+ * existing Customer record via a ShopMembership. Used by the shopkeeper to
+ * give an existing customer ledger record login access to their shop.
+ * Creates both a User and a ShopMembership (role CUSTOMER, status ACTIVE)
+ * linked to the Customer record, in one transaction.
  */
 export async function createCustomerAccount(
   shopId: string,
@@ -434,36 +499,23 @@ export async function createCustomerAccount(
         );
       }
 
-      let customer: Customer;
+      const found = await tx.customer.findFirst({
+        where: { id: data.customerId, shopId },
+      });
 
-      if (data.customerId) {
-        const found = await tx.customer.findFirst({
-          where: { id: data.customerId, shopId },
-        });
-
-        if (!found) {
-          throw new ServiceError("Customer not found.");
-        }
-
-        const linkedMembership = await tx.shopMembership.findFirst({
-          where: { customerId: data.customerId },
-        });
-
-        if (linkedMembership) {
-          throw new ServiceError("This customer already has an account.");
-        }
-
-        customer = found;
-      } else {
-        customer = await tx.customer.create({
-          data: {
-            name: data.name,
-            phone: data.phone,
-            note: null,
-            shopId,
-          },
-        });
+      if (!found) {
+        throw new ServiceError("Customer not found.");
       }
+
+      const linkedMembership = await tx.shopMembership.findFirst({
+        where: { customerId: data.customerId },
+      });
+
+      if (linkedMembership) {
+        throw new ServiceError("This customer already has an account.");
+      }
+
+      const customer = found;
 
       const user = await tx.user.create({
         data: {
@@ -497,7 +549,7 @@ export async function createCustomerAccount(
           accountType: user.accountType,
         },
         details: {
-          source: options.source ?? "self_registration",
+          source: options.source ?? "shopkeeper",
         },
       });
 

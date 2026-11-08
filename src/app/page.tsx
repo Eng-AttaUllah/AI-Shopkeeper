@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { SalesBarChart } from "@/components/reports/sales-bar-chart";
 import { StatCard } from "@/components/reports/stat-card";
@@ -14,7 +15,7 @@ import {
 import { formatDate, formatDateTime, formatPaisa } from "@/lib/format";
 import { formatQuantity } from "@/lib/quantity";
 import { readClientLocale, translate } from "@/lib/dictionary";
-import { requireShopkeeper } from "@/lib/require-user";
+import { requireActiveMembership } from "@/lib/require-user";
 import {
   inventoryValuePaisa,
   lowStockProducts,
@@ -45,7 +46,12 @@ export default async function Home() {
     console.error("Daily backup failed:", error);
   });
 
-  const { shop } = await requireShopkeeper();
+  const { shop, membership } = await requireActiveMembership();
+
+  // Customers have no shop operations; route them to their joined-shops view.
+  if (membership.role === "CUSTOMER") {
+    redirect("/shops");
+  }
 
   const [
     today,

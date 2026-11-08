@@ -691,26 +691,27 @@ Update this file after every meaningful implementation change.
 
 ## Current Goal
 
-- Phase 13 — the hosted multi-shop platform — is now the scheduled work. Unit 13.1 (docs
-  only) is complete; the owner decisions are recorded in the follow-up log above. Units
-  13.2–13.7 implement the schema, plumbing, accounts, joining, and hardening. Until 13.5
-  lands, existing logins and screens must keep working as they do today.
-- The code still ships the v1 single-shop model until the Phase 13 units land; build nothing
-  outside the Phase 13 unit list without an owner decision first.
+- Phase 13 — Multi-shop accounts: **13.1 (specification), 13.2 (schema, membership,
+  backfill), 13.3 (tenancy plumbing), 13.4 (required shopId, composite uniques,
+  accountType), and 13.5 (signup and accounts) Complete.** Phases 0–12 and their
+  follow-up units are complete on `main`.
+- The code now serves many shops via memberships; existing shopkeeper logins and screens
+  keep working, and customers can self-register at `/sign-up`. Until 13.6 lands, the
+  browse-and-join flow shows a "coming soon" placeholder; build nothing outside the
+  Phase 13 unit list without an owner decision first.
 
 ## Next Up
 
-- Unit 13.3: tenancy plumbing. Add the shop guards (`requireShopkeeper()`,
-  `requireCustomerShop(shopId)`) in `src/lib/require-user.ts`, then change every
-  `src/modules` query/service to require an explicit `shopId` and scope every `where`,
-  `groupBy`, duplicate check, and transaction with it — in slices (products/customers,
-  sales/expenses/cash, reports/audit/camera, assistant, UI call sites), each ending with
-  typecheck, lint, 232 tests, build, and a commit.
-- Then 13.4 (required `shopId`, composite uniques, `accountType`), 13.5 (signup and
-  accounts), 13.6 (discovery and joining), 13.7 (hardening).
+- Unit 13.6 — discovery and joining: shop search by name/shopkeeper username,
+  join requests (`PENDING` membership), shopkeeper approve/link/create/reject, customer
+  multi-shop khata (`/khata` lists joined shops), leaving/removal, and rate limiting on
+  signup/search/join requests.
+- Then 13.7 — hardening: full cross-shop isolation test matrix, rate-limit durability,
+  account-recovery decision, camera per-shop routing decision, docs sync, and full
+  verification.
 - Optional parallel polish still pending elsewhere: Pashto speaker review of the dictionary
-  strings (it must also cover the new Phase 13 strings when 13.5/13.6 add them); overnight
-  camera run to tune the motion threshold and cooldown; real-browser QA at 360px.
+  strings (it must also cover the new Phase 13 strings); overnight camera run to tune the
+  motion threshold and cooldown; real-browser QA at 360px.
 - The Phase 12 recommendation is GO for a hint-only feature after a multi-subject
   evaluation — that future feature is a new decision for the owner, not part of any
   current phase.

@@ -336,9 +336,10 @@ model AuditLog {
   proposalId String?  @unique
   createdAt  DateTime @default(now())
 
-  /// Owning shop (Phase 13, Invariant 13).
-  shopId String
-  shop   Shop   @relation(fields: [shopId], references: [id], onDelete: Restrict)
+  /// Owning shop (Phase 13). Nullable for actions that happen before a shop
+  /// context exists (for example customer self-registration).
+  shopId String?
+  shop   Shop?   @relation(fields: [shopId], references: [id], onDelete: Restrict)
 
   @@index([createdAt])
   @@index([entityType, entityId])

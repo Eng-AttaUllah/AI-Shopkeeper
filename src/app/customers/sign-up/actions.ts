@@ -3,8 +3,7 @@
 import { AuthError } from "next-auth";
 
 import { signIn } from "@/lib/auth";
-import { prisma } from "@/lib/db";
-import { createCustomerAccount } from "@/modules/customers/service";
+import { createCustomerUser } from "@/modules/customers/service";
 
 export type CustomerRegistrationState =
   | {
@@ -23,17 +22,7 @@ export async function customerRegistrationAction(
     password: formData.get("password"),
   };
 
-  // Single-shop transition: the new customer's ledger record belongs to the
-  // installation's shop until shopkeeper/customer joining is built in 13.5.
-  const shop = await prisma.shop.findFirst({ orderBy: { createdAt: "asc" } });
-
-  if (!shop) {
-    return {
-      error: "No shop is configured yet. Contact the platform operator.",
-    };
-  }
-
-  const result = await createCustomerAccount(shop.id, parsed);
+  const result = await createCustomerUser(parsed);
 
   if (!result.ok) {
     return {
@@ -42,13 +31,13 @@ export async function customerRegistrationAction(
     };
   }
 
-  // Sign the new customer in and send them straight to their khata. `signIn`
-  // throws a redirect error on success, which Next.js handles.
+  // Sign the new customer in. They have no shop yet; they can join one from
+  // /shops after signing in.
   try {
     await signIn("credentials", {
       username: result.data.user.username,
       password: String(formData.get("password") ?? ""),
-      redirectTo: "/customers/khata",
+      redirectTo: "/shops",
     });
   } catch (error) {
     if (error instanceof AuthError) {

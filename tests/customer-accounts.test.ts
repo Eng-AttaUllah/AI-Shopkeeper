@@ -7,6 +7,7 @@ import {
   createAccountForCustomer,
   createCustomer,
   createCustomerAccount,
+  createCustomerUser,
 } from "@/modules/customers/service";
 
 function expectOk<T>(result: Result<T>): T {
@@ -39,36 +40,31 @@ afterAll(async () => {
 });
 
 describe("customer accounts", () => {
-  it("self-registers a customer with a linked user account", async () => {
-    const { customer, user } = expectOk(
-      await createCustomerAccount(shopId, {
+  it("self-registers a customer with a user account", async () => {
+    const { user } = expectOk(
+      await createCustomerUser({
         name: "Ali Khan",
         phone: "0300 1234567",
         password: "secret-pass",
       }),
     );
 
-    expect(customer.name).toBe("Ali Khan");
-    expect(customer.phone).toBe("0300 1234567");
     expect(user.accountType).toBe("CUSTOMER");
     expect(user.username).toBe("03001234567");
     expect(user.passwordHash).not.toBe("secret-pass");
     expect(user.passwordHash.startsWith("$2")).toBe(true);
 
-    const membership = await prisma.shopMembership.findFirst({
-      where: { userId: user.id },
-      include: { customer: true },
+    const stored = await prisma.user.findUnique({
+      where: { id: user.id },
     });
 
-    expect(membership?.role).toBe("CUSTOMER");
-    expect(membership?.status).toBe("ACTIVE");
-    expect(membership?.customerId).toBe(customer.id);
-    expect(membership?.customer?.id).toBe(customer.id);
+    expect(stored?.accountType).toBe("CUSTOMER");
+    expect(stored?.username).toBe("03001234567");
   });
 
   it("signs in with the phone number and reports the CUSTOMER account type", async () => {
     expectOk(
-      await createCustomerAccount(shopId, {
+      await createCustomerUser({
         name: "Ali Khan",
         phone: "03001234567",
         password: "secret-pass",
@@ -82,12 +78,6 @@ describe("customer accounts", () => {
 
     expect(signedIn?.accountType).toBe("CUSTOMER");
 
-    const membership = await prisma.shopMembership.findFirst({
-      where: { userId: signedIn!.id },
-    });
-
-    expect(membership?.customerId).toBeTruthy();
-
     expect(
       await verifyCredentials({
         username: "03001234567",
@@ -98,7 +88,7 @@ describe("customer accounts", () => {
 
   it("signs in with a differently formatted phone number", async () => {
     expectOk(
-      await createCustomerAccount(shopId, {
+      await createCustomerUser({
         name: "Ali Khan",
         phone: "0300 1234567",
         password: "secret-pass",
@@ -115,14 +105,14 @@ describe("customer accounts", () => {
 
   it("rejects a phone number that is already registered", async () => {
     expectOk(
-      await createCustomerAccount(shopId, {
+      await createCustomerUser({
         name: "Ali Khan",
         phone: "03001234567",
         password: "secret-pass",
       }),
     );
 
-    const second = await createCustomerAccount(shopId, {
+    const second = await createCustomerUser({
       name: "Second Person",
       phone: "0300 123-4567",
       password: "another-pass",
@@ -133,7 +123,7 @@ describe("customer accounts", () => {
       expect(second.fieldErrors?.phone).toBeTruthy();
     }
 
-    expect(await prisma.customer.count()).toBe(1);
+    expect(await prisma.customer.count()).toBe(0);
     expect(await prisma.user.count()).toBe(1);
   });
 

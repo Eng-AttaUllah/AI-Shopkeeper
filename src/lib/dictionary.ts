@@ -653,6 +653,24 @@ const en: Dictionary = {
   "login.username": "Username",
   "login.password": "Password",
   "login.signInButton": "Sign in",
+  "login.newAccount": "New shopkeeper? Create your shop.",
+  "login.newCustomer": "New customer? Create your account.",
+  "signUp.title": "Create account",
+  "signUp.subtitle":
+    "Choose the kind of account you want. A shopkeeper creates and runs their shop; a customer joins shops to track their khata.",
+  "signUp.shopkeeper": "I run a shop",
+  "signUp.customer": "I’m a customer",
+  "signUp.haveAccount": "Already have an account?",
+  "shopkeeperSignup.title": "Create your shop",
+  "shopkeeperSignup.subtitle":
+    "Create your shopkeeper account and your shop in one step.",
+  "shopkeeperSignup.name": "Full name",
+  "shopkeeperSignup.username": "Username",
+  "shopkeeperSignup.shopName": "Shop name",
+  "shopkeeperSignup.password": "Password",
+  "shopkeeperSignup.registerButton": "Create shop & account",
+  "shopkeeperSignup.creating": "Creating shop…",
+  "shopkeeperSignup.haveAccount": "Already have an account?",
 
   // More page
   "more.moreTools": "More tools",
@@ -666,6 +684,16 @@ const en: Dictionary = {
   "more.backupsBody": "Make a copy of the shop database and see past backups.",
   "more.auditTitle": "Audit log",
   "more.auditBody": "See every money and stock change in one place.",
+  "shops.title": "Shops",
+  "shops.subtitle": "Browse and join shops to track your khata there.",
+  "shops.noShops": "You haven't joined any shops yet.",
+  "shops.noShopsHint":
+    "Ask a shopkeeper to invite you, or browse the shop directory once it's available.",
+  "shops.owner": "Owner",
+  "shops.customer": "Customer",
+  "shops.viewKhata": "View khata",
+  "shops.joinComingSoon":
+    "Browse and join more shops from this page (coming in the next update).",
 };
 
 const ps: Dictionary = {
@@ -822,6 +850,32 @@ const ps: Dictionary = {
   "settings.aboutVersion": "پړاوونه ۰–۱۲ بشپړ. انګلیسي او پښتو برخې.",
   "login.passwordChanged": "پسورد بدل شو. خپل نوی پسورد وکاروئ.",
   "login.signedOutEverywhere": "له هر چېرې ووتل. بیا ننوځئ.",
+  "login.newAccount": "نوی دوکاندار؟ خپل دوکان جوړئ.",
+  "login.newCustomer": "نوی مشتری؟ حساب جوړ کړئ.",
+  "signUp.title": "حساب جوړول",
+  "signUp.subtitle":
+    "د حساب جوړولې سي Sekti ... (placeholder, review needed)",
+  "signUp.shopkeeper": "د دوکان مالک شي",
+  "shopkeeperSignup.title": "خپل دوکان جوړول",
+  "shopkeeperSignup.subtitle":
+    "د دوکان مالک یوں ... (placeholder review needed)",
+  "shopkeeperSignup.name": "بشپړ نوم",
+  "shopkeeperSignup.username": "نوم",
+  "shopkeeperSignup.shopName": "د دوکان نوم",
+  "shopkeeperSignup.password": "پټنوم",
+  "shopkeeperSignup.registerButton": "دوکان او حساب جوړ کړئ",
+  "shopkeeperSignup.creating": "دوکان جوړیږي…",
+  "shopkeeperSignup.haveAccount": "لکه حساب لرئ؟",
+  "signUp.customer": "د مشتری حساب جوړول (placeholder review needed)",
+  "signUp.haveAccount": "لکه حساب لرئ؟",
+  "shops.title": "دوکانونه",
+  "shops.subtitle": "دukanونه واصل کولي نه dang khata تрекول ... (placeholder review needed)",
+  "shops.noShops": "Ta ダukan ورکول نه شول ... (placeholder review needed)",
+  "shops.noShopsHint": "... (placeholder review needed)",
+  "shops.owner": "مالک",
+  "shops.customer": "مشتری",
+  "shops.viewKhata": "حسابې وstal ... (placeholder review needed)",
+  "shops.joinComingSoon": "... (placeholder review needed)",
 };
 
 const DICTIONARIES: Record<Locale, Dictionary> = { en, ps };

@@ -15,9 +15,13 @@ import { auth } from "@/lib/auth";
 export default auth((request) => {
   const { nextUrl } = request;
   const isLoginPage = nextUrl.pathname === "/login";
-  const isSignUpPage = nextUrl.pathname === "/customers/sign-up";
+  const isSignUpPage =
+    nextUrl.pathname === "/customers/sign-up" ||
+    nextUrl.pathname === "/sign-up" ||
+    nextUrl.pathname.startsWith("/sign-up/");
   const isKhataPage = nextUrl.pathname === "/customers/khata";
   const isSettingsPage = nextUrl.pathname === "/settings";
+  const isShopsPage = nextUrl.pathname === "/shops";
   const isSignedIn = Boolean(request.auth);
   const user = request.auth?.user;
   const isCustomer = user?.accountType === "CUSTOMER";
@@ -25,7 +29,7 @@ export default auth((request) => {
   if (isLoginPage || isSignUpPage) {
     if (isSignedIn) {
       if (isCustomer) {
-        return NextResponse.redirect(new URL("/customers/khata", nextUrl));
+        return NextResponse.redirect(new URL("/shops", nextUrl));
       }
       return NextResponse.redirect(new URL("/", nextUrl));
     }
@@ -39,7 +43,7 @@ export default auth((request) => {
   }
 
   // Role-based routing
-  if (isCustomer && !isKhataPage && !isSettingsPage) {
+  if (isCustomer && !isKhataPage && !isSettingsPage && !isShopsPage) {
     return NextResponse.redirect(new URL("/customers/khata", nextUrl));
   }
 

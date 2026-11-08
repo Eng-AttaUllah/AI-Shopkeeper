@@ -79,7 +79,7 @@ export default async function LoginPage({
         <p className="mt-4 text-sm text-ink-muted text-center">
           {t("customerRegistration.newCustomer")}{" "}
           <Link
-            href="/customers/sign-up"
+            href="/sign-up"
             className="text-brand underline hover:text-brand-hover"
           >
             {t("customerRegistration.signUpLink")}
