@@ -2,10 +2,12 @@
 
 ## What this project is
 
-EasyShop — an offline-first shop management system for one small retail shop,
-running on a laptop and used from a phone browser on the shop's local network. Version 1 is
-English-only and covers products, stock, sales, customers and credit (khata), expenses,
-reports, and backups.
+EasyShop — a shop management system for small retail shops: products, stock,
+sales, customers and credit (khata), expenses, reports, and backups. Built
+through Phase 12 as a single-shop installation; Phase 13 (in progress) turns
+it into a hosted platform serving many independent shops, with shopkeeper and
+customer account types, shop discovery and joining, and strict per-shop data
+isolation until every screen, action, and test reaches the invariant.
 
 ## Read the specs first
 
@@ -64,10 +66,10 @@ npx prisma studio        # inspect the database
 
 ## Current state
 
-Phase 6 — the read-only assistant — and Phase 7 — signed sale, expense, khata repayment,
-customer, product, product-edit, and stock-adjustment proposals — are complete. Phase 8,
-Pashto support, is next. See `docs/progress-tracker.md` for the live task list and branch
-status.
+Phase 8 — Pashto support — and Phases 9–12 are complete, as are the settings and UI
+polish units. Phase 13, multi-shop accounts, is next: unit 13.1 (docs) is done, unit 13.2
+(schema, membership, backfill) follows. See `docs/progress-tracker.md` for the live task
+list and branch status.
 
 <!-- BEGIN:nextjs-agent-rules -->
 

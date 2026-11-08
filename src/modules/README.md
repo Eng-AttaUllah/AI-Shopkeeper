@@ -11,5 +11,7 @@ Each domain folder exposes three files:
 | `service.ts` | Mutations and business rules (owns transactions and invariants) |
 | `queries.ts` | Read-only database queries used by screens and reports |
 
-Planned domains: `products`, `sales`, `customers`, `reports`, `expenses`, and
-later `assistant`. See `docs/architecture.md`.
+Planned domains: `products`, `sales`, `customers`, `shops` (Phase 13: signup, membership,
+search, and join requests), `reports`, `expenses`, `cash`, and `assistant`. See
+`docs/architecture.md`. Every function here takes the shop id it operates on — tenant
+isolation is Invariant 13.

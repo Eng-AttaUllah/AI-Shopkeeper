@@ -53,9 +53,10 @@
 ## API Routes and Server Actions
 
 - Parse and validate input with Zod before any logic runs.
-- Enforce the session check and authorisation before any mutation. Call `requireUser()` at
-  the top of every server action and pass `session.user.username` to services that write
-  audit entries.
+- Enforce the session and authorisation before any mutation. Call `requireUser()`,
+  `requireShopkeeper()`, or `requireCustomerShop(shopId)` at the top of every server action,
+  resolve the shop from the membership, and pass `session.user.username` plus the shop to
+  services that write audit entries.
 - Return consistent, predictable response shapes; never leak stack traces or raw Prisma
   messages to the client.
 - Convert known database errors into user-readable messages (for example, insufficient stock
@@ -95,7 +96,8 @@
   receive the interface, not a vendor SDK. The adapter is configured by environment variables,
   and the API key never reaches the browser.
 - Validate the question, history, and every tool argument with Zod on the server. The
-  assistant server action also calls `requireUser()`.
+  assistant server action also calls `requireShopkeeper()` and resolves the shop from the
+  membership; tools read that shop from the server context and never from the model.
 - Never log secrets, API keys, full prompts, or shop figures. Log a provider failure on the
   server and return a short, safe message to the UI.
 - Chat history is not persisted. Phase 7 stores only nullable, unique proposal ids on `Sale`,
@@ -104,6 +106,28 @@
   documented retention and privacy decision.
 - Tests use a fake `ChatProvider`; no test may call a real AI endpoint. A provider or model
   change is configuration, not a code change, and `.env.example` stays blank by default.
+
+## Multi-tenancy
+
+Every business record belongs to exactly one shop (`shopId`), and tenant isolation is
+Invariant 13 in `docs/architecture.md`.
+
+- Every `src/modules/*/service.ts` and `queries.ts` function requires an explicit `shopId`
+  — never pass `null` or fall back to "the first shop". A module function that can operate
+  without a shop is a bug, not a convenience.
+- The shop id comes only from the signed-in user's `ShopMembership`, resolved server-side.
+  Never take it from a form field, query string, or URL parameter without first verifying
+  the membership.
+- Server actions and pages call `requireShopkeeper()` / `requireCustomerShop(shopId)` and
+  pass the resolved shop into the module. The customer's ledger link lives on
+  `ShopMembership.customerId`, never on the user.
+- Uniqueness is platform-wide only for usernames, proposal ids, and Auth.js records.
+  Product normalized names, barcodes, sale receipt numbers, and cash-check business dates
+  are unique per shop.
+- Never let the assistant see or choose a shop id: tools read the shop from the server
+  context, and proposal tokens are bound to user and shop.
+- Every new module behaviour gets a cross-shop isolation test: the same call against another
+  shop must fail without reading or writing there.
 
 ## Data and Storage
 

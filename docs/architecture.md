@@ -11,7 +11,7 @@
 | Validation | Zod | Validating every boundary: forms, route handlers, server actions |
 | Charts | Recharts | Sales and profit charts |
 | Tests | Vitest | Unit and integration tests for business logic |
-| Runtime | Node.js 22 on the shop's laptop | Hosts the app for the local network |
+| Runtime | Node.js 22 server (hosted; see Phase 13) | Hosts the app for the shops |
 | Future: camera | Python + OpenCV, separate process | Person/zone detection, clip capture, alert posting |
 | AI (Phases 6–7) | OpenAI-compatible adapter behind one interface, called with `fetch` | Answers read-only shop questions and prepares signed sale, expense, repayment, customer, product, and stock proposals that only the shopkeeper can confirm |
 
@@ -20,7 +20,8 @@
 - `src/app/` — Routing and screens only. Server components by default. Must not contain
   business rules or direct money calculations; it calls into `src/modules/`.
 - `src/modules/` — Business logic, one folder per domain (`products`, `sales`, `customers`,
-  `reports`, `expenses`, `cash`, `assistant`). Each folder exposes `schema.ts` (Zod),
+  `shops`, `reports`, `expenses`, `cash`, `assistant`). `shops` owns signup, shop creation,
+  membership, search, and join requests. Each folder exposes `schema.ts` (Zod),
   `service.ts` (mutations and rules), and `queries.ts` (reads); the assistant also owns its
   read-only tool registry, range resolver, and signed proposal tools. Owns all
   invariants. Auth is infrastructure, not a domain module: its config and credential rules
@@ -43,10 +44,14 @@ from `app`, and `lib` never imports from `modules`.
 ## Storage Model
 
 - **SQLite database (`prisma/dev.db` in development, `prisma/prod.db` in production)**:
-  all users, products, aliases, customers, sales, sale items, payments, expenses, stock
-  movements, audit logs, settings, and cash-reconciliation records.
+  all users, shops, memberships, products, aliases, customers, sales, sale items, payments,
+  expenses, stock movements, audit logs, settings, and cash-reconciliation records. Business
+  rows are shop-scoped by `shopId` from Phase 13 so one server serves many isolated shops.
 - **`backups/`**: timestamped copies of the database file, produced daily and on demand.
-  Retention: keep the last 30 daily backups.
+  Retention: keep the last 30 daily backups. A backup or restore always covers the whole
+  database — every shop together; there is no per-shop export or restore. On a hosted server,
+  daily backup copies must also leave the server (off-server storage), because the server
+  disk is the only location the database lives on.
 - **Expenses, audit logs, and cash-reconciliation records** are append-only or per-shop-day
   snapshots: expenses are never edited, audit rows are never updated, and a cash check is
   upserted once per business date.
@@ -102,36 +107,68 @@ from `app`, and `lib` never imports from `modules`.
 ## Auth and Access Model
 
 - Every user signs in with username and password through Auth.js Credentials. Passwords are
-  stored only as bcrypt hashes in `src/lib/credentials.ts`. The shopkeeper owner account is
-  seeded from `.env`; customers may self-register at `/customers/sign-up`, where the phone
-  number becomes the username. The shopkeeper can also create a customer account from the
-  customer detail page. There is no shopkeeper self-registration.
+  stored only as bcrypt hashes in `src/lib/credentials.ts`.
+- **Account types** are chosen at signup and are never changed in-app: `SHOPKEEPER` (creates
+  and runs exactly one shop) and `CUSTOMER` (participates in shops they join).
+  `User.accountType` stores it (Phase 13; v1's `User.role` folds into it).
+- **Membership, not account type alone, grants shop access.** `ShopMembership` links a user
+  and a shop with a role (`OWNER`, `CUSTOMER`; `CASHIER` reserved for later) and a status
+  (`PENDING`, `ACTIVE`, `REMOVED`). The `CUSTOMER` role carries the unique link
+  (`ShopMembership.customerId`) to that shop's ledger `Customer` record. v1's
+  `User.customerId` moved here in Phase 13.
 - Auth.js requires JWT session strategy with the Credentials provider. Sessions are signed
-  cookies with an 8-hour lifetime, refreshed while the shopkeeper is active; a
-  `tokenVersion` on the user invalidates sessions when a password changes. The JWT callback
-  re-reads the user so a deleted user or a changed `tokenVersion` signs the session out.
+  cookies with an 8-hour lifetime, refreshed while the user is active; a `tokenVersion` on
+  the user invalidates sessions when a password changes. The JWT callback re-reads the user
+  so a deleted user or a changed `tokenVersion` signs the session out. **The token carries
+  the account type and no shop id**: the shop context is resolved per request from the
+  membership, so a stale or forged shop context is impossible.
+- Guards live in `src/lib/require-user.ts`: `requireUser()` (any signed-in user),
+  `requireShopkeeper()` (resolves the user's `ACTIVE` `OWNER` membership and shop, or
+  redirects), and `requireCustomerShop(shopId)` (verifies an `ACTIVE` `CUSTOMER` membership
+  and returns the linked customer). Pages and actions resolve the shop this way — never from
+  a form field, query string, or URL.
 - `src/proxy.ts` (Next.js 16's replacement for `middleware.ts`) protects every route except
-  `/login`, `/customers/sign-up`, the Auth.js endpoints, and static assets. Unauthenticated
-  requests are redirected to `/login` with the original path in `from`. Signed-in `CUSTOMER`
-  users are redirected to `/customers/khata` from every other page, and shopkeeper-only users
-  are redirected away from `/customers/khata`.
-- The system is single-tenant: it serves exactly one shop. Ownership is implicit — every
-  business record belongs to that shop. `settings` holds the shop identity.
-- `User.role` is `OWNER`, `CASHIER`, or `CUSTOMER`. v1 seeds one `OWNER`. `CASHIER` is
-  reserved for a later phase. `CUSTOMER` users are view-only: they can read their own khata
-  (balance, credit sales, repayments) and nothing else. `User.customerId` links a `CUSTOMER`
-  user to exactly one `Customer` record (unique, nullable).
-- The seed reads `OWNER_USERNAME`, `OWNER_PASSWORD`, and `OWNER_NAME` from `.env`. Re-running
-  the seed with a different password updates the hash and increments `tokenVersion`.
+  `/login`, `/sign-up`, the Auth.js endpoints, and static assets. Unauthenticated requests
+  are redirected to `/login` with the original path in `from`. Signed-in `CUSTOMER` users
+  are redirected to `/khata` from every other page, and shopkeeper-only users are redirected
+  away from customer-only pages. The proxy is an optimistic gate only.
+- **Signup** (`/sign-up`, Phase 13): the account-type chooser leads to a shopkeeper form
+  (name, username, password, shop name) that creates the user, the shop, and the `OWNER`
+  membership in one transaction, or a customer form (name, phone as username, password) that
+  creates the user only. Rate limiting protects signup, sign-in, shop search, and join
+  requests on the hosted deployment.
+- `User.username` is unique across the platform; `SHOPKEEPER` usernames double as each
+  shop's public handle for discovery. Customer usernames are the phone number, normalised
+  as before.
+- **Tenant isolation (Invariant 13).** One deployment serves many independent shops with
+  strict per-shop separation: every business read and write is scoped by a shop id resolved
+  from the signed-in user's membership — never from user input, never a "first shop"
+  fallback. A shopkeeper can never reach another shop; a customer can never see another
+  customer's ledger or any shop operations.
+- **Data boundary.** The shopkeeper manages their shop's ledger (credit sales, repayments)
+  and the shop-scoped `Customer` record (name, phone, note). The customer's login account —
+  profile, username, password — belongs to the customer and is not editable by the
+  shopkeeper.
+- The seed reads `OWNER_USERNAME`, `OWNER_PASSWORD`, and `OWNER_NAME` from `.env` and stays
+  idempotent: it creates or updates the owner and now also creates the shop's `OWNER`
+  membership if missing (Phase 13). Re-running the seed with a different password updates
+  the hash and increments `tokenVersion`.
 - All mutations happen on the server (server actions or route handlers). The browser never
   talks to the database, and no database credentials are exposed to the client.
 - Server-side code enforces authorisation on every mutation: every server action calls
-  `requireUser()` (any signed-in user) or `requireOwner()` (shopkeeper-only) before changing
+  `requireUser()`, `requireShopkeeper()`, or `requireCustomerShop(shopId)` before changing
   data. The proxy is an optimistic gate only. Hiding a button in the UI is never treated as
   access control. A `CUSTOMER` must never reach a shopkeeper mutation.
-- The audit actor is the signed-in username. The service functions accept an optional actor
-  that defaults to `local`, so tests and seed code can run outside a session; server actions
-  pass `session.user.username`.
+- The audit actor is the signed-in username and every audit row carries the shop it
+  belongs to. Service functions accept the context, so tests and seed code can run outside
+  a session; server actions pass `session.user.username`.
+- **Deployment (Phase 13).** The platform runs on a hosted Node server reached over the
+  internet: HTTPS termination in front of the app, secure session cookies, and daily backup
+  copies stored off the server. The shop-laptop CD workflow remains for the v1
+  installation until the hosted deployment replaces it.
+- Login identity: username, not email. There is no email verification and no reset email;
+  account recovery on a shared server needs its own decision (progress-tracker.md Open
+  Questions).
 
 ## Assistant (Phases 6–7)
 
@@ -158,10 +195,13 @@ stock adjustment**, but only the signed-in shopkeeper can confirm it.
   `recent_sales`, `expenses_summary`, and `expected_cash`. Each returns figures derived from
   the same queries the screens use, formatted with `src/lib/format.ts`. The model is told to
   quote those figures exactly and never to estimate.
-- **Server-side orchestration.** `answerShopQuestion` builds the system prompt, adds at most
-  six prior turns, and runs at most four model rounds and eight tool calls. Provider errors
-  become a short, safe message; the details are logged on the server. The server action calls
-  `requireUser()` and re-validates the question and history with Zod.
+- **Server-side orchestration.** `answerShopQuestion` resolves the shop from the signed-in
+  user's `OWNER` membership, builds the system prompt, adds at most six prior turns, and
+  runs at most four model rounds and eight tool calls. The tools read the shop from the
+  server context — the model never sees or chooses a shop id — and every query is
+  shop-scoped. Provider errors become a short, safe message; the details are logged on the
+  server. The server action calls `requireShopkeeper()` and re-validates the question and
+  history with Zod.
 - **No chat persistence.** Conversation history is client state for the open page only. There
   is no chat table. Phase 7 adds only nullable, unique proposal ids on `Sale`, `Expense`,
   `Payment`, `Customer`, `Product`, and `StockMovement`, plus a nullable unique proposal id on
@@ -199,9 +239,9 @@ stock adjustment**, but only the signed-in shopkeeper can confirm it.
   and no URL or automatic retry writes the record.
 - **Signed, short-lived, user-bound.** Each payload contains the exact draft and the preview
   the shopkeeper saw. It is signed with a purpose-specific key derived from `AUTH_SECRET`
-  (HMAC-SHA256), bound to the signed-in user id, and expires after 15 minutes. The proposal is
-  not stored; the resulting row stores the proposal id, except a product edit, which stores it
-  on its audit row.
+  (HMAC-SHA256), bound to the signed-in user id **and the shop it belongs to**, and expires
+  after 15 minutes. The proposal is not stored; the resulting row stores the proposal id,
+  except a product edit, which stores it on its audit row.
 - **One transaction, exact preview.**
   - **Sale:** `confirmSaleProposalAction` verifies the token, then calls
     `createSaleWithStatus` with `proposalId` and `expectedPreview`. The sale service re-prices
@@ -260,7 +300,8 @@ stock adjustment**, but only the signed-in shopkeeper can confirm it.
    reference to its source record.
 7. Every mutation that changes money or stock writes an audit-log entry with actor, action,
    entity, entity id, before, and after values. The actor is the signed-in username; rows
-   written before sign-in existed use `local`.
+   written before sign-in existed use `local`. From Phase 13 the entry also carries the shop
+   the change belongs to; legacy rows are backfilled.
 8. All external input is validated with Zod on the server before any logic runs. Client-side
    validation exists only for user experience.
 9. The database is the single source of truth. No derived figure is cached unless it can be
@@ -280,3 +321,12 @@ stock adjustment**, but only the signed-in shopkeeper can confirm it.
     re-validates an expense, re-reads the khata balance for a payment, compares a product's
     signed before-state, or re-reads current stock for an adjustment inside the transaction and
     rejects a stale preview.
+13. **Tenant isolation (Phase 13).** Every business record belongs to exactly one shop, and
+    every read or write of business data is scoped by a shop id resolved from the signed-in
+    user's `ShopMembership` — never from user input, never a "first shop" fallback, and
+    never a hidden default inside a module function. Uniqueness that v1 treated as global
+    (product normalized name, barcode, sale number, cash-check business day) is enforced per
+    shop. A cross-shop request fails as not-found or forbidden and writes nothing. The
+    customer role's `ShopMembership.customerId` is the only link between a login account and
+    a shop's ledger; the customer's profile and password are never editable through a shop
+    they do not own.

@@ -4,26 +4,17 @@ Update this file after every meaningful implementation change.
 
 ## Current Phase
 
-- Phase 7 — Assistant proposals: **Complete** (sales, expenses, khata repayments, customer
-  creation, product creation, product edits, and stock adjustments)
+- Phase 13 — Multi-shop accounts: **13.1 (specification) Complete; 13.2 next.** Phases 0–12
+  and their follow-up units are complete on `main`.
 
 ## Current Goal
 
-- Nothing in progress. Phase 7.2 customer, product, and stock proposals are complete and
-  verified locally. The assistant can prepare a signed sale, expense, khata repayment,
-  customer, new product, product edit, or stock adjustment; only the signed-in shopkeeper can
-  confirm it. Next is Phase 8 — Pashto support, unless the owner first asks to extend Phase 7
-  further, for example customer edits or product activation.
-- Phase 7.2 customer, product, and stock proposals are complete and
-  verified locally. The assistant can prepare a signed sale, expense,
-  khata repayment, customer, new product, product edit, or stock
-  adjustment; only the signed-in shopkeeper can confirm it.
-
-  All PRs in the stack are now merged into `main`:
-  - PR #1: sale proposals (Phase 7)
-  - PR #2: expense and payment proposals (Phase 7.1)
-  - PR #3: customer, product, and stock proposals (Phase 7.2)
-  - PR #4: Pashto support (Phase 8)
+- Phase 13.1 wrote the multi-shop specification into the docs (owner decisions recorded
+  2026-11-08: central deployment, account types at signup, approval-based joining,
+  ledger-only shop reach into customer data, SQLite retained). Nothing is implemented yet;
+  the code still serves exactly one shop and all 232 tests pass. Next unit: **13.2** — add
+  `ShopMembership`, nullable `shopId` columns, and the idempotent backfill migration, with
+  `User.customerId` kept until unit 13.4 drops it. Every commit stays buildable and green.
 
 ## Completed
 
@@ -624,6 +615,26 @@ Update this file after every meaningful implementation change.
 - The logo exploration assets (`logo/`, 480 KB — six archived concepts plus the three EasyShop
   Book-E variants, lockups, previews, and `preview.html`) are committed so the work is
   preserved. The EasyShop rename is still a separate, unstarted unit.
+- Follow-up (2026-11-08, owner request): **Phase 13 — Multi-shop accounts — planned and the
+  specification written into the docs (no code yet).** The product pivots from a
+  single-tenant, offline-first installation to a hosted platform serving many independent
+  shops. Owner decisions recorded on 2026-11-08: (1) one central deployment — customers will
+  search shops by shop name or the shopkeeper's username, so shops need an internet
+  connection and the v1 "one laptop, no internet" promise is retired; (2) account type
+  (shopkeeper or customer) chosen at signup, one type per account, a shopkeeper owning
+  exactly one shop; (3) joining by request → shopkeeper approval → link to an existing or
+  new shop-scoped ledger `Customer` record, so nobody can claim another person's khata;
+  (4) the shopkeeper manages the ledger and the shop-scoped contact record, while the
+  customer owns their login/profile/password; (5) SQLite retained with a recorded
+  PostgreSQL threshold (see Architecture Decisions). Unit 13.1 updated
+  `project-overview.md` (Overview, Goals, Core User Flow, Authentication features, phases,
+  Scope, Success criterion 11, new Phase 13 section), `architecture.md` (hosted runtime,
+  `shops` module, storage/auth sections rewritten, Invariant 13, assistant shop binding),
+  `code-standards.md` (new Multi-tenancy section, guard rules),
+  `ui-context.md` (sign-up chooser, customer areas), `README.md`, and this file.
+  Implementation units are 13.2 schema+membership+backfill, 13.3 tenancy plumbing in module
+  slices, 13.4 required `shopId` with composite uniques and `accountType`, 13.5 signup and
+  accounts, 13.6 discovery and joining, 13.7 hardening (isolation tests, rate limiting).
 - Follow-up (2026-11-07, owner request): the theme moved to a **white base** — page and cards
   are both white (`--bg-base`), separated by the hairline border plus a soft `--card-shadow`
   (applied automatically to the standard `rounded-xl border border-line bg-surface` card).
@@ -667,20 +678,27 @@ Update this file after every meaningful implementation change.
   Account, Security, and About sections; header hamburger menu; owner password rotated to
   the value in `.env`). Section bar active state: **Complete**. White-base palette with teal
   + money amber + mint accents: **Complete**. Renamed to **EasyShop**: **Complete**.
+  Phase 13.1 (multi-shop specification in the docs): **Complete**.
 
 ## Current Goal
 
-- Phase 0 through Phase 12 are complete on `main`, plus the settings unit. Remaining work
-  is polish (real-browser QA at 360px, Pashto review, overnight camera tuning) or new
-  decisions (the Phase 12 follow-up feature, multi-shop v2, cashier role).
-- Build nothing outside this scope without an owner decision first.
+- Phase 13 — the hosted multi-shop platform — is now the scheduled work. Unit 13.1 (docs
+  only) is complete; the owner decisions are recorded in the follow-up log above. Units
+  13.2–13.7 implement the schema, plumbing, accounts, joining, and hardening. Until 13.5
+  lands, existing logins and screens must keep working as they do today.
+- The code still ships the v1 single-shop model until the Phase 13 units land; build nothing
+  outside the Phase 13 unit list without an owner decision first.
 
 ## Next Up
 
-- Real-browser QA at 360px on the phone (in progress): owner sign-in now uses the new
-  password from `.env`; every device was signed out by the rotation, so sign in again.
-- Optional: Pashto speaker review of the dictionary strings; overnight camera run to tune
-  the motion threshold and cooldown.
+- Unit 13.2: `ShopMembership` model, nullable `shopId` on every business table, the
+  idempotent backfill migration (from the existing shop, plus `OWNER`/`CUSTOMER`
+  memberships), and seed updates. Existing tests stay green.
+- Then 13.3 (tenancy plumbing), 13.4 (required `shopId`, composite uniques, `accountType`),
+  13.5 (signup and accounts), 13.6 (discovery and joining), 13.7 (hardening).
+- Optional parallel polish still pending elsewhere: Pashto speaker review of the dictionary
+  strings (it must also cover the new Phase 13 strings when 13.5/13.6 add them); overnight
+  camera run to tune the motion threshold and cooldown; real-browser QA at 360px.
 - The Phase 12 recommendation is GO for a hint-only feature after a multi-subject
   evaluation — that future feature is a new decision for the owner, not part of any
   current phase.
@@ -711,12 +729,29 @@ Update this file after every meaningful implementation change.
   signs in.
 - Should assistant answers be saved for review? Phase 6 deliberately keeps history in the
   browser only; a saved transcript would need a retention and privacy decision.
-- Multi-shop / social accounts (post-v1): everyone registers their own shop; customers can
-  join a specific shop to track their debt/khata there; account type is decided at account
-  creation. This contradicts the current single-tenant, single-shop invariant in
-  architecture.md and, when scheduled, would add shopId to every business table, a shop
-  registration/login flow, and customer invite/join flows. Capture as a v2 scope item, not a
-  v1 change: v1 stays one shop, one laptop.
+- ~~Multi-shop / social accounts (post-v1)~~ **Resolved (2026-11-08):** scheduled as
+  Phase 13; the owner chose a central deployment, account types at signup, approval-based
+  joining, and a ledger-only shop reach into customer data. The spec lives in
+  `project-overview.md` Phase 13; implementation units are in this file's Current Goal.
+- Phase 13 open decisions (record before or during 13.2–13.7):
+  - Account recovery: there is no email, so how does a shopkeeper reset a forgotten password
+    on a shared server? Recommendation: a server-side admin CLI (`npm run admin:reset -- <username>`)
+    or a seeded platform-admin account, decided before 13.7.
+  - Rate-limit shape: in-memory per-IP limits (lost on restart) are the minimum; anything
+    durable (Redis-backed) adds infrastructure. Recommendation: in-memory limits on login,
+    signup, search, and join requests in 13.7.
+  - Shop display names are not unique — the shopkeeper's username is the canonical handle.
+    Should two shops be allowed to share a display name? Recommendation: yes, disambiguated
+    by the owner username in search results.
+  - Should a `PENDING` request show the requestor's username and display name to the
+    shopkeeper? (Needed for manual identification; decide before 13.6.)
+  - Camera on a shared server: `CAMERA_SHOP_ID` selects one shop for the intake route.
+    Per-shop camera tokens are deferred; revisit when a second shop tries to use a camera.
+  - Backups stay whole-database (all shops); is per-shop export ever needed? Deferred.
+  - Does a customer leaving a shop keep their ledger record visible to the shopkeeper?
+    Recommendation: yes — membership `REMOVED`, ledger untouched.
+  - Customer password reset (Phase 10 open question, still open) matters more now that
+    accounts are created by the customer, not only the shopkeeper.
 - Should Phase 7 expand further to customer edits, product activation/deactivation, or customer
   deletion? Each needs its own explicit-confirmation design; the current slice is sales,
   expenses, khata repayments, customer creation, product creation, product edits, and stock
@@ -761,17 +796,22 @@ Update this file after every meaningful implementation change.
 
 ## Architecture Decisions
 
-- **SQLite instead of PostgreSQL.** The shop runs offline on one laptop with no database
-  server to install, operate, or maintain, and a backup is a single file copy. PostgreSQL is
-  revisited only if multiple devices or shops must share data.
+- **SQLite instead of PostgreSQL.** No database server to install, operate, or maintain, and
+  a backup is a single file copy. Chosen for v1 and retained for Phase 13: one Node server
+  process serving a modest number of small shops stays inside one SQLite file's comfort
+  zone in WAL mode. Revisit threshold (decided 2026-11-08): PostgreSQL is required before
+  opening the platform widely, when a second app server or worker process appears, or when
+  shop count or write volume exceeds what one file handles.
 - **Money stored as integer paisa.** Avoids floating-point rounding errors in every total,
   and removes the need for a decimal type that SQLite does not provide.
 - **Auth.js (NextAuth) v5 with the Credentials provider and JWT sessions.** Implemented in
   Phase 5.5. The Credentials provider requires JWT sessions, so sessions are signed cookies
   rather than database rows; a `tokenVersion` field invalidates them after a password change.
   `next-auth@5.0.0-beta.32` is the current v5 release and supports Next 16.
-- **Username, not email, is the login identifier.** A single shop does not need email
-  verification or password-reset email; the owner account is seeded from `.env`.
+- **Username, not email, is the login identifier.** No email verification and no
+  password-reset email exist; the v1 owner account is seeded from `.env` and Phase 13
+  customers use their phone. Forgotten-password recovery on a shared server is an open
+  question (see Open Questions) and needs a decision before Phase 13.7.
 - **The proxy is an optimistic gate; server actions enforce the session.** `src/proxy.ts`
   (Next 16's name for middleware) redirects signed-out requests, and every mutation calls
   `requireUser()` before touching data. Phase 10 adds `requireOwner()` for shopkeeper-only
@@ -783,13 +823,20 @@ Update this file after every meaningful implementation change.
 - **Auth configuration and credential rules live in `src/lib`.** Auth is cross-cutting
   infrastructure, not a business domain, so `src/lib/auth.ts` and `src/lib/credentials.ts`
   own it and `src/modules` stays free of Auth.js imports.
-- **The owner password is configured in `.env`.** `npm run db:seed` creates or updates the
-  owner and increments `tokenVersion` when the password changes. This is a laptop-only
-  operation until an in-app password screen is scheduled.
-- **No cloud auth or cloud database.** Clerk and hosted Postgres were rejected because the
-  shop must keep working without internet.
-- **Single tenant, single shop.** One installation serves one shop. Ownership is implicit, and
-  every record belongs to that shop through `settings`.
+- **The seeded owner password is configured in `.env`.** `npm run db:seed` creates or
+  updates the first shop's owner and increments `tokenVersion` when the password changes.
+  From Phase 13, other shopkeepers self-register and change their password in-app;
+  recovery without email is an open question.
+- **No cloud auth, identity, or database service.** Clerk and hosted Postgres were rejected
+  in v1 because the shop must keep working. Phase 13 moves hosting to a public server, but
+  the app still owns its own identity (Auth.js + bcrypt) and its own SQLite file; only
+  standard server hosting is introduced.
+- **Single tenant, single shop (v1).** Superseded on 2026-11-08 by **Phase 13: multi-tenant
+  platform.** One hosted deployment serves many independent shops; every business table
+  carries `shopId`, `ShopMembership` links users to shops with a role and status,
+  v1's globally-unique constraints became per-shop composites, and Invariant 13 (tenant
+  isolation) was added to `architecture.md`. See the Auth and Access Model there for the
+  account types, guards, and join flow.
 - **English-only interface for v1.** Pashto, RTL, and translation layers are deferred to
   Phase 8. Business text is stored in the database, so adding translations later is additive.
 - **Module layout `schema.ts` / `service.ts` / `queries.ts` per domain.** Keeps business rules

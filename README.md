@@ -2,15 +2,18 @@
 
 [![CI](https://github.com/Eng-AttaUllah/AI-Shopkeeper/actions/workflows/ci.yml/badge.svg)](https://github.com/Eng-AttaUllah/AI-Shopkeeper/actions/workflows/ci.yml)
 
-Offline-first shop management for a single small retail shop. Runs on a laptop
-and is used from a phone browser on the shop's local network — no internet
-connection required.
+Shop management for small retail shops: products and stock, sales, customers
+and credit (khata), expenses, reports, and backups. Built through Phases 0–12
+as a single-shop installation. Phase 13 — the current build target — turns
+EasyShop into a hosted platform serving many independent shops: shopkeepers
+register their shop, and customers find it by name or by the shopkeeper's
+username and join it to see only their own khata (see
+`docs/project-overview.md`, Phase 13).
 
-Version 1 is English-only and covers products and stock, sales, customers and
-credit (khata), expenses, reports, and backups. Phase 6 adds an optional
-assistant that answers questions about the shop's real figures. Phase 7 lets it
-prepare a sale, expense, khata repayment, customer, product, product edit, or
-stock adjustment proposal; nothing is saved until the shopkeeper confirms it.
+Phase 6 adds an optional assistant that answers questions about the shop's real
+figures. Phase 7 lets it prepare a sale, expense, khata repayment, customer,
+product, product edit, or stock adjustment proposal; nothing is saved until the
+shopkeeper confirms it.
 
 ## Requirements
 
@@ -125,13 +128,16 @@ The specification is the source of truth:
 
 Phases 0–5.5 (the sellable v1) are complete: products and stock, sales, customers and credit,
 dashboard and reports, expenses and net profit, voiding, an audit log, end-of-day cash
-reconciliation, backups, and username/password sign-in. Phase 6 adds the read-only assistant.
-Phase 7 adds signed sale, expense, khata repayment, customer, product, product-edit, and
-stock-adjustment proposals with explicit shopkeeper confirmation. 200 tests pass.
+reconciliation, backups, and username/password sign-in. So are the later phases: Phase 6
+(read-only assistant), Phase 7 (confirmed proposals), Phase 8 (Pashto with RTL), Phase 9
+(voice input), Phase 10 (customer khata accounts), Phase 11 (camera alerts), and Phase 12
+(face-recognition research spike). 232 tests pass.
 
-Sign-in is required, and every money or stock change records the signed-in owner as the audit
-actor. Next: Phase 8 — Pashto support, unless Phase 7 is extended further, for example to
-customer edits or product activation.
+Sign-in is required, and every money or stock change records the signed-in user as the audit
+actor. Next: **Phase 13 — multi-shop accounts** (specification in
+`docs/project-overview.md`; unit plan in `docs/progress-tracker.md`). Until its units land,
+the code serves exactly one shop. From Phase 13 on, shops reach the app over a hosted server
+rather than a laptop, and account type (shopkeeper or customer) is chosen at signup.
 
 ## Sign-in and passwords
 
@@ -143,7 +149,12 @@ The seed creates one `OWNER` account from `.env`:
 
 To change the owner password, edit `OWNER_PASSWORD` in `.env` and run `npm run db:seed` again.
 The seed updates the hash and increments the user's `tokenVersion`, so existing sessions are
-signed out. There is no in-app password screen yet; this needs access to the laptop.
+signed out. Self-service passwords (Settings → Security) work for every account, including
+this one.
+
+From Phase 13, other shopkeepers self-register at `/sign-up` (creating their own shop), and
+customers register themselves or are invited through the shop-search join flow. The seeded
+owner remains the first shop's owner, so existing installations keep working.
 
 ## Assistant (optional)
 
@@ -225,4 +236,5 @@ To restore:
 3. Start the app and check the dashboard.
 
 A backup on the same laptop does not survive theft or disk failure. Copy one to a USB drive or
-another computer regularly.
+another computer regularly. From Phase 13, the database lives on the hosted server — keep the
+daily backup copies somewhere other than that server's disk.

@@ -2,21 +2,45 @@
 
 ## Overview
 
-EasyShop is an offline-first shop management system for a single small
-retail shop. It replaces the paper register and the handwritten credit book (khata) with a
-fast, phone-friendly application: the shopkeeper records sales in seconds, keeps stock and
-prices accurate, tracks customer credit without losing a single entry, and sees sales and
-profit reports that can be trusted.
+EasyShop is a shop management system for small retail shops. It replaces the paper register
+and the handwritten credit book (khata) with a fast, phone-friendly application: the
+shopkeeper records sales in seconds, keeps stock and prices accurate, tracks customer credit
+without losing a single entry, and sees sales and profit reports that can be trusted.
 
-Version 1 is **English-only** and runs entirely on one laptop on the shop's local network.
-No internet connection and no paid cloud service are required. Customers, products, sales,
-credit, and reports all live in a single local database that is backed up daily.
+One hosted server serves many independent shops (Phase 13). Each shopkeeper has their own
+EasyShop account and owns exactly one shop; a customer has their own account, finds a shop by
+its name or by the shopkeeper's username, and joins it to see only their own khata. No
+shopkeeper can reach another shop's data, and no customer can see another customer's ledger
+or any shop operations. Business data lives in one server database, scoped per shop, and is
+backed up daily.
 
-Phase 6 adds an English assistant that answers shop questions from real database figures.
-Phase 7 lets it prepare a sale, expense, khata repayment, customer, product, product edit, or
-stock adjustment proposal; the proposal is saved only when the shopkeeper explicitly confirms
-it. Later phases add Pashto language support, voice input, and camera-based suspicious-activity
-alerts. Those are explicitly out of scope for v1 and must not be built early `(see Scope)`.
+The interface is English with Pashto support. Phase 6 adds an English assistant that answers
+shop questions from real database figures. Phase 7 lets it prepare a sale, expense, khata
+repayment, customer, product, product edit, or stock adjustment proposal; the proposal is
+saved only when the shopkeeper explicitly confirms it. Later phases schedule voice input
+(Phase 9), camera alerts (Phase 11), a face-recognition research spike (Phase 12), and
+multi-shop accounts (Phase 13).
+
+> **Implementation status.** Phases 0–12 are built and running as a single-tenant
+> installation (one shop per server). Phase 13 is specified here and scheduled next; the
+> multi-shop behaviour described in this document becomes real unit by unit as Phase 13
+> lands. Until then, `docs/progress-tracker.md` holds the live task list. Because the
+> platform is now hosted, shops need an internet connection from Phase 13 onward — the v1
+> "one laptop, no internet" model is retired by that phase.
+
+## Goals
+
+1. Record a complete sale — items, quantities, discount, and payment type — in under
+   30 seconds on a phone screen.
+2. Never lose a credit record: every credit sale and every repayment is stored, reversible,
+   and auditable.
+3. Ensure every reported figure reconciles with the physical cash drawer at end of day.
+4. Achieve zero data loss: an automatic daily backup exists and has been restored once in
+   testing.
+5. Keep stock accurate: stock can never go negative, and every change has a recorded reason.
+6. Keep shops isolated: every read and write of business data is scoped to exactly one shop,
+   so no shopkeeper can ever reach another shop's data and no customer can ever see another
+   customer's ledger.
 
 ## Goals
 
@@ -31,28 +55,50 @@ alerts. Those are explicitly out of scope for v1 and must not be built early `(s
 
 ## Core User Flow
 
-1. The shopkeeper signs in with a username and password.
-2. The dashboard opens: today's sales, low-stock items, and total outstanding credit.
-3. The shopkeeper adds products with name, unit, cost price, sale price, and opening stock.
-4. During the day, the shopkeeper sells: selects items, sets quantity, applies an optional
+1. Account types are chosen when an account is created (Phase 13): **I run a shop**
+   (shopkeeper) or **I'm a customer**. One type per account; a shopkeeper account owns
+   exactly one shop.
+2. A new shopkeeper signs up, creates their shop with a name, and adds products with name,
+   unit, cost price, sale price, and opening stock.
+3. A customer signs up with a name, phone, and password; the phone is their username.
+4. To join a shop, the customer searches for it by shop name or by the shopkeeper's username
+   and sends a join request. The shopkeeper approves it and links the request to an existing
+   customer ledger record (matched by phone) or creates one. Until then the customer sees
+   nothing of the shop.
+5. The shopkeeper signs in with a username and password and lands on the dashboard: today's
+   sales, low-stock items, and total outstanding credit for their shop.
+6. During the day, the shopkeeper sells: selects items, sets quantity, applies an optional
    discount, chooses **Cash** or **Credit**, and confirms.
-5. If the buyer is new and buying on credit, the shopkeeper creates a customer record with a
-   name and optional phone number, then attaches the sale to that customer.
-6. When a customer pays part or all of what they owe, the shopkeeper records a repayment.
-7. At any time the shopkeeper reviews reports: daily, monthly, and yearly sales, sales and
-   profit for a single item, top-selling items, and low-stock items.
-8. At end of day the shopkeeper enters the counted cash; the app shows the expected amount
-   and any difference.
-9. A daily backup of the database is written automatically, and the shopkeeper can also
-   trigger one manually.
+7. If the buyer is new and buying on credit, the shopkeeper creates a customer ledger record
+   with a name and optional phone number, then attaches the sale to that customer.
+8. When a customer pays part or all of what they owe, the shopkeeper records a repayment.
+9. The customer opens **My khata** and sees, for each joined shop, the outstanding balance,
+   credit sales, and repayments — and nothing else about that shop.
+10. At any time the shopkeeper reviews reports: daily, monthly, and yearly sales, sales and
+    profit for a single item, top-selling items, and low-stock items.
+11. At end of day the shopkeeper enters the counted cash; the app shows the expected amount
+    and any difference.
+12. A daily backup of the database is written automatically, and the shopkeeper can also
+    trigger one manually.
 
 ## Features
 
 ### Authentication and Access
 
 - Username and password sign-in (Auth.js Credentials provider, hashed passwords).
-- Session persists for a working day; sign-out available everywhere.
-- A `role` field exists so a second cashier account can be added later without a migration.
+- Account types, chosen at signup and never changed in-app: **shopkeeper** (creates and runs
+  one shop) or **customer** (joins shops). One type per person.
+- Membership, not the account type alone, grants shop access: each shop links its users with
+  a role (`OWNER` for the shopkeeper, `CUSTOMER` for participants; `CASHIER` stays reserved)
+  and a status (`PENDING`, `ACTIVE`, `REMOVED`).
+- Shopkeeper access: full control of their own shop; no view of any other shop, and no
+  ability to browse other shops.
+- Customer access: view-only on the shops they joined — their own khata balance, credit
+  sales, and repayments per shop — plus their own account. Searches and join requests only.
+- Data boundary: the shopkeeper manages the ledger (a shop's credit sales and repayments) and
+  the shop-scoped customer record (name, phone, note). The customer owns their login account
+  and profile; the shopkeeper can never edit those.
+- Session persists for a working day; sign-out lives in Settings → Security.
 
 ### Inventory
 
@@ -104,43 +150,54 @@ alerts. Those are explicitly out of scope for v1 and must not be built early `(s
 - Void workflow instead of silent edits.
 - End-of-day cash reconciliation.
 
-### Future Phases (not in v1)
+### Phases After v1
 
 - Read-only English assistant (Phase 6, complete).
 - Conversational sale, expense, khata repayment, customer, product, product-edit, and stock
-  adjustment entry with explicit shopkeeper confirmation (Phase 7 complete).
-- Pashto support (Phase 8): conversational assistant in Pashto, Pashto user interface with
-  right-to-left layout, product aliases, and Pashto input handling.
-- Voice input.
-- Camera-based suspicious-activity alerts.
-- Face recognition (research only, consent-based).
-- Suppliers, purchase orders, returns, multi-shop, thermal printing.
+  adjustment entry with explicit shopkeeper confirmation (Phase 7, complete).
+- Pashto support (Phase 8, complete): conversational assistant in Pashto, Pashto user
+  interface with right-to-left layout, and Pashto input handling.
+- Customer khata accounts (Phase 10, complete), extended into multi-shop accounts in
+  Phase 13.
+- Voice input (Phase 9, complete).
+- Camera-based suspicious-activity alerts (Phase 11, complete).
+- Face recognition (Phase 12, complete — research only, consent-based).
+- Multi-shop accounts (Phase 13): shopkeeper self-registration with their own shop, customer
+  accounts that search and join shops, account types chosen at signup, and strict per-shop
+  data isolation.
+- Suppliers, purchase orders, returns, and thermal printing (unscheduled).
 
 ## Scope
 
 ### In Scope
 
-- Phases 0 to 5.5 of the implementation plan: environment, products and stock, sales,
-  customers and credit, dashboard and reports, expenses and hardening, and sign-in.
-- Single shop, single installation, single local database.
-- English user interface.
-- Laptop as the application host, phone browser as the primary client over local Wi-Fi.
+- Phases 0 to 13 of the implementation plan (see the phase sections below and the phase
+  table): environment, products and stock, sales, customers and credit, dashboard and
+  reports, expenses and hardening, sign-in, assistant and proposals, Pashto with RTL, voice
+  input, customer khata accounts, camera alerts, the face-recognition research spike, and
+  multi-shop accounts.
+- A hosted deployment serving many independent shops on one server, with strict per-shop
+  data isolation.
+- English and Pashto user interfaces.
+- Phone browser as the primary client; shopkeepers' shops reach the app over the internet.
 
 ### Out of Scope
 
-- Pashto or any non-English interface, right-to-left layout, and translation layers.
-- Voice input and speech recognition.
-- The AI assistant and all conversational features in v1. The read-only English assistant
-  (Phase 6) and the signed proposals in Phase 7 are separate post-v1 phases.
-- Camera, video processing, theft or suspicious-activity detection, and face recognition
-  (out of scope for v1; post-v1 Phases 11–12 schedule them).
+- Camera features beyond Phase 11 (no person/zone detection beyond motion, no cloud upload,
+  no live streaming) and face recognition beyond the Phase 12 research spike (no product
+  UI, no cloud face APIs).
 - Supplier management, purchase orders, and goods returns.
-- Multi-shop, multi-branch, or multi-device cloud synchronisation. Deferred to v2 by the
-  owner: shop self-registration, customers joining a shop to track their khata, and account
-  type chosen at account creation. Direction recorded in progress-tracker.md Open Questions.
 - Online payments, card payments, and tax filing.
 - Thermal receipt printing and barcode scanner hardware.
-- Public internet hosting and remote access.
+- Per-shop offline operation, an offline-first or local-only deployment of the multi-shop
+  model, and offline synchronisation. Phase 13's model is deliberately hosted; a shop
+  without internet cannot use the platform.
+- Multiple shops per shopkeeper, a shopkeeper joining other shops as a customer, changing
+  one's account type in-app, and any social features beyond shop discovery and joining.
+- PostgreSQL: SQLite is kept for Phase 13; the database decision is revisited when shop
+  count or write volume demands it (see Architecture Decisions).
+- Assistant chat history persistence (needs a retention and privacy decision).
+- Email verification or password-reset email for accounts (recovery is a later decision).
 
 ## Success Criteria
 
@@ -162,6 +219,9 @@ alerts. Those are explicitly out of scope for v1 and must not be built early `(s
    is displayed.
 9. A backup file is produced and can be restored to a working database.
 10. `npm run build` and `npm test` pass on a clean checkout.
+11. Two shopkeepers on the same installation can never read or modify each other's products,
+    sales, customers, or reports; a customer sees only their own khata at the shops they
+    joined, and no other customer's data in any screen, action, or assistant answer.
 
 ## Phase 6 — Assistant (read-only)
 
@@ -384,6 +444,10 @@ Phase 10 adds two user account types so customers can view their own khata/debt 
 - Permission enforcement: `CUSTOMER` users cannot access sell, products, reports, expenses,
   day-close, backups, audit, or any write path. Server actions enforce role before mutating;
   pages redirect unauthorized users.
+- Superseded by Phase 13 (2026-11-08): self-registration and the khata view move to the
+  account-type signup and the membership model — `/sign-up` replaces `/customers/sign-up`,
+  `/khata` replaces `/customers/khata`, and `User.customerId` moves into
+  `ShopMembership.customerId`. This section remains the record of what was built in v1.
 
 ### Acceptance Criteria
 
@@ -485,6 +549,90 @@ something real later. The deliverable is a findings report with a go/no-go recom
 - Automatic accusation or naming a person in any product surface.
 - Liveness detection or anti-spoofing (researched only if the spike succeeds).
 
+## Phase 13 — Multi-shop accounts
+
+Phase 13 converts EasyShop from one installation serving one shop into a hosted platform
+serving many independent shops. Multi-shop was deferred to v2 by the owner and is now
+scheduled; on 2026-11-08 the owner chose: a central deployment with shop discovery, one
+account type per person, shopkeeper-approval joining, and a ledger-only shop reach into
+customer data.
+
+### Scope
+
+- **Hosting.** One deployment serves every shop over the internet; the single-shop v1 model
+  is retired by this phase. HTTPS termination, secure session cookies, and off-server
+  backup copies become part of deployment.
+- **Account types.** At signup a person chooses **shopkeeper** or **customer**; one type per
+  account, unchanged in-app. A shopkeeper account owns exactly one shop; a customer may join
+  many shops.
+- **Membership.** A `ShopMembership` table links a user to a shop with a role (`OWNER`,
+  `CUSTOMER`; `CASHIER` stays reserved) and a status (`PENDING`, `ACTIVE`, `REMOVED`). The
+  customer role carries the unique link to the shop-scoped ledger record. `User.customerId`
+  from Phase 10 moves into the membership.
+- **Tenant isolation.** Every business table carries `shopId` (Product, Customer, Sale,
+  StockMovement, Payment, Expense, AuditLog, CashReconciliation, CameraAlert; SaleItem and
+  ProductAlias stay reached through their parent), with scope-checked uniqueness
+  (`shopId + normalized product name`, `shopId + barcode`, `shopId + sale number`,
+  `shopId + business day`). Invariant 13 is added to `architecture.md`.
+- **Signup.** `/sign-up` selects the account type. The shopkeeper form creates the user, the
+  shop, and the `OWNER` membership in one transaction; the customer form creates the user
+  only (name, phone as username, password). Password and username rules stay as v1.
+- **Discovery and joining.** Customers search by shop name or by the shopkeeper's username;
+  results show shop name, owner username, and join state only. A request creates a
+  `PENDING` membership. The shopkeeper approves and links the request to an existing ledger
+  `Customer` (matched by phone) or creates one; the membership becomes `ACTIVE`. The
+  customer sees nothing until linked. Reject, leave, and removal are recorded; leaving
+  keeps the ledger record with the shop.
+- **Screens.** Customer: `/khata` (joined shops with per-shop balances), `/khata/[shopId]`
+  (that shop's balance, credit sales, repayments), `/shops` (search and request). Shopkeeper:
+  join requests under settings with approve/link/create/reject, plus everything from v1.
+  Shopkeepers see the whole shop; customers never see shop operations.
+- **Sessions and guards.** The JWT carries the account type, never a shop id; the shop is
+  resolved per request from membership. `requireShopkeeper()` and
+  `requireCustomerShop(shopId)` replace `requireOwner()` and the `customerId` shortcut.
+  Rate limiting protects login, signup, search, and join requests.
+- **Assistant.** Tools receive the shop from the server context, never from the model;
+  proposal tokens are bound to the user and the shop, and each confirmation verifies both.
+- **Audit.** Every audit row carries the shop it belongs to, backfilled for legacy rows.
+- **Migration.** All existing users and business rows are backfilled to the existing shop;
+  the seeded owner becomes its `OWNER`; existing `CUSTOMER` users become `ACTIVE`
+  memberships. Two staged migrations keep every commit buildable (nullable `shopId` first,
+  required `shopId` with composite uniques and the `accountType` move afterwards). No data
+  is lost; the seed stays idempotent.
+
+### Acceptance Criteria
+
+1. A shopkeeper self-registers, creates their shop, and signs in; they see only their shop.
+2. A customer self-registers, searches by shop name or shopkeeper username, requests to
+   join; the shopkeeper approves and links a ledger record; the customer then sees their own
+   khata for that shop.
+3. A customer in two shops sees both khata balances and only their own transactions; a
+   pending or rejected requester sees nothing about the shop.
+4. Neither a shopkeeper nor a customer can read or write another shop's data through any
+   screen, server action, route handler, or assistant tool; isolation is covered by a test
+   for every module.
+5. Customers cannot reach shopkeeper routes or actions, and vice versa; the account type is
+   fixed at signup.
+6. An existing database migrates without loss; the seeded owner and Phase 10 customer
+   accounts keep working through the membership model.
+7. Product names and barcodes, sale receipt numbers, cash checks, and searches are scoped
+   per shop, while usernames stay platform-wide unique.
+8. Every audit entry carries its shop.
+9. `npm run typecheck`, `npm run lint`, `npm test`, and `npm run build` pass.
+
+### Out of Scope
+
+- Multiple shops per shopkeeper; a shopkeeper joining other shops as a customer; changing
+  account type in-app.
+- Per-shop offline operation, offline-first synchronization, or a local-only deployment of
+  the multi-shop model.
+- PostgreSQL (kept on SQLite for this phase; see Architecture Decisions).
+- Automatic per-shop camera routing: the camera intake keeps one `CAMERA_SHOP_ID` for now;
+  per-shop camera tokens are a later decision.
+- Per-shop backup, export, or restore: backups remain whole-database.
+- Social features beyond discovery and joining (no feeds, reviews, or messaging).
+- Email verification or password-reset email; account recovery is a later decision.
+
 ## Implementation Phases
 
 | Phase | Name | Outcome |
@@ -508,6 +656,7 @@ something real later. The deliverable is a findings report with a go/no-go recom
 | transaction history; shopkeeper retains full access |
 | 11 | Camera alerts | Suspicious-activity alerts with a saved clip, never automatic accusation |
 | 12 | Face recognition | Optional, consent-based research feature |
+| 13 | Multi-shop accounts | Hosted multi-shop platform: shopkeeper and customer account types, shop discovery and joining, strict per-shop data isolation |
 
 Phases 0 to 5.5 constitute the sellable v1. Every later phase must be able to reuse the
 business logic built in phases 0 to 5.5 without rewriting it.

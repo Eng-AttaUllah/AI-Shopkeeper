@@ -135,7 +135,20 @@ as protected files:
   button at the bottom.
 - **Sign-in:** a centered single-column card on the page background with the brand, username,
   password, and one primary **Sign in** button. Errors are inline. No app navigation is shown
-  until the shopkeeper is signed in.
+  until the user is signed in.
+- **Sign-up (Phase 13):** a centered chooser card with two large options — **I run a shop**
+  (shopkeeper) and **I'm a customer** — then a single-column form. The shopkeeper form asks
+  for display name, username, password, and shop name; the customer form asks for display
+  name, phone (which becomes the username, per the existing hint), and password. One primary
+  **Create account** button, inline errors, and a link back to sign in. Account types are
+  fixed at signup; there is no in-app switch between them.
+- **Customer areas (Phase 13):** signed-in customers see the same header minus the section
+  bar, with three actions: **My khata** (`/khata`, a list of joined shops as cards: shop
+  name, that shop's outstanding balance, last activity; pending requests show a muted
+  **Waiting for approval** state), **Find shops** (`/shops`, one search input — shop name or
+  the shopkeeper's username — returning result cards with shop name, owner username, current
+  join state, and a **Request to join** action), and the existing settings menu. No customer
+  screen ever shows another customer's data or any shop operations.
 - **Header and section bar:** every signed-in page shares one top header: the shop name at the
   inline start, the section bar, then the hamburger settings menu, and the locale switcher.
   Sign-out lives in Settings → Security (this device) and is not in the header. The brand is
