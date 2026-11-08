@@ -137,9 +137,10 @@ as protected files:
   password, and one primary **Sign in** button. Errors are inline. No app navigation is shown
   until the shopkeeper is signed in.
 - **Header and section bar:** every signed-in page shares one top header: the shop name at the
-  inline start, the section bar, then the hamburger settings menu, the locale switcher, and the
-  signed-in user with sign-out. The brand is the logo tile (`public/logo.svg`, 28px) beside the
-  "EasyShop" wordmark; the same logo appears on the sign-in card (32px). The section bar
+  inline start, the section bar, then the hamburger settings menu, and the locale switcher.
+  Sign-out lives in Settings → Security (this device) and is not in the header. The brand is
+  the logo tile (`public/logo.svg`, 28px) beside the "EasyShop" wordmark; the same logo appears
+  on the sign-in card (32px). The section bar
   (Dashboard, Sell, Products, Sales, Customers, Reports, More) marks the current section with a
   brand-tinted pill, brand-coloured text, an icon, and `aria-current="page"`; inactive items
   are muted and gain a subtle hover fill. Nested pages keep their parent lit

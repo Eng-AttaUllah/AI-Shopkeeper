@@ -48,8 +48,6 @@ const en: Dictionary = {
   "nav.customers": "Customers",
   "nav.reports": "Reports",
   "nav.more": "More",
-  "nav.signOut": "Sign out",
-  "nav.signedInAs": "Signed in as {{user}}",
 
   // Page headings
   "page.dashboard": "Dashboard",
@@ -634,6 +632,8 @@ const en: Dictionary = {
   "settings.confirmPassword": "Confirm new password",
   "settings.change": "Change password",
   "settings.changing": "Changing…",
+  "settings.signOut": "Sign out",
+  "settings.signOutHint": "Sign out of this device only.",
   "settings.signOutEverywhere": "Sign out everywhere",
   "settings.signOutEverywhereHint":
     "Signs out every device, including this one. Useful if you think someone else knows your password.",
@@ -681,8 +681,6 @@ const ps: Dictionary = {
   "nav.customers": "مشتریان",
   "nav.reports": "گزارشونه",
   "nav.more": "زیاتې",
-  "nav.signOut": "ښکله کول",
-  "nav.signedInAs": "لېدې {{user}}",
 
   // Page headings
   "page.dashboard": "داشبورد",
@@ -810,6 +808,8 @@ const ps: Dictionary = {
   "settings.confirmPassword": "نوی پسورد تایید کړئ",
   "settings.change": "پسورد بدل کړئ",
   "settings.changing": "بدلیږي…",
+  "settings.signOut": "ښکله کول",
+  "settings.signOutHint": "یوازې له دې دستگاه ووځئ.",
   "settings.signOutEverywhere": "له هر چېرې ووځه",
   "settings.signOutEverywhereHint":
     "هره دستگاه بندوي، په دې هم شامل. ګټور دی که فکر کوئ چې یو بل ستاسو پسورد پېژني.",

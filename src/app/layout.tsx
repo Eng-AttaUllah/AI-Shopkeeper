@@ -4,10 +4,8 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { LocaleSwitcher } from "@/components/locale-switcher";
-import { signOutAction } from "@/app/auth-actions";
 import { NavBar } from "@/components/nav-bar";
 import { SettingsMenu } from "@/components/settings/settings-menu";
-import { Button } from "@/components/ui/button";
 import { auth } from "@/lib/auth";
 import { getDirection, getLocale, type Locale, t } from "@/lib/i18n";
 
@@ -102,24 +100,6 @@ export default async function RootLayout({
             <div className="order-2 sm:order-4">
               <LocaleSwitcher locale={locale} />
             </div>
-
-            {user ? (
-              <div className="order-2 flex items-center gap-2 sm:order-5">
-                <span className="text-sm text-ink-muted">
-                  {await t("nav.signedInAs", { user: user.username })}
-                </span>
-                <form action={signOutAction}>
-                  <Button
-                    type="submit"
-                    variant="ghost"
-                    size="sm"
-                    className="h-11 px-3 text-sm"
-                  >
-                    {await t("nav.signOut")}
-                  </Button>
-                </form>
-              </div>
-            ) : null}
           </div>
         </header>
         {children}

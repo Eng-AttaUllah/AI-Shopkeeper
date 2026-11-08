@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { signOutAction } from "@/app/auth-actions";
 import { signOutEverywhereAction } from "@/app/settings/actions";
 import { ChangePasswordForm } from "@/components/settings/change-password-form";
 import { Button } from "@/components/ui/button";
@@ -77,6 +78,18 @@ export default async function SettingsPage() {
         </h3>
         <div className="mt-3 max-w-sm">
           <ChangePasswordForm />
+        </div>
+
+        <div className="mt-6 border-t border-line pt-5">
+          <h3 className="text-base font-semibold">{t("settings.signOut")}</h3>
+          <p className="mt-1 text-sm text-ink-muted">
+            {t("settings.signOutHint")}
+          </p>
+          <form action={signOutAction} className="mt-3">
+            <Button type="submit" variant="outline" className="h-11 px-4 text-base">
+              {t("settings.signOut")}
+            </Button>
+          </form>
         </div>
 
         <div className="mt-6 border-t border-line pt-5">

@@ -638,6 +638,13 @@ Update this file after every meaningful implementation change.
   was exceeding 5s whenever the laptop was loaded (dev server + browser + another session),
   making `tests/auth.test.ts` and `tests/settings.test.ts` flake; with 15s the full suite
   passes reliably (232/232) under load.
+- Follow-up (2026-11-07, owner request): sign-out moved out of the header. The top bar no
+  longer shows "Signed in as …" or a Sign out button; the account identity lives in
+  Settings → Account and the header's two sign-out places are consolidated under
+  Settings → Security: **Sign out** (this device, the existing `signOutAction`) above
+  **Sign out everywhere** (all devices). The now-dead `nav.signedInAs` and `nav.signOut`
+  strings were removed and `settings.signOut` / `settings.signOutHint` added in both
+  languages. Verified over HTTP for owner and customer.
 - Follow-up (2026-11-07, owner request): renamed the product from **AI Shopkeeper** to
   **EasyShop**. The header, sign-in card, customer sign-up, and khata brand lines now read
   from `t("app.name")` (one source of truth instead of four hardcoded strings); browser
