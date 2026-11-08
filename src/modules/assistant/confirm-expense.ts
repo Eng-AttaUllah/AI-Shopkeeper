@@ -20,6 +20,7 @@ export async function confirmExpenseProposal(input: {
   token: string;
   userId: string;
   actor: string;
+  shopId: string;
   now?: Date;
 }): Promise<Result<ConfirmExpenseProposalOutcome>> {
   const verified = verifyExpenseProposalToken(
@@ -34,10 +35,15 @@ export async function confirmExpenseProposal(input: {
 
   const { draft, preview, proposalId } = verified.data;
 
-  const result = await createExpenseWithStatus(draft, input.actor, {
-    proposalId,
-    expectedPreview: preview,
-  });
+  const result = await createExpenseWithStatus(
+    input.shopId,
+    draft,
+    input.actor,
+    {
+      proposalId,
+      expectedPreview: preview,
+    },
+  );
 
   if (!result.ok) {
     return result;

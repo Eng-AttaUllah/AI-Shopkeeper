@@ -21,6 +21,7 @@ export async function confirmPaymentProposal(input: {
   token: string;
   userId: string;
   actor: string;
+  shopId: string;
   now?: Date;
 }): Promise<Result<ConfirmPaymentProposalOutcome>> {
   const verified = verifyPaymentProposalToken(
@@ -35,10 +36,15 @@ export async function confirmPaymentProposal(input: {
 
   const { draft, preview, proposalId } = verified.data;
 
-  const result = await recordPaymentWithStatus(draft, input.actor, {
-    proposalId,
-    expectedPreview: preview,
-  });
+  const result = await recordPaymentWithStatus(
+    input.shopId,
+    draft,
+    input.actor,
+    {
+      proposalId,
+      expectedPreview: preview,
+    },
+  );
 
   if (!result.ok) {
     return result;

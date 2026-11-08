@@ -20,6 +20,7 @@ export async function confirmCustomerProposal(input: {
   token: string;
   userId: string;
   actor: string;
+  shopId: string;
   now?: Date;
 }): Promise<Result<ConfirmCustomerProposalOutcome>> {
   const verified = verifyCustomerProposalToken(
@@ -34,10 +35,15 @@ export async function confirmCustomerProposal(input: {
 
   const { draft, preview, proposalId } = verified.data;
 
-  const result = await createCustomerWithStatus(draft, input.actor, {
-    proposalId,
-    expectedPreview: preview,
-  });
+  const result = await createCustomerWithStatus(
+    input.shopId,
+    draft,
+    input.actor,
+    {
+      proposalId,
+      expectedPreview: preview,
+    },
+  );
 
   if (!result.ok) {
     return result;

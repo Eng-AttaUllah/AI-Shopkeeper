@@ -11,6 +11,8 @@ const now = new Date("2026-10-28T10:00:00.000Z");
 const userId = "user-1";
 const actor = "owner";
 
+let shopId: string;
+
 function expectOk<T>(result: Result<T>): T {
   if (!result.ok) {
     throw new Error(`Expected success but got: ${result.error}`);
@@ -20,7 +22,7 @@ function expectOk<T>(result: Result<T>): T {
 }
 
 async function propose(args: Record<string, unknown>) {
-  return runProposeExpenseTool(JSON.stringify(args), { userId, now });
+  return runProposeExpenseTool(JSON.stringify(args), { userId, now, shopId });
 }
 
 const originalSecret = process.env.AUTH_SECRET;
@@ -40,6 +42,11 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
+  const shop = await prisma.shop.create({
+    data: { name: "Test Shop", currency: "PKR", timezone: "Asia/Karachi" },
+  });
+  shopId = shop.id;
+
   await prisma.expense.deleteMany();
   await prisma.auditLog.deleteMany();
 });
@@ -136,6 +143,7 @@ describe("confirmExpenseProposal", () => {
         token: proposal.proposal.token,
         userId,
         actor,
+        shopId,
         now,
       }),
     );
@@ -164,6 +172,7 @@ describe("confirmExpenseProposal", () => {
         token: proposal.proposal.token,
         userId,
         actor,
+        shopId,
         now,
       }),
     );
@@ -187,12 +196,14 @@ describe("confirmExpenseProposal", () => {
       token: proposal.proposal.token,
       userId: "user-2",
       actor,
+      shopId,
       now,
     });
     const expired = await confirmExpenseProposal({
       token: proposal.proposal.token,
       userId,
       actor,
+      shopId,
       now: new Date(now.getTime() + 16 * 60 * 1000),
     });
     const [encoded, signature] = proposal.proposal.token.split(".");
@@ -200,6 +211,7 @@ describe("confirmExpenseProposal", () => {
       token: `${encoded?.slice(0, -1)}A.${signature}`,
       userId,
       actor,
+      shopId,
       now,
     });
 

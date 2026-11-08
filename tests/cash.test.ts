@@ -33,7 +33,14 @@ function expectOk<T>(result: Result<T>): T {
   return result.data;
 }
 
+let shopId: string;
+
 beforeEach(async () => {
+  const shop = await prisma.shop.create({
+    data: { name: "Test Shop", currency: "PKR", timezone: "Asia/Karachi" },
+  });
+  shopId = shop.id;
+
   await prisma.auditLog.deleteMany();
   await prisma.expense.deleteMany();
   await prisma.cashReconciliation.deleteMany();
@@ -52,13 +59,15 @@ afterAll(async () => {
 
 describe("cashBreakdown", () => {
   it("adds cash in and subtracts expenses", async () => {
-    const product = expectOk(await createProduct(sugar));
-    const customer = expectOk(await createCustomer({ name: "Ali Khan" }));
+    const product = expectOk(await createProduct(shopId, sugar));
+    const customer = expectOk(
+      await createCustomer(shopId, { name: "Ali Khan" }),
+    );
     const today = isoDateKeyInKarachi(new Date());
 
     // 2 kg x 160 = 320, customer handed 500, change 180.
     expectOk(
-      await createSale({
+      await createSale(shopId, {
         items: [{ productId: product.id, quantity: "2" }],
         paymentMethod: "CASH",
         paid: "500",
@@ -67,7 +76,7 @@ describe("cashBreakdown", () => {
 
     // 1 kg on credit, 50 paid at the counter.
     expectOk(
-      await createSale({
+      await createSale(shopId, {
         items: [{ productId: product.id, quantity: "1" }],
         paymentMethod: "CREDIT",
         customerId: customer.id,
@@ -76,10 +85,12 @@ describe("cashBreakdown", () => {
     );
 
     // The credit sale left 110 outstanding; repay 100.
-    expectOk(await recordPayment({ customerId: customer.id, amount: "100" }));
+    expectOk(
+      await recordPayment(shopId, { customerId: customer.id, amount: "100" }),
+    );
 
     expectOk(
-      await createExpense({
+      await createExpense(shopId, {
         category: "TRANSPORT",
         amount: "30",
         date: today,
@@ -89,6 +100,7 @@ describe("cashBreakdown", () => {
     const breakdown = await cashBreakdown(
       prisma,
       karachiDayRange(new Date()),
+      shopId,
     );
 
     expect(breakdown.cashSalesPaisa).toBe(32000);
@@ -99,19 +111,20 @@ describe("cashBreakdown", () => {
   });
 
   it("excludes a voided sale", async () => {
-    const product = expectOk(await createProduct(sugar));
+    const product = expectOk(await createProduct(shopId, sugar));
 
     const sale = expectOk(
-      await createSale({
+      await createSale(shopId, {
         items: [{ productId: product.id, quantity: "1" }],
         paymentMethod: "CASH",
       }),
     );
-    expectOk(await voidSale(sale.id, { reason: "Entered by mistake" }));
+    expectOk(await voidSale(shopId, sale.id, { reason: "Entered by mistake" }));
 
     const breakdown = await cashBreakdown(
       prisma,
       karachiDayRange(new Date()),
+      shopId,
     );
 
     expect(breakdown.cashSalesPaisa).toBe(0);
@@ -121,10 +134,10 @@ describe("cashBreakdown", () => {
 
 describe("recordReconciliation", () => {
   it("saves the difference and updates the same day on a re-run", async () => {
-    const product = expectOk(await createProduct(sugar));
+    const product = expectOk(await createProduct(shopId, sugar));
 
     expectOk(
-      await createSale({
+      await createSale(shopId, {
         items: [{ productId: product.id, quantity: "1" }],
         paymentMethod: "CASH",
       }),
@@ -132,7 +145,7 @@ describe("recordReconciliation", () => {
 
     const today = isoDateKeyInKarachi(new Date());
     const first = expectOk(
-      await recordReconciliation({
+      await recordReconciliation(shopId, {
         date: today,
         counted: "170",
         note: "Counted at closing",
@@ -144,14 +157,14 @@ describe("recordReconciliation", () => {
     expect(first.differencePaisa).toBe(1000);
 
     const second = expectOk(
-      await recordReconciliation({ date: today, counted: "160" }),
+      await recordReconciliation(shopId, { date: today, counted: "160" }),
     );
 
     expect(second.id).toBe(first.id);
     expect(second.differencePaisa).toBe(0);
     expect(await prisma.cashReconciliation.count()).toBe(1);
 
-    const history = await listReconciliations();
+    const history = await listReconciliations(shopId);
     expect(history).toHaveLength(1);
     expect(history[0]?.countedPaisa).toBe(16000);
 
@@ -161,11 +174,11 @@ describe("recordReconciliation", () => {
   });
 
   it("rejects an impossible date and a bad counted amount", async () => {
-    const badDate = await recordReconciliation({
+    const badDate = await recordReconciliation(shopId, {
       date: "2026-02-31",
       counted: "100",
     });
-    const badAmount = await recordReconciliation({
+    const badAmount = await recordReconciliation(shopId, {
       date: "2026-10-26",
       counted: "ten",
     });

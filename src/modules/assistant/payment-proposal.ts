@@ -77,7 +77,7 @@ export async function runProposePaymentTool(
     );
   }
 
-  const customers = await listCustomersWithBalances();
+  const customers = await listCustomersWithBalances(context.shopId ?? "");
   const matches = matchCustomer(customers, parsed.data.customer);
 
   if (matches.length === 0) {
@@ -113,7 +113,11 @@ export async function runProposePaymentTool(
     return fail("Enter a repayment amount more than zero.");
   }
 
-  const outstanding = await outstandingPaisa(prisma, customer.id);
+  const outstanding = await outstandingPaisa(
+    prisma,
+    context.shopId ?? "",
+    customer.id,
+  );
 
   if (outstanding <= 0) {
     return fail("This customer has no outstanding balance.");

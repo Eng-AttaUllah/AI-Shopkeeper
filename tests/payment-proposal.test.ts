@@ -17,6 +17,8 @@ const now = new Date("2026-10-28T10:00:00.000Z");
 const userId = "user-1";
 const actor = "owner";
 
+let shopId: string;
+
 const sugar = {
   name: "Sugar",
   category: "Grocery",
@@ -38,13 +40,13 @@ function expectOk<T>(result: Result<T>): T {
 }
 
 async function propose(args: Record<string, unknown>) {
-  return runProposePaymentTool(JSON.stringify(args), { userId, now });
+  return runProposePaymentTool(JSON.stringify(args), { userId, now, shopId });
 }
 
 async function seedCreditCustomer() {
-  const product = expectOk(await createProduct(sugar));
+  const product = expectOk(await createProduct(shopId, sugar));
   const customer = expectOk(
-    await createCustomer({
+    await createCustomer(shopId, {
       name: "Ali Khan",
       phone: "0300-1234567",
       note: "",
@@ -52,7 +54,7 @@ async function seedCreditCustomer() {
   );
 
   expectOk(
-    await createSale({
+    await createSale(shopId, {
       items: [{ productId: product.id, quantity: "2" }],
       paymentMethod: "CREDIT",
       customerId: customer.id,
@@ -79,6 +81,11 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
+  const shop = await prisma.shop.create({
+    data: { name: "Test Shop", currency: "PKR", timezone: "Asia/Karachi" },
+  });
+  shopId = shop.id;
+
   await prisma.auditLog.deleteMany();
   await prisma.saleItem.deleteMany();
   await prisma.sale.deleteMany();
@@ -122,7 +129,7 @@ describe("propose_payment", () => {
     expect(verified.preview).toEqual(result.proposal.preview);
 
     expect(await prisma.payment.count()).toBe(0);
-    expect(await customerBalancePaisa(customer.id)).toBe(32000);
+    expect(await customerBalancePaisa(shopId, customer.id)).toBe(32000);
   });
 
   it("matches a customer by phone", async () => {
@@ -137,7 +144,9 @@ describe("propose_payment", () => {
 
   it("rejects unknown customers, no balance, overpayment, and zero", async () => {
     const { customer } = await seedCreditCustomer();
-    const noBalance = expectOk(await createCustomer({ name: "Sara Bibi" }));
+    const noBalance = expectOk(
+      await createCustomer(shopId, { name: "Sara Bibi" }),
+    );
 
     const unknown = await propose({ customer: "Nobody", amount: "10" });
     const empty = await propose({ customer: "Sara Bibi", amount: "10" });
@@ -162,8 +171,8 @@ describe("propose_payment", () => {
     }
 
     expect(await prisma.payment.count()).toBe(0);
-    expect(await customerBalancePaisa(customer.id)).toBe(32000);
-    expect(await customerBalancePaisa(noBalance.id)).toBe(0);
+    expect(await customerBalancePaisa(shopId, customer.id)).toBe(32000);
+    expect(await customerBalancePaisa(shopId, noBalance.id)).toBe(0);
   });
 });
 
@@ -179,6 +188,7 @@ describe("confirmPaymentProposal", () => {
         token: proposal.proposal.token,
         userId,
         actor,
+        shopId,
         now,
       }),
     );
@@ -187,7 +197,7 @@ describe("confirmPaymentProposal", () => {
     expect(first.payment.proposalId).toBe(proposal.proposal.proposalId);
     expect(first.payment.amountPaisa).toBe(12000);
     expect(first.customerName).toBe("Ali Khan");
-    expect(await customerBalancePaisa(customer.id)).toBe(20000);
+    expect(await customerBalancePaisa(shopId, customer.id)).toBe(20000);
 
     const audit = await prisma.auditLog.findFirst({
       where: { entityId: first.payment.id, action: "PAYMENT_RECORDED" },
@@ -204,6 +214,7 @@ describe("confirmPaymentProposal", () => {
         token: proposal.proposal.token,
         userId,
         actor,
+        shopId,
         now,
       }),
     );
@@ -211,7 +222,7 @@ describe("confirmPaymentProposal", () => {
     expect(second.alreadyConfirmed).toBe(true);
     expect(second.payment.id).toBe(first.payment.id);
     expect(await prisma.payment.count()).toBe(1);
-    expect(await customerBalancePaisa(customer.id)).toBe(20000);
+    expect(await customerBalancePaisa(shopId, customer.id)).toBe(20000);
   });
 
   it("refuses to write when the khata balance changed", async () => {
@@ -221,13 +232,14 @@ describe("confirmPaymentProposal", () => {
     );
 
     expectOk(
-      await recordPayment({ customerId: customer.id, amount: "100" }),
+      await recordPayment(shopId, { customerId: customer.id, amount: "100" }),
     );
 
     const result = await confirmPaymentProposal({
       token: proposal.proposal.token,
       userId,
       actor,
+      shopId,
       now,
     });
 
@@ -238,7 +250,7 @@ describe("confirmPaymentProposal", () => {
     }
 
     expect(await prisma.payment.count()).toBe(1);
-    expect(await customerBalancePaisa(customer.id)).toBe(22000);
+    expect(await customerBalancePaisa(shopId, customer.id)).toBe(22000);
   });
 
   it("returns the original payment on replay even after a later repayment", async () => {
@@ -252,12 +264,13 @@ describe("confirmPaymentProposal", () => {
         token: proposal.proposal.token,
         userId,
         actor,
+        shopId,
         now,
       }),
     );
 
     expectOk(
-      await recordPayment({ customerId: customer.id, amount: "100" }),
+      await recordPayment(shopId, { customerId: customer.id, amount: "100" }),
     );
 
     const replay = expectOk(
@@ -265,6 +278,7 @@ describe("confirmPaymentProposal", () => {
         token: proposal.proposal.token,
         userId,
         actor,
+        shopId,
         now,
       }),
     );
@@ -272,7 +286,7 @@ describe("confirmPaymentProposal", () => {
     expect(replay.alreadyConfirmed).toBe(true);
     expect(replay.payment.id).toBe(first.payment.id);
     expect(await prisma.payment.count()).toBe(2);
-    expect(await customerBalancePaisa(customer.id)).toBe(10000);
+    expect(await customerBalancePaisa(shopId, customer.id)).toBe(10000);
   });
 
   it("rejects a wrong user, an expired token, and a tampered token", async () => {
@@ -285,12 +299,14 @@ describe("confirmPaymentProposal", () => {
       token: proposal.proposal.token,
       userId: "user-2",
       actor,
+      shopId,
       now,
     });
     const expired = await confirmPaymentProposal({
       token: proposal.proposal.token,
       userId,
       actor,
+      shopId,
       now: new Date(now.getTime() + 16 * 60 * 1000),
     });
     const [encoded, signature] = proposal.proposal.token.split(".");
@@ -298,6 +314,7 @@ describe("confirmPaymentProposal", () => {
       token: `${encoded?.slice(0, -1)}A.${signature}`,
       userId,
       actor,
+      shopId,
       now,
     });
 
@@ -314,6 +331,6 @@ describe("confirmPaymentProposal", () => {
     }
 
     expect(await prisma.payment.count()).toBe(0);
-    expect(await customerBalancePaisa(customer.id)).toBe(32000);
+    expect(await customerBalancePaisa(shopId, customer.id)).toBe(32000);
   });
 });

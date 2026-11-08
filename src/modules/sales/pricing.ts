@@ -106,6 +106,7 @@ function parseMoney(value: string, field: string): number {
  */
 export async function priceSale(
   db: Prisma.TransactionClient,
+  shopId: string,
   data: CreateSaleInput,
 ): Promise<PricedSale> {
   // Merge duplicate lines so stock is checked once per product.
@@ -148,7 +149,7 @@ export async function priceSale(
     }
 
     const found = await db.customer.findUnique({
-      where: { id: customerId },
+      where: { id: customerId, shopId },
       select: { id: true, name: true, phone: true },
     });
 
@@ -160,7 +161,7 @@ export async function priceSale(
   }
 
   const products = await db.product.findMany({
-    where: { id: { in: [...requestedMilli.keys()] } },
+    where: { id: { in: [...requestedMilli.keys()] }, shopId },
   });
   const productsById = new Map(
     products.map((product) => [product.id, product]),

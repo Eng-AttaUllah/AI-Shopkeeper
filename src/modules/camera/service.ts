@@ -44,7 +44,7 @@ export function cameraClipPath(clipPath: string): string {
 }
 
 /**
- * Record a camera alert after the camera service saved a clip.
+ * Record a camera alert for `shopId` after the camera service saved a clip.
  *
  * The service writes the clip file first, then posts the metadata, so the
  * alert row must point at a file that exists. The row and its audit entry are
@@ -52,6 +52,7 @@ export function cameraClipPath(clipPath: string): string {
  * clip files; review state and audit rows survive clip deletion.
  */
 export async function recordCameraAlert(
+  shopId: string,
   input: unknown,
 ): Promise<Result<CameraAlert>> {
   const parsed = cameraAlertSchema.safeParse(input);
@@ -75,6 +76,7 @@ export async function recordCameraAlert(
       const created = await tx.cameraAlert.create({
         data: {
           clipPath: data.clipPath,
+          shopId,
           capturedAt: new Date(data.capturedAt),
           durationMs: data.durationMs,
         },
@@ -82,6 +84,7 @@ export async function recordCameraAlert(
 
       await writeAudit(tx, {
         actor: CAMERA_ACTOR,
+        shopId,
         action: "CAMERA_ALERT_RECORDED",
         entityType: "CameraAlert",
         entityId: created.id,
@@ -98,7 +101,7 @@ export async function recordCameraAlert(
       return created;
     });
 
-    await pruneOldClips();
+    await pruneOldClips(shopId);
 
     return ok(alert);
   } catch (error) {
@@ -108,9 +111,11 @@ export async function recordCameraAlert(
 
 /**
  * Mark an alert reviewed or dismissed. Changing between the two states is
- * allowed; re-applying the same state is a no-op that succeeds.
+ * allowed; re-applying the same state is a no-op that succeeds. Scoped to
+ * `shopId` so one shop cannot review another shop's alert.
  */
 export async function reviewCameraAlert(
+  shopId: string,
   input: unknown,
   status: Exclude<CameraAlertStatus, "PENDING">,
   actor: string = LOCAL_ACTOR,
@@ -127,8 +132,8 @@ export async function reviewCameraAlert(
 
   try {
     const alert = await prisma.$transaction(async (tx) => {
-      const existing = await tx.cameraAlert.findUnique({
-        where: { id: data.alertId },
+      const existing = await tx.cameraAlert.findFirst({
+        where: { id: data.alertId, shopId },
       });
 
       if (!existing) {
@@ -146,6 +151,7 @@ export async function reviewCameraAlert(
 
       await writeAudit(tx, {
         actor,
+        shopId,
         action: "CAMERA_ALERT_REVIEWED",
         entityType: "CameraAlert",
         entityId: updated.id,
@@ -172,11 +178,12 @@ export async function reviewCameraAlert(
 /**
  * Delete clip files beyond the retention limit, oldest first. Rows are kept
  * so the review history stays complete; a missing file is handled when the
- * shopkeeper tries to play it.
+ * shopkeeper tries to play it. Scoped to `shopId`.
  */
-export async function pruneOldClips(): Promise<number> {
+export async function pruneOldClips(shopId: string): Promise<number> {
   // Newest first; everything past the retention limit is the oldest set.
   const surplus = await prisma.cameraAlert.findMany({
+    where: { shopId },
     orderBy: { capturedAt: "desc" },
     skip: MAX_CAMERA_CLIPS,
     select: { clipPath: true },

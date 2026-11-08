@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { formatDate, formatPaisa } from "@/lib/format";
 import { paisaToRupees } from "@/lib/money";
 import { formatQuantity, fromMilli } from "@/lib/quantity";
+import { requireShopkeeper } from "@/lib/require-user";
 import { t } from "@/lib/i18n";
 import { getProduct } from "@/modules/products/queries";
 
@@ -25,7 +26,8 @@ export default async function EditProductPage({
   params,
 }: EditProductPageProps) {
   const { id } = await params;
-  const product = await getProduct(id);
+  const { shop } = await requireShopkeeper();
+  const product = await getProduct(shop.id, id);
 
   if (!product) {
     notFound();
@@ -113,13 +115,13 @@ export default async function EditProductPage({
           {await t("products.recentStockChanges")}
         </h2>
 
-        {product.stockMovements.length === 0 ? (
+        {(product.stockMovements ?? []).length === 0 ? (
           <p className="mt-3 text-sm text-ink-muted">
             {await t("products.noStockChangesYet")}
           </p>
         ) : (
           <ul className="mt-3 divide-y divide-line">
-            {product.stockMovements.map((movement) => (
+            {(product.stockMovements ?? []).map((movement) => (
               <li
                 key={movement.id}
                 className="flex flex-wrap items-center justify-between gap-2 py-3 text-sm"

@@ -21,6 +21,7 @@ export async function confirmSaleProposal(input: {
   token: string;
   userId: string;
   actor: string;
+  shopId: string;
   now?: Date;
 }): Promise<Result<ConfirmSaleProposalOutcome>> {
   const verified = verifySaleProposalToken(
@@ -35,10 +36,15 @@ export async function confirmSaleProposal(input: {
 
   const { draft, preview, proposalId } = verified.data;
 
-  const result = await createSaleWithStatus(draft, input.actor, {
-    proposalId,
-    expectedPreview: preview,
-  });
+  const result = await createSaleWithStatus(
+    input.shopId,
+    draft,
+    input.actor,
+    {
+      proposalId,
+      expectedPreview: preview,
+    },
+  );
 
   if (!result.ok) {
     return result;

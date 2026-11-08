@@ -20,24 +20,25 @@ export type CashBreakdown = {
 export async function cashBreakdown(
   db: Prisma.TransactionClient,
   range: DateRange,
+  shopId: string,
 ): Promise<CashBreakdown> {
   const createdAt = { gte: range.start, lt: range.end };
 
   const [cashSales, creditSales, repayments, expenses] = await Promise.all([
     db.sale.aggregate({
-      where: { voidedAt: null, paymentMethod: "CASH", createdAt },
+      where: { shopId, voidedAt: null, paymentMethod: "CASH", createdAt },
       _sum: { totalPaisa: true },
     }),
     db.sale.aggregate({
-      where: { voidedAt: null, paymentMethod: "CREDIT", createdAt },
+      where: { shopId, voidedAt: null, paymentMethod: "CREDIT", createdAt },
       _sum: { paidPaisa: true },
     }),
     db.payment.aggregate({
-      where: { createdAt },
+      where: { shopId, createdAt },
       _sum: { amountPaisa: true },
     }),
     db.expense.aggregate({
-      where: { spentAt: createdAt },
+      where: { shopId, spentAt: createdAt },
       _sum: { amountPaisa: true },
     }),
   ]);
@@ -58,16 +59,23 @@ export async function cashBreakdown(
 }
 
 /** Recent cash checks, newest day first. */
-export async function listReconciliations(take = 14) {
+export async function listReconciliations(
+  shopId: string,
+  take = 14,
+) {
   return prisma.cashReconciliation.findMany({
+    where: { shopId },
     orderBy: { businessDate: "desc" },
     take,
   });
 }
 
 /** The saved cash check for one shop day, if any. */
-export async function getReconciliation(businessDate: Date) {
+export async function getReconciliation(
+  shopId: string,
+  businessDate: Date,
+) {
   return prisma.cashReconciliation.findUnique({
-    where: { businessDate },
+    where: { shopId, businessDate },
   });
 }

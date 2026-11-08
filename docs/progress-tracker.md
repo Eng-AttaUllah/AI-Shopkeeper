@@ -4,27 +4,26 @@ Update this file after every meaningful implementation change.
 
 ## Current Phase
 
-- Phase 13 — Multi-shop accounts: **13.1 (specification) and 13.2 (schema, membership,
-  backfill) Complete; 13.3 next.** Phases 0–12 and their follow-up units are complete on
-  `main`.
+- Phase 13 — Multi-shop accounts: **13.1 (specification), 13.2 (schema, membership,
+  backfill), and 13.3 (tenancy plumbing) Complete; 13.4 next.** Phases 0–12 and their
+  follow-up units are complete on `main`.
 
 ## Current Goal
 
-- Unit 13.2 added the `ShopMembership` model (role, status, unique ledger link) and a
-  nullable `shopId` + `Shop` relation on every business table (Product, StockMovement, Sale,
-  Customer, Payment, Expense, AuditLog, CashReconciliation, CameraAlert; SaleItem and
-  ProductAlias stay through their parent). Migration `20261108093612` backfills every row
-  from the single v1 shop and turns v1 owners and `customerId`-linked customer logins into
-  `ACTIVE` memberships; it is a no-op on a fresh database, which is what the test suite
-  builds. The seed upserts the OWNER membership idempotently. Verified: backfill counts on
-  `dev.db` (0 shopless rows in all nine tables), migrate status clean, seed re-run safe,
-  232/232 tests on a fresh `test.db`, typecheck/lint/build pass. Dev and test databases were
-  backed up to `backups/pre-13.2-*.db` first.
-- Next unit: **13.3** — tenancy plumbing: shop guards in `src/lib/require-user.ts`
-  (`requireShopkeeper()`, `requireCustomerShop()`), then every `src/modules` function takes
-  an explicit `shopId` and filters by it (products/customers → sales/expenses/cash →
-  reports/audit/camera → assistant → UI call sites), with the existing single-shop behaviour
-  and tests preserved until 13.4/13.5.
+- Unit 13.3 added `shopId` as an explicit first parameter to every function in
+  `products`, `customers`, `sales`, `expenses`, `cash`, `reports`, `camera`, `settings`,
+  and `assistant` (queries, services, proposal tools, and confirmation tools), scoped
+  every `where`, duplicate check, and transaction by it, and threaded the shop through
+  all UI call sites via `requireShopkeeper()` / `requireActiveMembership()`. The JWT still
+  carries no shop id; the shop is resolved per request from membership. Verified:
+  typecheck, lint, **232/232 tests**, and production build all pass. Existing single-shop
+  behaviour is unchanged until unit 13.4 makes `shopId` required and adds composite
+  uniqueness.
+- Next unit: **13.4** — make `shopId` required on every business table, add composite
+  uniques (`shopId + nameNormalized`, `shopId + barcode`, `shopId + sale number`,
+  `shopId + businessDate`), move `accountType` onto `User`, drop `User.customerId`/`role`
+  in favour of `ShopMembership`, and write the second migration. Every commit stays
+  buildable and green.
 
 ## Completed
 

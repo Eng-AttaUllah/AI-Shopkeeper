@@ -4,7 +4,7 @@ import { Readable } from "node:stream";
 
 import { NextResponse } from "next/server";
 
-import { auth } from "@/lib/auth";
+import { requireShopkeeper } from "@/lib/require-user";
 import { getCameraAlert } from "@/modules/camera/queries";
 import { cameraClipPath } from "@/modules/camera/service";
 
@@ -19,18 +19,10 @@ export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ): Promise<Response> {
-  const session = await auth();
-
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
-  }
-
-  if (session.user.role !== "OWNER") {
-    return NextResponse.json({ error: "Forbidden." }, { status: 403 });
-  }
+  const { shop } = await requireShopkeeper();
 
   const { id } = await params;
-  const alert = await getCameraAlert(id);
+  const alert = await getCameraAlert(shop.id, id);
 
   if (!alert) {
     return NextResponse.json({ error: "Alert not found." }, { status: 404 });

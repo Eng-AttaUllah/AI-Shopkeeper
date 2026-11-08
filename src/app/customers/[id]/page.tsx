@@ -9,8 +9,9 @@ import { CustomerAccountForm } from "@/components/customers/customer-account-for
 import { PaymentForm } from "@/components/customers/payment-form";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
-import { prisma } from "@/lib/db";
 import { formatDateTime, formatPaisa } from "@/lib/format";
+import { prisma } from "@/lib/db";
+import { requireShopkeeper } from "@/lib/require-user";
 import { t } from "@/lib/i18n";
 import {
   buildStatementText,
@@ -27,16 +28,16 @@ type CustomerPageProps = {
 
 export default async function CustomerPage({ params }: CustomerPageProps) {
   const { id } = await params;
-  const customer = await getCustomer(id);
+  const { shop } = await requireShopkeeper();
+  const customer = await getCustomer(shop.id, id);
 
   if (!customer) {
     notFound();
   }
 
-  const [balancePaisa, history, shop, linkedUser] = await Promise.all([
-    customerBalancePaisa(id),
-    customerHistory(id),
-    prisma.shop.findFirst({ orderBy: { createdAt: "asc" } }),
+  const [balancePaisa, history, linkedUser] = await Promise.all([
+    customerBalancePaisa(shop.id, id),
+    customerHistory(shop.id, id),
     prisma.user.findUnique({
       where: { customerId: id },
       select: { username: true },
@@ -44,7 +45,7 @@ export default async function CustomerPage({ params }: CustomerPageProps) {
   ]);
 
   const statement = buildStatementText({
-    shopName: shop?.name ?? "Shop",
+    shopName: shop.name,
     customer,
     balancePaisa,
     entries: history,

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { requireOwner } from "@/lib/require-user";
+import { requireShopkeeper } from "@/lib/require-user";
 import {
   createAccountForCustomer,
   createCustomer,
@@ -31,8 +31,11 @@ export async function createCustomerAction(
   _previousState: CustomerActionState,
   formData: FormData,
 ): Promise<CustomerActionState> {
-  await requireOwner();
-  const result = await createCustomer(formDataToObject(formData));
+  const { shop } = await requireShopkeeper();
+  const result = await createCustomer(
+    shop.id,
+    formDataToObject(formData),
+  );
 
   if (!result.ok) {
     return { ok: false, error: result.error, fieldErrors: result.fieldErrors };
@@ -47,9 +50,13 @@ export async function updateCustomerAction(
   _previousState: CustomerActionState,
   formData: FormData,
 ): Promise<CustomerActionState> {
-  await requireOwner();
+  const { shop } = await requireShopkeeper();
   const id = String(formData.get("customerId") ?? "");
-  const result = await updateCustomer(id, formDataToObject(formData));
+  const result = await updateCustomer(
+    shop.id,
+    id,
+    formDataToObject(formData),
+  );
 
   if (!result.ok) {
     return { ok: false, error: result.error, fieldErrors: result.fieldErrors };
@@ -65,11 +72,15 @@ export async function createCustomerAccountAction(
   _previousState: CustomerActionState,
   formData: FormData,
 ): Promise<CustomerActionState> {
-  await requireOwner();
+  const { shop } = await requireShopkeeper();
   const customerId = String(formData.get("customerId") ?? "");
   const password = String(formData.get("password") ?? "");
 
-  const result = await createAccountForCustomer(customerId, password);
+  const result = await createAccountForCustomer(
+    shop.id,
+    customerId,
+    password,
+  );
 
   if (!result.ok) {
     return { ok: false, error: result.error, fieldErrors: result.fieldErrors };
@@ -84,11 +95,11 @@ export async function recordPaymentAction(
   _previousState: CustomerActionState,
   formData: FormData,
 ): Promise<CustomerActionState> {
-  const user = await requireOwner();
+  const { shop } = await requireShopkeeper();
   const customerId = String(formData.get("customerId") ?? "");
   const result = await recordPayment(
+    shop.id,
     formDataToObject(formData),
-    user.username,
   );
 
   if (!result.ok) {

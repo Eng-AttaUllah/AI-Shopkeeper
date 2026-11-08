@@ -13,8 +13,12 @@ export type SaleWithItems = Sale & {
 };
 
 /** Recent sales, newest first, with the number of lines in each. */
-export async function listSales(take = 50) {
+export async function listSales(
+  shopId: string,
+  take = 50,
+) {
   return prisma.sale.findMany({
+    where: { shopId },
     orderBy: { createdAt: "desc" },
     take,
     include: {
@@ -25,9 +29,12 @@ export async function listSales(take = 50) {
 }
 
 /** One sale with its lines in receipt order and the credit customer. */
-export async function getSale(id: string): Promise<SaleWithItems | null> {
-  return prisma.sale.findUnique({
-    where: { id },
+export async function getSale(
+  shopId: string,
+  id: string,
+): Promise<SaleWithItems | null> {
+  return prisma.sale.findFirst({
+    where: { id, shopId },
     include: {
       items: { orderBy: { position: "asc" } },
       customer: { select: { id: true, name: true, phone: true } },

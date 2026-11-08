@@ -10,6 +10,17 @@ import { fieldErrors } from "@/lib/zod";
 import { cashBreakdown } from "./queries";
 import { cashReconciliationSchema } from "./schema";
 
+/** An error whose message is safe and useful to show the shopkeeper. */
+class ServiceError extends Error {
+  constructor(
+    message: string,
+    readonly fieldErrors?: Record<string, string>,
+  ) {
+    super(message);
+    this.name = "ServiceError";
+  }
+}
+
 function emptyToNull(value: string | undefined): string | null {
   const trimmed = value?.trim();
   return trimmed ? trimmed : null;
@@ -23,6 +34,7 @@ function emptyToNull(value: string | undefined): string | null {
  * the same day updates the existing row rather than creating a duplicate.
  */
 export async function recordReconciliation(
+  shopId: string,
   input: unknown,
   actor: string = LOCAL_ACTOR,
 ): Promise<Result<CashReconciliation>> {
@@ -47,7 +59,7 @@ export async function recordReconciliation(
 
   try {
     const reconciliation = await prisma.$transaction(async (tx) => {
-      const breakdown = await cashBreakdown(tx, range);
+      const breakdown = await cashBreakdown(tx, range, shopId);
       const differencePaisa = countedPaisa - breakdown.expectedPaisa;
       const note = emptyToNull(data.note);
 
@@ -55,9 +67,16 @@ export async function recordReconciliation(
         where: { businessDate },
       });
 
+      // Only overwrite this shop's own check. A different shop's check for the
+      // same day stays untouched (Invariant 13).
+      if (existing && existing.shopId !== shopId) {
+        throw new ServiceError("A cash check already exists for this day.");
+      }
+
       const saved = await tx.cashReconciliation.upsert({
         where: { businessDate },
         create: {
+          shopId,
           businessDate,
           expectedPaisa: breakdown.expectedPaisa,
           countedPaisa,
@@ -74,6 +93,7 @@ export async function recordReconciliation(
 
       await writeAudit(tx, {
         actor,
+        shopId,
         action: "CASH_RECONCILED",
         entityType: "CashReconciliation",
         entityId: saved.id,

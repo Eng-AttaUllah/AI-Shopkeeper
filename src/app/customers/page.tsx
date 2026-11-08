@@ -16,6 +16,7 @@ import {
   listCustomersWithBalances,
   totalOutstandingPaisa,
 } from "@/modules/customers/queries";
+import { requireShopkeeper } from "@/lib/require-user";
 
 export const dynamic = "force-dynamic";
 
@@ -28,10 +29,11 @@ export default async function CustomersPage({
 }: CustomersPageProps) {
   const { q } = await searchParams;
   const search = q?.trim() ?? "";
+  const { shop } = await requireShopkeeper();
 
   const [customers, totalOutstanding] = await Promise.all([
-    listCustomersWithBalances(search),
-    totalOutstandingPaisa(),
+    listCustomersWithBalances(shop.id, search),
+    totalOutstandingPaisa(shop.id),
   ]);
 
   const owing = customers.filter(

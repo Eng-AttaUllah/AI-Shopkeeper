@@ -71,6 +71,8 @@ type SaleOptions = {
   discount?: string;
 };
 
+let shopId: string;
+
 async function saleAt(
   productId: string,
   quantity: string,
@@ -78,7 +80,7 @@ async function saleAt(
   options: SaleOptions = {},
 ) {
   const sale = expectOk(
-    await createSale({
+    await createSale(shopId, {
       items: [{ productId, quantity }],
       discount: options.discount ?? "0",
       paid: options.paid,
@@ -96,6 +98,11 @@ async function saleAt(
 }
 
 beforeEach(async () => {
+  const shop = await prisma.shop.create({
+    data: { name: "Test Shop", currency: "PKR", timezone: "Asia/Karachi" },
+  });
+  shopId = shop.id;
+
   await prisma.auditLog.deleteMany();
   await prisma.expense.deleteMany();
   await prisma.saleItem.deleteMany();
@@ -113,18 +120,18 @@ afterAll(async () => {
 
 describe("periodSummary", () => {
   it("subtracts expenses from gross profit for net profit", async () => {
-    const product = expectOk(await createProduct(sugar));
+    const product = expectOk(await createProduct(shopId, sugar));
 
     await saleAt(product.id, "2", new Date("2026-10-26T10:00:00Z"));
     expectOk(
-      await createExpense({
+      await createExpense(shopId, {
         category: "RENT",
         amount: "100",
         date: "2026-10-26",
       }),
     );
 
-    const summary = await periodSummary(dayRange(2026, 10, 26));
+    const summary = await periodSummary(shopId, dayRange(2026, 10, 26));
 
     expect(summary.profitPaisa).toBe(4000);
     expect(summary.expensePaisa).toBe(10000);
@@ -132,18 +139,18 @@ describe("periodSummary", () => {
   });
 
   it("ignores expenses outside the range", async () => {
-    const product = expectOk(await createProduct(sugar));
+    const product = expectOk(await createProduct(shopId, sugar));
 
     await saleAt(product.id, "2", new Date("2026-10-26T10:00:00Z"));
     expectOk(
-      await createExpense({
+      await createExpense(shopId, {
         category: "RENT",
         amount: "100",
         date: "2026-10-25",
       }),
     );
 
-    const summary = await periodSummary(dayRange(2026, 10, 26));
+    const summary = await periodSummary(shopId, dayRange(2026, 10, 26));
 
     expect(summary.expensePaisa).toBe(0);
     expect(summary.netProfitPaisa).toBe(4000);
@@ -152,15 +159,15 @@ describe("periodSummary", () => {
 
 describe("salesSummary", () => {
   it("puts a sale on the Karachi day it was recorded", async () => {
-    const product = expectOk(await createProduct(sugar));
+    const product = expectOk(await createProduct(shopId, sugar));
 
     // 23:59:59 on 25 October in Karachi.
     await saleAt(product.id, "2", new Date("2026-10-25T18:59:59Z"));
     // 00:00:00 on 26 October in Karachi.
     await saleAt(product.id, "1", new Date("2026-10-25T19:00:00Z"));
 
-    const october25 = await salesSummary(dayRange(2026, 10, 25));
-    const october26 = await salesSummary(dayRange(2026, 10, 26));
+    const october25 = await salesSummary(shopId, dayRange(2026, 10, 25));
+    const october26 = await salesSummary(shopId, dayRange(2026, 10, 26));
 
     expect(october25).toMatchObject({
       salesCount: 1,
@@ -175,7 +182,7 @@ describe("salesSummary", () => {
   });
 
   it("splits months and years at Karachi midnight", async () => {
-    const product = expectOk(await createProduct(sugar));
+    const product = expectOk(await createProduct(shopId, sugar));
 
     // 23:59:59 on 31 October in Karachi.
     await saleAt(product.id, "1", new Date("2026-10-31T18:59:59Z"));
@@ -185,8 +192,8 @@ describe("salesSummary", () => {
     const october = karachiMonthRange(new Date("2026-10-15T10:00:00Z"));
     const november = karachiMonthRange(new Date("2026-11-15T10:00:00Z"));
 
-    expect((await salesSummary(october)).salesCount).toBe(1);
-    expect((await salesSummary(november)).salesCount).toBe(1);
+    expect((await salesSummary(shopId, october)).salesCount).toBe(1);
+    expect((await salesSummary(shopId, november)).salesCount).toBe(1);
 
     // 23:59:59 on 31 December 2026 in Karachi.
     await saleAt(product.id, "1", new Date("2026-12-31T18:59:59Z"));
@@ -196,35 +203,37 @@ describe("salesSummary", () => {
     const year2026 = karachiYearRange(new Date("2026-06-01T10:00:00Z"));
     const year2027 = karachiYearRange(new Date("2027-06-01T10:00:00Z"));
 
-    expect((await salesSummary(year2026)).salesCount).toBe(3);
-    expect((await salesSummary(year2027)).salesCount).toBe(1);
+    expect((await salesSummary(shopId, year2026)).salesCount).toBe(3);
+    expect((await salesSummary(shopId, year2027)).salesCount).toBe(1);
   });
 
   it("keeps profit on the cost snapshot after a price change", async () => {
-    const product = expectOk(await createProduct(sugar));
+    const product = expectOk(await createProduct(shopId, sugar));
 
     await saleAt(product.id, "1", new Date("2026-10-26T10:00:00Z"));
 
     expectOk(
-      await updateProduct(product.id, {
+      await updateProduct(shopId, product.id, {
         ...sugar,
         costPrice: "200",
         salePrice: "250",
       }),
     );
 
-    const summary = await salesSummary(dayRange(2026, 10, 26));
+    const summary = await salesSummary(shopId, dayRange(2026, 10, 26));
     expect(summary.revenuePaisa).toBe(16000);
     expect(summary.costPaisa).toBe(14000);
     expect(summary.profitPaisa).toBe(2000);
 
-    const rows = await productSales(dayRange(2026, 10, 26));
+    const rows = await productSales(shopId, dayRange(2026, 10, 26));
     expect(rows[0]?.profitPaisa).toBe(2000);
   });
 
   it("counts a credit sale once and treats repayment as settlement", async () => {
-    const product = expectOk(await createProduct(sugar));
-    const customer = expectOk(await createCustomer({ name: "Ali Khan" }));
+    const product = expectOk(await createProduct(shopId, sugar));
+    const customer = expectOk(
+      await createCustomer(shopId, { name: "Ali Khan" }),
+    );
 
     await saleAt(product.id, "2", new Date("2026-10-26T10:00:00Z"), {
       paymentMethod: "CREDIT",
@@ -234,7 +243,7 @@ describe("salesSummary", () => {
 
     const range = dayRange(2026, 10, 26);
 
-    expect(await salesSummary(range)).toMatchObject({
+    expect(await salesSummary(shopId, range)).toMatchObject({
       salesCount: 1,
       revenuePaisa: 32000,
       profitPaisa: 4000,
@@ -242,10 +251,10 @@ describe("salesSummary", () => {
     });
 
     expectOk(
-      await recordPayment({ customerId: customer.id, amount: "50" }),
+      await recordPayment(shopId, { customerId: customer.id, amount: "50" }),
     );
 
-    expect(await salesSummary(range)).toMatchObject({
+    expect(await salesSummary(shopId, range)).toMatchObject({
       salesCount: 1,
       revenuePaisa: 32000,
       profitPaisa: 4000,
@@ -254,25 +263,25 @@ describe("salesSummary", () => {
   });
 
   it("subtracts the sale-level discount from revenue but not from line sales", async () => {
-    const product = expectOk(await createProduct(sugar));
+    const product = expectOk(await createProduct(shopId, sugar));
 
     await saleAt(product.id, "2", new Date("2026-10-26T10:00:00Z"), {
       discount: "20",
     });
 
     const range = dayRange(2026, 10, 26);
-    const summary = await salesSummary(range);
+    const summary = await salesSummary(shopId, range);
 
     expect(summary.revenuePaisa).toBe(30000);
     expect(summary.discountPaisa).toBe(2000);
     expect(summary.profitPaisa).toBe(2000);
 
-    const rows = await productSales(range);
+    const rows = await productSales(shopId, range);
     expect(rows[0]?.revenuePaisa).toBe(32000);
   });
 
   it("excludes voided sales from every report", async () => {
-    const product = expectOk(await createProduct(sugar));
+    const product = expectOk(await createProduct(shopId, sugar));
     const sale = await saleAt(
       product.id,
       "1",
@@ -286,24 +295,24 @@ describe("salesSummary", () => {
 
     const range = dayRange(2026, 10, 26);
 
-    expect(await salesSummary(range)).toMatchObject({
+    expect(await salesSummary(shopId, range)).toMatchObject({
       salesCount: 0,
       revenuePaisa: 0,
       profitPaisa: 0,
       creditGivenPaisa: 0,
     });
-    expect(await productSales(range)).toEqual([]);
+    expect(await productSales(shopId, range)).toEqual([]);
 
-    const series = await salesSeries(range);
+    const series = await salesSeries(shopId, range);
     expect(series.points.every((point) => point.revenuePaisa === 0)).toBe(true);
   });
 
   it("returns zeros for a period with no sales", async () => {
-    expectOk(await createProduct(sugar));
+    expectOk(await createProduct(shopId, sugar));
 
     const range = dayRange(2020, 1, 1);
 
-    expect(await salesSummary(range)).toEqual({
+    expect(await salesSummary(shopId, range)).toEqual({
       salesCount: 0,
       revenuePaisa: 0,
       discountPaisa: 0,
@@ -316,13 +325,13 @@ describe("salesSummary", () => {
 
 describe("product reports", () => {
   it("groups sales by product and ranks by line sales", async () => {
-    const sugarProduct = expectOk(await createProduct(sugar));
-    const soapProduct = expectOk(await createProduct(soap));
+    const sugarProduct = expectOk(await createProduct(shopId, sugar));
+    const soapProduct = expectOk(await createProduct(shopId, soap));
 
     await saleAt(sugarProduct.id, "2", new Date("2026-10-26T10:00:00Z"));
     await saleAt(soapProduct.id, "3", new Date("2026-10-26T11:00:00Z"));
 
-    const rows = await productSales(dayRange(2026, 10, 26));
+    const rows = await productSales(shopId, dayRange(2026, 10, 26));
 
     expect(
       rows.map((row) => [
@@ -338,14 +347,14 @@ describe("product reports", () => {
   });
 
   it("lists active stocked products that sold nothing", async () => {
-    const sugarProduct = expectOk(await createProduct(sugar));
-    expectOk(await createProduct(soap));
+    const sugarProduct = expectOk(await createProduct(shopId, sugar));
+    expectOk(await createProduct(shopId, soap));
     const hidden = expectOk(
-      await createProduct({ ...soap, name: "Hidden Soap" }),
+      await createProduct(shopId, { ...soap, name: "Hidden Soap" }),
     );
-    expectOk(await setProductActive(hidden.id, false));
+    expectOk(await setProductActive(shopId, hidden.id, false));
     expectOk(
-      await createProduct({
+      await createProduct(shopId, {
         ...soap,
         name: "Empty Soap",
         openingStock: "0",
@@ -354,7 +363,7 @@ describe("product reports", () => {
 
     await saleAt(sugarProduct.id, "1", new Date("2026-10-26T10:00:00Z"));
 
-    const slow = await slowMovingProducts(dayRange(2026, 10, 26));
+    const slow = await slowMovingProducts(shopId, dayRange(2026, 10, 26));
 
     expect(slow.map((product) => product.name)).toEqual(["Soap"]);
   });
@@ -362,14 +371,14 @@ describe("product reports", () => {
 
 describe("salesSeries", () => {
   it("groups revenue into daily buckets, including empty days", async () => {
-    const product = expectOk(await createProduct(sugar));
+    const product = expectOk(await createProduct(shopId, sugar));
 
     // 01:00 on 26 October in Karachi.
     await saleAt(product.id, "1", new Date("2026-10-25T20:00:00Z"));
     // 15:00 on 26 October in Karachi.
     await saleAt(product.id, "2", new Date("2026-10-26T10:00:00Z"));
 
-    const series = await salesSeries({
+    const series = await salesSeries(shopId, {
       start: karachiDateTime(2026, 10, 26),
       end: karachiDateTime(2026, 10, 28),
     });
@@ -384,10 +393,10 @@ describe("salesSeries", () => {
   });
 
   it("uses monthly buckets for long ranges", async () => {
-    const product = expectOk(await createProduct(sugar));
+    const product = expectOk(await createProduct(shopId, sugar));
     await saleAt(product.id, "1", new Date("2026-10-26T10:00:00Z"));
 
-    const series = await salesSeries({
+    const series = await salesSeries(shopId, {
       start: karachiDateTime(2026, 9, 1),
       end: karachiDateTime(2026, 11, 1),
     });

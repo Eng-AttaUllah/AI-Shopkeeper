@@ -43,14 +43,21 @@ function expectOk<T>(result: Result<T>): T {
   return result.data;
 }
 
+let shopId: string;
+
 async function seedProducts() {
-  const sugarProduct = expectOk(await createProduct(sugar));
-  const soapProduct = expectOk(await createProduct(soap));
+  const sugarProduct = expectOk(await createProduct(shopId, sugar));
+  const soapProduct = expectOk(await createProduct(shopId, soap));
 
   return { sugarProduct, soapProduct };
 }
 
 beforeEach(async () => {
+  const shop = await prisma.shop.create({
+    data: { name: "Test Shop", currency: "PKR", timezone: "Asia/Karachi" },
+  });
+  shopId = shop.id;
+
   await prisma.saleItem.deleteMany();
   await prisma.sale.deleteMany();
   await prisma.payment.deleteMany();
@@ -69,7 +76,7 @@ describe("createSale", () => {
     const { sugarProduct, soapProduct } = await seedProducts();
 
     const sale = expectOk(
-      await createSale({
+      await createSale(shopId, {
         items: [
           { productId: sugarProduct.id, quantity: "2" },
           { productId: soapProduct.id, quantity: "3" },
@@ -114,7 +121,7 @@ describe("createSale", () => {
     const { sugarProduct } = await seedProducts();
 
     const sale = expectOk(
-      await createSale({
+      await createSale(shopId, {
         items: [{ productId: sugarProduct.id, quantity: "2" }],
         paymentMethod: "CASH",
       }),
@@ -132,21 +139,21 @@ describe("createSale", () => {
     const { sugarProduct } = await seedProducts();
 
     const sale = expectOk(
-      await createSale({
+      await createSale(shopId, {
         items: [{ productId: sugarProduct.id, quantity: "1" }],
         paymentMethod: "CASH",
       }),
     );
 
     expectOk(
-      await updateProduct(sugarProduct.id, {
+      await updateProduct(shopId, sugarProduct.id, {
         ...sugar,
         salePrice: "200",
         costPrice: "180",
       }),
     );
 
-    const stored = await getSale(sale.id);
+    const stored = await getSale(shopId, sale.id);
 
     expect(stored?.items[0]?.unitPricePaisa).toBe(16000);
     expect(stored?.items[0]?.unitCostPaisa).toBe(14000);
@@ -157,7 +164,7 @@ describe("createSale", () => {
     const { sugarProduct } = await seedProducts();
 
     const sale = expectOk(
-      await createSale({
+      await createSale(shopId, {
         items: [
           { productId: sugarProduct.id, quantity: "1" },
           { productId: sugarProduct.id, quantity: "2" },
@@ -179,7 +186,7 @@ describe("createSale", () => {
     const { sugarProduct } = await seedProducts();
 
     const sale = expectOk(
-      await createSale({
+      await createSale(shopId, {
         items: [{ productId: sugarProduct.id, quantity: "1.5" }],
         paymentMethod: "CASH",
       }),
@@ -197,7 +204,7 @@ describe("createSale", () => {
   it("rejects a sale above the available stock and writes nothing", async () => {
     const { sugarProduct } = await seedProducts();
 
-    const result = await createSale({
+    const result = await createSale(shopId, {
       items: [{ productId: sugarProduct.id, quantity: "11" }],
       paymentMethod: "CASH",
     });
@@ -221,7 +228,7 @@ describe("createSale", () => {
   it("rolls back every line when one product is short", async () => {
     const { sugarProduct, soapProduct } = await seedProducts();
 
-    const result = await createSale({
+    const result = await createSale(shopId, {
       items: [
         { productId: sugarProduct.id, quantity: "2" },
         { productId: soapProduct.id, quantity: "100" },
@@ -242,9 +249,9 @@ describe("createSale", () => {
 
   it("rejects a product that is no longer on sale", async () => {
     const { soapProduct } = await seedProducts();
-    expectOk(await setProductActive(soapProduct.id, false));
+    expectOk(await setProductActive(shopId, soapProduct.id, false));
 
-    const result = await createSale({
+    const result = await createSale(shopId, {
       items: [{ productId: soapProduct.id, quantity: "1" }],
       paymentMethod: "CASH",
     });
@@ -259,7 +266,7 @@ describe("createSale", () => {
   it("rejects a discount larger than the subtotal", async () => {
     const { sugarProduct } = await seedProducts();
 
-    const result = await createSale({
+    const result = await createSale(shopId, {
       items: [{ productId: sugarProduct.id, quantity: "1" }],
       discount: "500",
       paymentMethod: "CASH",
@@ -274,7 +281,7 @@ describe("createSale", () => {
   it("rejects cash below the total", async () => {
     const { sugarProduct } = await seedProducts();
 
-    const result = await createSale({
+    const result = await createSale(shopId, {
       items: [{ productId: sugarProduct.id, quantity: "1" }],
       paid: "100",
       paymentMethod: "CASH",
@@ -289,11 +296,11 @@ describe("createSale", () => {
   it("rejects a zero quantity and an empty cart", async () => {
     const { sugarProduct } = await seedProducts();
 
-    const zero = await createSale({
+    const zero = await createSale(shopId, {
       items: [{ productId: sugarProduct.id, quantity: "0" }],
       paymentMethod: "CASH",
     });
-    const empty = await createSale({ items: [], paymentMethod: "CASH" });
+    const empty = await createSale(shopId, { items: [], paymentMethod: "CASH" });
 
     expect(zero.ok).toBe(false);
     expect(empty.ok).toBe(false);
@@ -303,13 +310,13 @@ describe("createSale", () => {
     const { sugarProduct } = await seedProducts();
 
     const first = expectOk(
-      await createSale({
+      await createSale(shopId, {
         items: [{ productId: sugarProduct.id, quantity: "1" }],
         paymentMethod: "CASH",
       }),
     );
     const second = expectOk(
-      await createSale({
+      await createSale(shopId, {
         items: [{ productId: sugarProduct.id, quantity: "1" }],
         paymentMethod: "CASH",
       }),
@@ -318,7 +325,7 @@ describe("createSale", () => {
     expect(first.number.endsWith("-0001")).toBe(true);
     expect(second.number.endsWith("-0002")).toBe(true);
 
-    const sales = await listSales();
+    const sales = await listSales(shopId);
     expect(sales).toHaveLength(2);
     expect(sales[0]?.id).toBe(second.id);
     expect(sales[0]?._count.items).toBe(1);
@@ -328,7 +335,7 @@ describe("createSale", () => {
     const { sugarProduct } = await seedProducts();
 
     const sale = expectOk(
-      await createSale({
+      await createSale(shopId, {
         items: [{ productId: sugarProduct.id, quantity: "2" }],
         discount: "10",
         paymentMethod: "CASH",

@@ -43,6 +43,7 @@ export type CreateExpenseOutcome = {
  * keeps the simple expenses-screen contract.
  */
 export async function createExpenseWithStatus(
+  shopId: string,
   input: unknown,
   actor: string = LOCAL_ACTOR,
   options: CreateExpenseOptions = {},
@@ -98,12 +99,14 @@ export async function createExpenseWithStatus(
           amountPaisa,
           spentAt,
           note: emptyToNull(data.note),
+          shopId,
           proposalId: options.proposalId ?? null,
         },
       });
 
       await writeAudit(tx, {
         actor,
+        shopId,
         action: "EXPENSE_RECORDED",
         entityType: "Expense",
         entityId: created.id,
@@ -153,10 +156,11 @@ export async function createExpenseWithStatus(
 
 /** Record an expense from the expenses screen. */
 export async function createExpense(
+  shopId: string,
   input: unknown,
   actor: string = LOCAL_ACTOR,
 ): Promise<Result<Expense>> {
-  const result = await createExpenseWithStatus(input, actor);
+  const result = await createExpenseWithStatus(shopId, input, actor);
 
   if (!result.ok) {
     return result;

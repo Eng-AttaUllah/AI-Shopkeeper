@@ -24,7 +24,14 @@ async function writeClip(name: string): Promise<void> {
   createdFiles.push(name);
 }
 
+let shopId: string;
+
 beforeEach(async () => {
+  const shop = await prisma.shop.create({
+    data: { name: "Test Shop", currency: "PKR", timezone: "Asia/Karachi" },
+  });
+  shopId = shop.id;
+
   await prisma.cameraAlert.deleteMany();
   await prisma.auditLog.deleteMany();
 });
@@ -43,7 +50,7 @@ describe("camera alerts", () => {
   it("records an alert when the clip file exists on disk", async () => {
     await writeClip("clip-20261104-a.mp4");
 
-    const result = await recordCameraAlert({
+    const result = await recordCameraAlert(shopId, {
       clipPath: "clip-20261104-a.mp4",
       capturedAt: iso(0),
       durationMs: 12_000,
@@ -63,7 +70,7 @@ describe("camera alerts", () => {
   });
 
   it("refuses an alert whose clip file is missing", async () => {
-    const result = await recordCameraAlert({
+    const result = await recordCameraAlert(shopId, {
       clipPath: "missing-clip.mp4",
       capturedAt: iso(0),
       durationMs: 12_000,
@@ -85,7 +92,7 @@ describe("camera alerts", () => {
       ".hidden.mp4",
       "",
     ]) {
-      const result = await recordCameraAlert({
+      const result = await recordCameraAlert(shopId, {
         clipPath,
         capturedAt: iso(0),
         durationMs: 12_000,
@@ -99,13 +106,14 @@ describe("camera alerts", () => {
 
   it("marks an alert reviewed with a note and writes the audit row", async () => {
     await writeClip("clip-review.mp4");
-    const created = (await recordCameraAlert({
+    const created = (await recordCameraAlert(shopId, {
       clipPath: "clip-review.mp4",
       capturedAt: iso(0),
       durationMs: 8_000,
     })) as { ok: true; data: { id: string } };
 
     const result = await reviewCameraAlert(
+      shopId,
       { alertId: created.data.id, note: "Cat on the counter" },
       "REVIEWED",
       "owner",
@@ -128,25 +136,34 @@ describe("camera alerts", () => {
 
   it("re-applying the same review state is a no-op that succeeds", async () => {
     await writeClip("clip-twice.mp4");
-    const created = (await recordCameraAlert({
+    const created = (await recordCameraAlert(shopId, {
       clipPath: "clip-twice.mp4",
       capturedAt: iso(0),
       durationMs: 5_000,
     })) as { ok: true; data: { id: string } };
 
-    await reviewCameraAlert({ alertId: created.data.id }, "DISMISSED", "owner");
+    await reviewCameraAlert(
+      shopId,
+      { alertId: created.data.id },
+      "DISMISSED",
+      "owner",
+    );
     const again = await reviewCameraAlert(
+      shopId,
       { alertId: created.data.id },
       "DISMISSED",
       "owner",
     );
 
     expect(again.ok).toBe(true);
-    expect(await prisma.auditLog.count({ where: { action: "CAMERA_ALERT_REVIEWED" } })).toBe(1);
+    expect(
+      await prisma.auditLog.count({ where: { action: "CAMERA_ALERT_REVIEWED" } }),
+    ).toBe(1);
   });
 
   it("refuses to review an alert that does not exist", async () => {
     const result = await reviewCameraAlert(
+      shopId,
       { alertId: "does-not-exist" },
       "REVIEWED",
       "owner",
@@ -164,13 +181,14 @@ describe("camera alerts", () => {
       await prisma.cameraAlert.create({
         data: {
           clipPath: name,
+          shopId,
           capturedAt: new Date(Date.UTC(2026, 10, 4, 9, i)),
           durationMs: 1_000,
         },
       });
     }
 
-    const deleted = await pruneOldClips();
+    const deleted = await pruneOldClips(shopId);
 
     expect(deleted).toBe(2);
     expect(await prisma.cameraAlert.count()).toBe(total);

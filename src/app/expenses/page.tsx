@@ -9,6 +9,7 @@ import {
   karachiMonthRange,
 } from "@/lib/dates";
 import { prisma } from "@/lib/db";
+import { requireShopkeeper } from "@/lib/require-user";
 import { formatDate, formatMonthYear, formatPaisa } from "@/lib/format";
 import { readClientLocale, translate } from "@/lib/dictionary";
 import { expenseTotalPaisa, listExpenses } from "@/modules/expenses/queries";
@@ -20,13 +21,14 @@ function categoryLabel(category: string, t: (key: string) => string): string {
 }
 
 export default async function ExpensesPage() {
+  const { shop } = await requireShopkeeper();
   const now = new Date();
   const todayKey = isoDateKeyInKarachi(now);
   const monthRange = karachiMonthRange(now);
 
   const [expenses, monthTotal] = await Promise.all([
-    listExpenses(50),
-    expenseTotalPaisa(prisma, monthRange),
+    listExpenses(shop.id, 50),
+    expenseTotalPaisa(prisma, monthRange, shop.id),
   ]);
 
   const locale = readClientLocale();

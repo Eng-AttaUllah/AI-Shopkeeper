@@ -16,6 +16,7 @@ import {
 import { formatPaisa } from "@/lib/format";
 import { formatQuantity } from "@/lib/quantity";
 import { readClientLocale, translate } from "@/lib/dictionary";
+import { requireShopkeeper } from "@/lib/require-user";
 import {
   periodSummary,
   productSales,
@@ -75,12 +76,13 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
   }
 
   const { period, range, fromKey, toKey, label } = active.data;
+  const { shop } = await requireShopkeeper();
 
   const [summary, products, series, slowMoving] = await Promise.all([
-    periodSummary(range),
-    productSales(range),
-    salesSeries(range),
-    slowMovingProducts(range, 5),
+    periodSummary(shop.id, range),
+    productSales(shop.id, range),
+    salesSeries(shop.id, range),
+    slowMovingProducts(shop.id, range, 5),
   ]);
   const bestSellers = products.slice(0, 5);
 

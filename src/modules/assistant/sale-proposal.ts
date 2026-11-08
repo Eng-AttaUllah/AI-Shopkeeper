@@ -84,9 +84,10 @@ export const proposeSaleSchema = z.object({
 export type ProposeSaleInput = z.infer<typeof proposeSaleSchema>;
 
 async function resolveDraft(
+  shopId: string,
   input: ProposeSaleInput,
 ): Promise<Result<CreateSaleInput>> {
-  const products: ProductCandidate[] = (await listProducts()).map(
+  const products: ProductCandidate[] = (await listProducts(shopId)).map(
     (product) => ({
       id: product.id,
       name: product.name,
@@ -132,7 +133,7 @@ async function resolveDraft(
 
     // Read every customer and normalize in memory: the stored phone may use
     // spaces or dashes, while the model may send a different format.
-    const customers = await listCustomersWithBalances();
+    const customers = await listCustomersWithBalances(shopId);
     const matches = matchCustomer(customers, input.customer);
 
     if (matches.length === 0) {
@@ -223,7 +224,7 @@ export async function runProposeSaleTool(
     );
   }
 
-  const draft = await resolveDraft(parsed.data);
+  const draft = await resolveDraft(context.shopId ?? "", parsed.data);
 
   if (!draft.ok) {
     return draft;
@@ -232,7 +233,7 @@ export async function runProposeSaleTool(
   let priced: PricedSale;
 
   try {
-    priced = await priceSale(prisma, draft.data);
+    priced = await priceSale(prisma, context.shopId ?? "", draft.data);
   } catch (error) {
     if (error instanceof SalePricingError) {
       return fail(error.message, error.fieldErrors);

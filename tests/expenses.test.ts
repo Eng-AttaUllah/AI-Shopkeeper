@@ -14,7 +14,14 @@ function expectOk<T>(result: Result<T>): T {
   return result.data;
 }
 
+let shopId: string;
+
 beforeEach(async () => {
+  const shop = await prisma.shop.create({
+    data: { name: "Test Shop", currency: "PKR", timezone: "Asia/Karachi" },
+  });
+  shopId = shop.id;
+
   await prisma.auditLog.deleteMany();
   await prisma.expense.deleteMany();
 });
@@ -26,7 +33,7 @@ afterAll(async () => {
 describe("createExpense", () => {
   it("records an expense at shop-local midnight and writes an audit row", async () => {
     const expense = expectOk(
-      await createExpense({
+      await createExpense(shopId, {
         category: "RENT",
         amount: "1500",
         date: "2026-10-26",
@@ -61,73 +68,77 @@ describe("createExpense", () => {
 
   it("totals only the expenses inside the range", async () => {
     expectOk(
-      await createExpense({
+      await createExpense(shopId, {
         category: "RENT",
         amount: "1000",
         date: "2026-09-30",
       }),
     );
     expectOk(
-      await createExpense({
+      await createExpense(shopId, {
         category: "ELECTRICITY",
         amount: "250",
         date: "2026-10-01",
       }),
     );
     expectOk(
-      await createExpense({
+      await createExpense(shopId, {
         category: "OTHER",
         amount: "50",
         date: "2026-10-31",
       }),
     );
 
-    const october = await expenseTotalPaisa(prisma, {
-      start: karachiDateTime(2026, 10, 1),
-      end: karachiDateTime(2026, 11, 1),
-    });
+    const october = await expenseTotalPaisa(
+      prisma,
+      {
+        start: karachiDateTime(2026, 10, 1),
+        end: karachiDateTime(2026, 11, 1),
+      },
+      shopId,
+    );
 
     expect(october).toBe(30000);
   });
 
   it("lists newest expense dates first", async () => {
     expectOk(
-      await createExpense({
+      await createExpense(shopId, {
         category: "OTHER",
         amount: "10",
         date: "2026-10-01",
       }),
     );
     const later = expectOk(
-      await createExpense({
+      await createExpense(shopId, {
         category: "OTHER",
         amount: "20",
         date: "2026-10-05",
       }),
     );
 
-    const expenses = await listExpenses();
+    const expenses = await listExpenses(shopId);
 
     expect(expenses[0]?.id).toBe(later.id);
   });
 
   it("rejects zero, a bad date, an unknown category, and a bad amount", async () => {
-    const zero = await createExpense({
+    const zero = await createExpense(shopId, {
       category: "OTHER",
       amount: "0",
       date: "2026-10-26",
     });
-    const badDate = await createExpense({
+    const badDate = await createExpense(shopId, {
       category: "OTHER",
       amount: "10",
       date: "2026-02-31",
     });
-    const badCategory = await createExpense({
+    const badCategory = await createExpense(shopId, {
       category: "FOOD",
       amount: "10",
       date: "2026-10-26",
     });
-    const badAmount = await createExpense({
+    const badAmount = await createExpense(shopId, {
       category: "OTHER",
       amount: "ten",
       date: "2026-10-26",

@@ -2,13 +2,15 @@ import { createSaleAction } from "@/app/sales/actions";
 import { SellScreen } from "@/components/sales/sell-screen";
 import { listCustomerOptions } from "@/modules/customers/queries";
 import { listSellableProducts } from "@/modules/products/queries";
+import { requireShopkeeper } from "@/lib/require-user";
 
 export const dynamic = "force-dynamic";
 
 export default async function SellPage() {
+  const { shop } = await requireShopkeeper();
   const [products, customers] = await Promise.all([
-    listSellableProducts(),
-    listCustomerOptions(),
+    listSellableProducts(shop.id),
+    listCustomerOptions(shop.id),
   ]);
 
   return (

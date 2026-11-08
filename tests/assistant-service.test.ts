@@ -56,11 +56,13 @@ class FakeProvider implements ChatProvider {
   }
 }
 
+let shopId: string;
+
 async function seedCashSale() {
-  const product = expectOk(await createProduct(sugar));
+  const product = expectOk(await createProduct(shopId, sugar));
 
   return expectOk(
-    await createSale({
+    await createSale(shopId, {
       items: [{ productId: product.id, quantity: "2" }],
       discount: "0",
       paid: "400",
@@ -70,6 +72,11 @@ async function seedCashSale() {
 }
 
 beforeEach(async () => {
+  const shop = await prisma.shop.create({
+    data: { name: "Test Shop", currency: "PKR", timezone: "Asia/Karachi" },
+  });
+  shopId = shop.id;
+
   await prisma.auditLog.deleteMany();
   await prisma.expense.deleteMany();
   await prisma.cashReconciliation.deleteMany();
@@ -120,6 +127,7 @@ describe("answerShopQuestion", () => {
       await answerShopQuestion({
         question: "How much did I sell today?",
         provider,
+        shopId,
       }),
     );
 
@@ -155,6 +163,7 @@ describe("answerShopQuestion", () => {
           { role: "assistant", content: "Hello. Ask me about the shop." },
         ],
         provider,
+        shopId,
       }),
     );
 
@@ -195,6 +204,7 @@ describe("answerShopQuestion", () => {
       await answerShopQuestion({
         question: "Delete my last sale.",
         provider,
+        shopId,
       }),
     );
 
@@ -235,6 +245,7 @@ describe("answerShopQuestion", () => {
       await answerShopQuestion({
         question: "Compare today with yesterday.",
         provider,
+        shopId,
       }),
     );
 
@@ -256,6 +267,7 @@ describe("answerShopQuestion", () => {
     const result = await answerShopQuestion({
       question: "How much did I sell today?",
       provider,
+      shopId,
     });
 
     expect(result.ok).toBe(false);
@@ -277,6 +289,7 @@ describe("answerShopQuestion", () => {
     const result = await answerShopQuestion({
       question: "What is low in stock?",
       provider,
+      shopId,
     });
 
     expect(result.ok).toBe(false);
@@ -291,6 +304,7 @@ describe("answerShopQuestion", () => {
     const emptyResult = await answerShopQuestion({
       question: "Hello",
       provider: empty,
+      shopId,
     });
 
     expect(emptyResult.ok).toBe(false);
@@ -301,6 +315,7 @@ describe("answerShopQuestion", () => {
     const invalid = await answerShopQuestion({
       question: " ",
       provider: new FakeProvider([]),
+      shopId,
     });
 
     expect(invalid.ok).toBe(false);
@@ -310,7 +325,7 @@ describe("answerShopQuestion", () => {
   });
 
   it("prepares a signed sale proposal without writing or exposing the token to the model", async () => {
-    const product = expectOk(await createProduct(sugar));
+    const product = expectOk(await createProduct(shopId, sugar));
     const provider = new FakeProvider([
       {
         content: null,
@@ -337,6 +352,7 @@ describe("answerShopQuestion", () => {
         question: "Sell 2 kg of sugar for cash.",
         provider,
         userId: "user-1",
+        shopId,
       }),
     );
 
@@ -401,6 +417,7 @@ describe("answerShopQuestion", () => {
         question: "Record 500 rupees electricity expense.",
         provider,
         userId: "user-1",
+        shopId,
         now: new Date("2026-10-28T10:00:00.000Z"),
       }),
     );
@@ -438,9 +455,9 @@ describe("answerShopQuestion", () => {
   });
 
   it("prepares a signed payment proposal without writing", async () => {
-    const product = expectOk(await createProduct(sugar));
+    const product = expectOk(await createProduct(shopId, sugar));
     const customer = expectOk(
-      await createCustomer({
+      await createCustomer(shopId, {
         name: "Ali Khan",
         phone: "0300-1234567",
         note: "",
@@ -448,7 +465,7 @@ describe("answerShopQuestion", () => {
     );
 
     expectOk(
-      await createSale({
+      await createSale(shopId, {
         items: [{ productId: product.id, quantity: "2" }],
         paymentMethod: "CREDIT",
         customerId: customer.id,
@@ -480,6 +497,7 @@ describe("answerShopQuestion", () => {
         question: "Ali paid 200 on his khata.",
         provider,
         userId: "user-1",
+        shopId,
         now: new Date("2026-10-28T10:00:00.000Z"),
       }),
     );
@@ -536,6 +554,7 @@ describe("answerShopQuestion", () => {
         question: "Record two expenses.",
         provider,
         userId: "user-1",
+        shopId,
         now: new Date("2026-10-28T10:00:00.000Z"),
       }),
     );

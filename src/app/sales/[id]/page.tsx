@@ -8,6 +8,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { formatDateTime, formatPaisa } from "@/lib/format";
 import { formatQuantity } from "@/lib/quantity";
 import { readClientLocale, translate } from "@/lib/dictionary";
+import { requireShopkeeper } from "@/lib/require-user";
 import { getSale, saleSubtotalPaisa } from "@/modules/sales/queries";
 
 export const dynamic = "force-dynamic";
@@ -20,7 +21,8 @@ export default async function SaleReceiptPage({
   params,
 }: SaleReceiptPageProps) {
   const { id } = await params;
-  const sale = await getSale(id);
+  const { shop } = await requireShopkeeper();
+  const sale = await getSale(shop.id, id);
 
   if (!sale) {
     notFound();

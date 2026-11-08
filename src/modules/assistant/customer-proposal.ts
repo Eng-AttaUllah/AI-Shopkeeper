@@ -90,7 +90,7 @@ export async function runProposeCustomerTool(
     );
   }
 
-  const customers = await listCustomersWithBalances();
+  const customers = await listCustomersWithBalances(context.shopId ?? "");
   const phoneDigits = normalizePhone(draft.data.phone ?? "");
 
   const duplicate = customers.find(

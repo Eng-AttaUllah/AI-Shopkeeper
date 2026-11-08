@@ -14,6 +14,7 @@ import {
 import { formatPaisa } from "@/lib/format";
 import { formatQuantity } from "@/lib/quantity";
 import { readClientLocale, translate } from "@/lib/dictionary";
+import { requireShopkeeper } from "@/lib/require-user";
 import {
   inventoryValuePaisa,
   listProducts,
@@ -28,11 +29,12 @@ type ProductsPageProps = {
 
 export default async function ProductsPage({ searchParams }: ProductsPageProps) {
   const { q } = await searchParams;
+  const { shop } = await requireShopkeeper();
 
   const [products, lowStock, inventoryValue] = await Promise.all([
-    listProducts({ search: q }),
-    lowStockProducts(),
-    inventoryValuePaisa(),
+    listProducts(shop.id, { search: q }),
+    lowStockProducts(shop.id),
+    inventoryValuePaisa(shop.id),
   ]);
 
   const locale = readClientLocale();

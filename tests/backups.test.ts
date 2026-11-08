@@ -42,6 +42,9 @@ beforeAll(() => {
 });
 
 beforeEach(async () => {
+  await prisma.shop.create({
+    data: { name: "Test Shop", currency: "PKR", timezone: "Asia/Karachi" },
+  });
   await prisma.auditLog.deleteMany();
   await prisma.expense.deleteMany();
   await prisma.cashReconciliation.deleteMany();
@@ -62,7 +65,8 @@ afterAll(async () => {
 
 describe("backups", () => {
   it("writes a readable copy of the database", async () => {
-    expectOk(await createProduct(sugar));
+    const shop = await prisma.shop.findFirst({ orderBy: { createdAt: "asc" } });
+    const product = await createProduct(shop!.id, sugar);
 
     const backup = await createBackup(
       "manual",

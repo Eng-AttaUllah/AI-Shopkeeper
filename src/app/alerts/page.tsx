@@ -7,17 +7,17 @@ import {
 import { AlertReviewForm } from "@/components/alerts/alert-review-form";
 import { Badge } from "@/components/ui/badge";
 import { formatDateTime } from "@/lib/format";
+import { requireShopkeeper } from "@/lib/require-user";
 import { t } from "@/lib/i18n";
 import { listCameraAlerts } from "@/modules/camera/queries";
-import { requireOwner } from "@/lib/require-user";
 
 export const dynamic = "force-dynamic";
 
 export default async function AlertsPage() {
-  await requireOwner();
+  const { shop } = await requireShopkeeper();
 
   const [alerts, cameraTokenConfigured] = await Promise.all([
-    listCameraAlerts(),
+    listCameraAlerts(shop.id),
     Promise.resolve(Boolean(process.env.CAMERA_ALERT_TOKEN)),
   ]);
 

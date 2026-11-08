@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
-import { requireOwner } from "@/lib/require-user";
+import { requireShopkeeper } from "@/lib/require-user";
 import { reviewCameraAlert } from "@/modules/camera/service";
 
 export type AlertActionState =
@@ -13,14 +13,14 @@ export async function markAlertReviewedAction(
   _previousState: AlertActionState,
   formData: FormData,
 ): Promise<AlertActionState> {
-  const user = await requireOwner();
+  const { shop } = await requireShopkeeper();
   const result = await reviewCameraAlert(
+    shop.id,
     {
       alertId: String(formData.get("alertId") ?? ""),
       note: String(formData.get("note") ?? "") || undefined,
     },
     "REVIEWED",
-    user.username,
   );
 
   if (!result.ok) {
@@ -36,14 +36,14 @@ export async function dismissAlertAction(
   _previousState: AlertActionState,
   formData: FormData,
 ): Promise<AlertActionState> {
-  const user = await requireOwner();
+  const { shop } = await requireShopkeeper();
   const result = await reviewCameraAlert(
+    shop.id,
     {
       alertId: String(formData.get("alertId") ?? ""),
       note: String(formData.get("note") ?? "") || undefined,
     },
     "DISMISSED",
-    user.username,
   );
 
   if (!result.ok) {

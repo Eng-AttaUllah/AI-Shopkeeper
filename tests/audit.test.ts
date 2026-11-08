@@ -33,6 +33,8 @@ function expectOk<T>(result: Result<T>): T {
   return result.data;
 }
 
+let shopId: string;
+
 async function actions(): Promise<string[]> {
   const rows = await prisma.auditLog.findMany({
     orderBy: { createdAt: "asc" },
@@ -42,6 +44,11 @@ async function actions(): Promise<string[]> {
 }
 
 beforeEach(async () => {
+  const shop = await prisma.shop.create({
+    data: { name: "Test Shop", currency: "PKR", timezone: "Asia/Karachi" },
+  });
+  shopId = shop.id;
+
   await prisma.auditLog.deleteMany();
   await prisma.expense.deleteMany();
   await prisma.cashReconciliation.deleteMany();
@@ -60,10 +67,12 @@ afterAll(async () => {
 
 describe("audit log", () => {
   it("records every money and stock change with before and after state", async () => {
-    const product = expectOk(await createProduct(sugar));
-    expectOk(await updateProduct(product.id, { ...sugar, salePrice: "170" }));
+    const product = expectOk(await createProduct(shopId, sugar));
     expectOk(
-      await adjustStock({
+      await updateProduct(shopId, product.id, { ...sugar, salePrice: "170" }),
+    );
+    expectOk(
+      await adjustStock(shopId, {
         productId: product.id,
         quantity: "5",
         reason: "RESTOCK",
@@ -72,31 +81,33 @@ describe("audit log", () => {
     );
 
     const cashSale = expectOk(
-      await createSale({
+      await createSale(shopId, {
         items: [{ productId: product.id, quantity: "1" }],
         paymentMethod: "CASH",
       }),
     );
-    expectOk(await voidSale(cashSale.id, { reason: "Wrong item" }));
+    expectOk(await voidSale(shopId, cashSale.id, { reason: "Wrong item" }));
 
-    const customer = expectOk(await createCustomer({ name: "Ali Khan" }));
+    const customer = expectOk(
+      await createCustomer(shopId, { name: "Ali Khan" }),
+    );
     const creditSale = expectOk(
-      await createSale({
+      await createSale(shopId, {
         items: [{ productId: product.id, quantity: "1" }],
         paymentMethod: "CREDIT",
         customerId: customer.id,
       }),
     );
-    expectOk(await recordPayment({ customerId: customer.id, amount: "50" }));
+    expectOk(await recordPayment(shopId, { customerId: customer.id, amount: "50" }));
     expectOk(
-      await createExpense({
+      await createExpense(shopId, {
         category: "OTHER",
         amount: "25",
         date: isoDateKeyInKarachi(new Date()),
       }),
     );
     expectOk(
-      await recordReconciliation({
+      await recordReconciliation(shopId, {
         date: isoDateKeyInKarachi(new Date()),
         counted: "0",
       }),
@@ -159,6 +170,7 @@ describe("audit log", () => {
   it("records the signed-in username when one is supplied", async () => {
     const expense = expectOk(
       await createExpense(
+        shopId,
         {
           category: "OTHER",
           amount: "25",
@@ -175,28 +187,30 @@ describe("audit log", () => {
   });
 
   it("writes nothing when a change is rejected", async () => {
-    const product = expectOk(await createProduct(sugar));
+    const product = expectOk(await createProduct(shopId, sugar));
 
     const beforeSale = await prisma.auditLog.count();
-    const shortSale = await createSale({
+    const shortSale = await createSale(shopId, {
       items: [{ productId: product.id, quantity: "999" }],
       paymentMethod: "CASH",
     });
     expect(shortSale.ok).toBe(false);
     expect(await prisma.auditLog.count()).toBe(beforeSale);
 
-    const customer = expectOk(await createCustomer({ name: "Ali Khan" }));
+    const customer = expectOk(
+      await createCustomer(shopId, { name: "Ali Khan" }),
+    );
     const creditSale = expectOk(
-      await createSale({
+      await createSale(shopId, {
         items: [{ productId: product.id, quantity: "1" }],
         paymentMethod: "CREDIT",
         customerId: customer.id,
       }),
     );
-    expectOk(await recordPayment({ customerId: customer.id, amount: "50" }));
+    expectOk(await recordPayment(shopId, { customerId: customer.id, amount: "50" }));
 
     const beforePayment = await prisma.auditLog.count();
-    const overPayment = await recordPayment({
+    const overPayment = await recordPayment(shopId, {
       customerId: customer.id,
       amount: "999",
     });
@@ -204,14 +218,14 @@ describe("audit log", () => {
     expect(await prisma.auditLog.count()).toBe(beforePayment);
 
     const beforeVoid = await prisma.auditLog.count();
-    const rejectedVoid = await voidSale(creditSale.id, {
+    const rejectedVoid = await voidSale(shopId, creditSale.id, {
       reason: "Too late",
     });
     expect(rejectedVoid.ok).toBe(false);
     expect(await prisma.auditLog.count()).toBe(beforeVoid);
 
     const beforeExpense = await prisma.auditLog.count();
-    const badExpense = await createExpense({
+    const badExpense = await createExpense(shopId, {
       category: "OTHER",
       amount: "0",
       date: "2026-10-26",
@@ -220,7 +234,7 @@ describe("audit log", () => {
     expect(await prisma.auditLog.count()).toBe(beforeExpense);
 
     const beforeCash = await prisma.auditLog.count();
-    const badCash = await recordReconciliation({
+    const badCash = await recordReconciliation(shopId, {
       date: "2026-02-31",
       counted: "100",
     });

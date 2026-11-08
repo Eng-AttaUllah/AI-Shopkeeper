@@ -4,8 +4,12 @@ import type { DateRange } from "@/lib/dates";
 import { sumPaisa } from "@/lib/money";
 
 /** Recent expenses, newest first. */
-export async function listExpenses(take = 50) {
+export async function listExpenses(
+  shopId: string,
+  take = 50,
+) {
   return prisma.expense.findMany({
+    where: { shopId },
     orderBy: [{ spentAt: "desc" }, { createdAt: "desc" }],
     take,
   });
@@ -15,9 +19,10 @@ export async function listExpenses(take = 50) {
 export async function expenseTotalPaisa(
   db: Prisma.TransactionClient,
   range: DateRange,
+  shopId: string,
 ): Promise<number> {
   const result = await db.expense.aggregate({
-    where: { spentAt: { gte: range.start, lt: range.end } },
+    where: { spentAt: { gte: range.start, lt: range.end }, shopId },
     _sum: { amountPaisa: true },
   });
 
@@ -37,10 +42,11 @@ export type ExpenseSummary = {
 /** Expense totals grouped by category for a half-open shop-local range. */
 export async function expenseSummaryByCategory(
   range: DateRange,
+  shopId: string,
 ): Promise<ExpenseSummary> {
   const groups = await prisma.expense.groupBy({
     by: ["category"],
-    where: { spentAt: { gte: range.start, lt: range.end } },
+    where: { spentAt: { gte: range.start, lt: range.end }, shopId },
     _sum: { amountPaisa: true },
   });
 

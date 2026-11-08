@@ -151,7 +151,9 @@ export async function runProposeProductTool(
     );
   }
 
-  const products = await listProducts({ includeInactive: true });
+  const products = await listProducts(context.shopId ?? "", {
+    includeInactive: true,
+  });
   const nameNormalized = normalize(draft.data.name);
   const barcode = draft.data.barcode?.trim() || null;
 

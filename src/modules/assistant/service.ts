@@ -45,6 +45,8 @@ export type AssistantServiceInput = {
   now?: Date;
   /** The signed-in user id; required before a proposal can be prepared. */
   userId?: string;
+  /** The shop every read and proposal is scoped to (Invariant 13). */
+  shopId: string;
   /** The shopkeeper's chosen locale; the model answers in this language. */
   locale?: Locale;
 };
@@ -96,10 +98,15 @@ export async function answerShopQuestion(
   }
 
   const now = input.now ?? new Date();
-  const shop = await prisma.shop.findFirst({
-    orderBy: { createdAt: "asc" },
-    select: { name: true },
-  });
+  const shop = input.shopId
+    ? await prisma.shop.findUnique({
+        where: { id: input.shopId },
+        select: { name: true },
+      })
+    : await prisma.shop.findFirst({
+        orderBy: { createdAt: "asc" },
+        select: { name: true },
+      });
 
   const historyMessages: ChatMessage[] = parsed.data.history.map((turn) =>
     turn.role === "user"
@@ -190,6 +197,7 @@ export async function answerShopQuestion(
 
         const proposalResult = await proposalTool.run(call.arguments, {
           userId: input.userId,
+          shopId: input.shopId,
           now,
         });
 
@@ -214,6 +222,7 @@ export async function answerShopQuestion(
 
       const result = await runAssistantTool(call.name, call.arguments, {
         now,
+        shopId: input.shopId,
       });
 
       const label = TOOL_LABELS[call.name];

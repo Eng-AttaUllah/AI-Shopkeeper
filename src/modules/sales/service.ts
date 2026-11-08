@@ -50,11 +50,12 @@ function handleError(error: unknown): Result<never> {
 /** Next receipt number for the shop's day, for example 20261025-0003. */
 async function nextSaleNumber(
   tx: Prisma.TransactionClient,
+  shopId: string,
   now: Date,
 ): Promise<string> {
   const prefix = dateKeyInKarachi(now);
   const count = await tx.sale.count({
-    where: { number: { startsWith: `${prefix}-` } },
+    where: { shopId, number: { startsWith: `${prefix}-` } },
   });
 
   return `${prefix}-${String(count + 1).padStart(4, "0")}`;
@@ -71,6 +72,7 @@ async function nextSaleNumber(
  * `createSaleWithStatus` also reports whether an assistant proposal was
  * already confirmed, so a replayed confirmation is idempotent. `createSale`
  * keeps the simple sell-screen contract.
+ * Everything is scoped to `shopId`.
  */
 export type CreateSaleOptions = {
   /** Set only when confirming an assistant proposal. */
@@ -85,6 +87,7 @@ export type CreateSaleOutcome = {
 };
 
 export async function createSaleWithStatus(
+  shopId: string,
   input: unknown,
   actor: string = LOCAL_ACTOR,
   options: CreateSaleOptions = {},
@@ -112,7 +115,7 @@ export async function createSaleWithStatus(
         }
       }
 
-      const priced = await priceSale(tx, parsed.data);
+      const priced = await priceSale(tx, shopId, parsed.data);
 
       if (
         options.expectedPreview &&
@@ -125,11 +128,11 @@ export async function createSaleWithStatus(
 
       const khataBalanceBeforePaisa =
         priced.paymentMethod === "CREDIT" && priced.customerId
-          ? await outstandingPaisa(tx, priced.customerId)
+          ? await outstandingPaisa(tx, shopId, priced.customerId)
           : null;
 
       const now = new Date();
-      const number = await nextSaleNumber(tx, now);
+      const number = await nextSaleNumber(tx, shopId, now);
 
       const created = await tx.sale.create({
         data: {
@@ -141,6 +144,7 @@ export async function createSaleWithStatus(
           changePaisa: priced.changePaisa,
           paymentMethod: priced.paymentMethod,
           customerId: priced.customerId,
+          shopId,
           note: priced.note,
           items: {
             create: priced.lines.map((line) => ({
@@ -164,13 +168,14 @@ export async function createSaleWithStatus(
 
       for (const line of priced.lines) {
         await tx.product.update({
-          where: { id: line.productId },
+          where: { id: line.productId, shopId },
           data: { stockMilli: { decrement: line.quantityMilli } },
         });
 
         await tx.stockMovement.create({
           data: {
             productId: line.productId,
+            shopId,
             quantityMilli: -line.quantityMilli,
             reason: "SALE",
             reference: created.id,
@@ -187,11 +192,12 @@ export async function createSaleWithStatus(
 
       const khataBalanceAfterPaisa =
         priced.paymentMethod === "CREDIT" && priced.customerId
-          ? await outstandingPaisa(tx, priced.customerId)
+          ? await outstandingPaisa(tx, shopId, priced.customerId)
           : null;
 
       await writeAudit(tx, {
         actor,
+        shopId,
         action: "SALE_CREATED",
         entityType: "Sale",
         entityId: created.id,
@@ -246,10 +252,11 @@ export async function createSaleWithStatus(
 
 /** Record a sale from the sell screen. */
 export async function createSale(
+  shopId: string,
   input: unknown,
   actor: string = LOCAL_ACTOR,
 ): Promise<Result<SaleWithItems>> {
-  const result = await createSaleWithStatus(input, actor);
+  const result = await createSaleWithStatus(shopId, input, actor);
 
   if (!result.ok) {
     return result;
@@ -266,8 +273,10 @@ export async function createSale(
  * derived, so excluding the voided sale restores the customer's balance. A
  * credit sale that already has repayments applied cannot be voided, because
  * removing its unpaid amount would leave the customer owed money by the shop.
+ * Everything is scoped to `shopId`.
  */
 export async function voidSale(
+  shopId: string,
   saleId: string,
   input: unknown,
   actor: string = LOCAL_ACTOR,
@@ -283,8 +292,8 @@ export async function voidSale(
 
   try {
     const sale = await prisma.$transaction(async (tx) => {
-      const existing = await tx.sale.findUnique({
-        where: { id: saleId },
+      const existing = await tx.sale.findFirst({
+        where: { id: saleId, shopId },
         include: { items: true },
       });
 
@@ -299,7 +308,11 @@ export async function voidSale(
       let khataBalanceBeforePaisa: number | null = null;
 
       if (existing.paymentMethod === "CREDIT" && existing.customerId) {
-        const outstanding = await outstandingPaisa(tx, existing.customerId);
+        const outstanding = await outstandingPaisa(
+          tx,
+          shopId,
+          existing.customerId,
+        );
         const unpaidPaisa = existing.totalPaisa - existing.paidPaisa;
 
         if (outstanding < unpaidPaisa) {
@@ -314,6 +327,7 @@ export async function voidSale(
       const products = await tx.product.findMany({
         where: {
           id: { in: existing.items.map((item) => item.productId) },
+          shopId,
         },
       });
       const productsById = new Map(
@@ -333,13 +347,14 @@ export async function voidSale(
 
       for (const item of existing.items) {
         await tx.product.update({
-          where: { id: item.productId },
+          where: { id: item.productId, shopId },
           data: { stockMilli: { increment: item.quantityMilli } },
         });
 
         await tx.stockMovement.create({
           data: {
             productId: item.productId,
+            shopId,
             quantityMilli: item.quantityMilli,
             reason: "VOID",
             reference: existing.id,
@@ -364,11 +379,12 @@ export async function voidSale(
 
       const khataBalanceAfterPaisa =
         existing.paymentMethod === "CREDIT" && existing.customerId
-          ? await outstandingPaisa(tx, existing.customerId)
+          ? await outstandingPaisa(tx, shopId, existing.customerId)
           : null;
 
       await writeAudit(tx, {
         actor,
+        shopId,
         action: "SALE_VOIDED",
         entityType: "Sale",
         entityId: existing.id,

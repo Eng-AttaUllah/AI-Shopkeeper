@@ -10,6 +10,8 @@ import { createProduct } from "@/modules/products/service";
 const now = new Date("2026-10-28T10:00:00.000Z");
 const userId = "user-1";
 
+let shopId: string;
+
 const sugar = {
   name: "Sugar",
   category: "Grocery",
@@ -43,11 +45,11 @@ function expectOk<T>(result: Result<T>): T {
 }
 
 async function seedSugar() {
-  return expectOk(await createProduct(sugar));
+  return expectOk(await createProduct(shopId, sugar));
 }
 
 async function propose(args: Record<string, unknown>) {
-  return runProposeSaleTool(JSON.stringify(args), { userId, now });
+  return runProposeSaleTool(JSON.stringify(args), { userId, now, shopId });
 }
 
 const originalSecret = process.env.AUTH_SECRET;
@@ -67,6 +69,11 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
+  const shop = await prisma.shop.create({
+    data: { name: "Test Shop", currency: "PKR", timezone: "Asia/Karachi" },
+  });
+  shopId = shop.id;
+
   await prisma.saleItem.deleteMany();
   await prisma.sale.deleteMany();
   await prisma.payment.deleteMany();
@@ -134,7 +141,7 @@ describe("propose_sale", () => {
   it("uses the customer for a credit proposal", async () => {
     await seedSugar();
     const customer = expectOk(
-      await createCustomer({
+      await createCustomer(shopId, {
         name: "Ali Khan",
         phone: "0300-1234567",
         note: "",
@@ -173,7 +180,7 @@ describe("propose_sale", () => {
 
   it("rejects an ambiguous product name instead of guessing", async () => {
     await seedSugar();
-    expectOk(await createProduct(sugarFree));
+    expectOk(await createProduct(shopId, sugarFree));
 
     const result = await propose({
       items: [{ product: "su", quantity: "1" }],

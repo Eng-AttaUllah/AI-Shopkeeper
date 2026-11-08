@@ -8,6 +8,7 @@ import {
   karachiDayRange,
 } from "@/lib/dates";
 import { prisma } from "@/lib/db";
+import { requireShopkeeper } from "@/lib/require-user";
 import { formatDate, formatPaisa } from "@/lib/format";
 import { readClientLocale, translate } from "@/lib/dictionary";
 import { cashBreakdown, listReconciliations } from "@/modules/cash/queries";
@@ -15,13 +16,14 @@ import { cashBreakdown, listReconciliations } from "@/modules/cash/queries";
 export const dynamic = "force-dynamic";
 
 export default async function DayClosePage() {
+  const { shop } = await requireShopkeeper();
   const now = new Date();
   const todayKey = isoDateKeyInKarachi(now);
   const todayRange = karachiDayRange(now);
 
   const [breakdown, history] = await Promise.all([
-    cashBreakdown(prisma, todayRange),
-    listReconciliations(14),
+    cashBreakdown(prisma, todayRange, shop.id),
+    listReconciliations(shop.id, 14),
   ]);
 
   const locale = readClientLocale();

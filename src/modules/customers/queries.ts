@@ -34,11 +34,13 @@ export type CustomerOption = {
 
 /** Customers with their derived khata balance, searched by name or phone. */
 export async function listCustomersWithBalances(
+  shopId: string,
   search?: string,
 ): Promise<CustomerWithBalance[]> {
   const term = search?.trim();
 
   let customers = await prisma.customer.findMany({
+    where: { shopId },
     orderBy: { name: "asc" },
   });
 
@@ -63,6 +65,7 @@ export async function listCustomersWithBalances(
   const sales = await prisma.sale.findMany({
     where: {
       customerId: { in: ids },
+      shopId,
       paymentMethod: "CREDIT",
       voidedAt: null,
     },
@@ -71,7 +74,7 @@ export async function listCustomersWithBalances(
 
   const payments = await prisma.payment.groupBy({
     by: ["customerId"],
-    where: { customerId: { in: ids } },
+    where: { customerId: { in: ids }, shopId },
     _sum: { amountPaisa: true },
   });
 
@@ -103,8 +106,10 @@ export async function listCustomersWithBalances(
 }
 
 /** Compact customer list for the credit choice on the sell screen. */
-export async function listCustomerOptions(): Promise<CustomerOption[]> {
-  const customers = await listCustomersWithBalances();
+export async function listCustomerOptions(
+  shopId: string,
+): Promise<CustomerOption[]> {
+  const customers = await listCustomersWithBalances(shopId);
 
   return customers.map((customer) => ({
     id: customer.id,
@@ -114,13 +119,16 @@ export async function listCustomerOptions(): Promise<CustomerOption[]> {
 }
 
 /** Total owed by every customer, used by the customers summary. */
-export async function totalOutstandingPaisa(): Promise<number> {
+export async function totalOutstandingPaisa(
+  shopId: string,
+): Promise<number> {
   const sales = await prisma.sale.findMany({
-    where: { paymentMethod: "CREDIT", voidedAt: null },
+    where: { shopId, paymentMethod: "CREDIT", voidedAt: null },
     select: { totalPaisa: true, paidPaisa: true },
   });
 
   const payments = await prisma.payment.aggregate({
+    where: { shopId },
     _sum: { amountPaisa: true },
   });
 
@@ -132,21 +140,28 @@ export async function totalOutstandingPaisa(): Promise<number> {
   return duePaisa - (payments._sum.amountPaisa ?? 0);
 }
 
-export async function getCustomer(id: string): Promise<Customer | null> {
-  return prisma.customer.findUnique({ where: { id } });
+export async function getCustomer(
+  shopId: string,
+  id: string,
+): Promise<Customer | null> {
+  return prisma.customer.findUnique({ where: { id, shopId } });
 }
 
-export async function customerBalancePaisa(id: string): Promise<number> {
-  return outstandingPaisa(prisma, id);
+export async function customerBalancePaisa(
+  shopId: string,
+  id: string,
+): Promise<number> {
+  return outstandingPaisa(prisma, shopId, id);
 }
 
 /** Credit sales and repayments for one customer, newest first. */
 export async function customerHistory(
+  shopId: string,
   customerId: string,
   take = 50,
 ): Promise<CustomerHistoryEntry[]> {
   const sales = await prisma.sale.findMany({
-    where: { customerId, paymentMethod: "CREDIT", voidedAt: null },
+    where: { customerId, shopId, paymentMethod: "CREDIT", voidedAt: null },
     select: {
       id: true,
       number: true,
@@ -160,7 +175,7 @@ export async function customerHistory(
   });
 
   const payments = await prisma.payment.findMany({
-    where: { customerId },
+    where: { customerId, shopId },
     orderBy: { createdAt: "desc" },
     take,
   });

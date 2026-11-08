@@ -24,6 +24,8 @@ const now = new Date("2026-10-29T10:00:00.000Z");
 const userId = "user-1";
 const actor = "owner";
 
+let shopId: string;
+
 const sugar = {
   name: "Sugar",
   category: "Grocery",
@@ -45,7 +47,7 @@ function expectOk<T>(result: Result<T>): T {
 }
 
 async function seedSugar() {
-  return expectOk(await createProduct(sugar));
+  return expectOk(await createProduct(shopId, sugar));
 }
 
 const originalSecret = process.env.AUTH_SECRET;
@@ -65,6 +67,11 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
+  const shop = await prisma.shop.create({
+    data: { name: "Test Shop", currency: "PKR", timezone: "Asia/Karachi" },
+  });
+  shopId = shop.id;
+
   await prisma.saleItem.deleteMany();
   await prisma.sale.deleteMany();
   await prisma.payment.deleteMany();
@@ -107,7 +114,7 @@ describe("customer proposal", () => {
           phone: "0300-1234567",
           note: "Neighbour",
         }),
-        { userId, now },
+        { userId, now, shopId },
       ),
     );
 
@@ -123,6 +130,7 @@ describe("customer proposal", () => {
         token: prepared.proposal.token,
         userId,
         actor,
+        shopId,
         now,
       }),
     );
@@ -138,6 +146,7 @@ describe("customer proposal", () => {
         token: prepared.proposal.token,
         userId,
         actor,
+        shopId,
         now,
       }),
     );
@@ -159,12 +168,12 @@ describe("customer proposal", () => {
 
   it("refuses a duplicate customer name", async () => {
     await prisma.customer.create({
-      data: { name: "Ali Khan", phone: null, note: null },
+      data: { name: "Ali Khan", phone: null, note: null, shopId },
     });
 
     const result = await runProposeCustomerTool(
       JSON.stringify({ name: "Ali Khan" }),
-      { userId, now },
+      { userId, now, shopId },
     );
 
     expect(result.ok).toBe(false);
@@ -190,7 +199,7 @@ describe("product proposal", () => {
           barcode: "200002",
           aliases: "chawal, rice bag",
         }),
-        { userId, now },
+        { userId, now, shopId },
       ),
     );
 
@@ -211,6 +220,7 @@ describe("product proposal", () => {
         token: prepared.proposal.token,
         userId,
         actor,
+        shopId,
         now,
       }),
     );
@@ -232,6 +242,7 @@ describe("product proposal", () => {
         token: prepared.proposal.token,
         userId,
         actor,
+        shopId,
         now,
       }),
     );
@@ -261,7 +272,7 @@ describe("product proposal", () => {
         openingStock: "0",
         lowStockLevel: "1",
       }),
-      { userId, now },
+      { userId, now, shopId },
     );
 
     expect(result.ok).toBe(false);
@@ -283,7 +294,7 @@ describe("product update proposal", () => {
           salePrice: "170",
           lowStockLevel: "2",
         }),
-        { userId, now },
+        { userId, now, shopId },
       ),
     );
 
@@ -302,6 +313,7 @@ describe("product update proposal", () => {
         token: prepared.proposal.token,
         userId,
         actor,
+        shopId,
         now,
       }),
     );
@@ -315,6 +327,7 @@ describe("product update proposal", () => {
         token: prepared.proposal.token,
         userId,
         actor,
+        shopId,
         now,
       }),
     );
@@ -337,22 +350,19 @@ describe("product update proposal", () => {
     const prepared = expectOk(
       await runProposeProductUpdateTool(
         JSON.stringify({ product: "Sugar", salePrice: "170" }),
-        { userId, now },
+        { userId, now, shopId },
       ),
     );
 
     expectOk(
-      await updateProduct(
-        product.id,
-        { ...sugar, salePrice: "165" },
-        actor,
-      ),
+      await updateProduct(shopId, product.id, { ...sugar, salePrice: "165" }, actor),
     );
 
     const result = await confirmProductUpdateProposal({
       token: prepared.proposal.token,
       userId,
       actor,
+      shopId,
       now,
     });
 
@@ -382,7 +392,7 @@ describe("stock adjustment proposal", () => {
           reason: "restock",
           note: "New bag",
         }),
-        { userId, now },
+        { userId, now, shopId },
       ),
     );
 
@@ -408,6 +418,7 @@ describe("stock adjustment proposal", () => {
         token: prepared.proposal.token,
         userId,
         actor,
+        shopId,
         now,
       }),
     );
@@ -424,6 +435,7 @@ describe("stock adjustment proposal", () => {
         token: prepared.proposal.token,
         userId,
         actor,
+        shopId,
         now,
       }),
     );
@@ -443,21 +455,23 @@ describe("stock adjustment proposal", () => {
           quantity: "5",
           reason: "restock",
         }),
-        { userId, now },
+        { userId, now, shopId },
       ),
     );
 
     expectOk(
-      await adjustStock(
-        { productId: product.id, quantity: "1", reason: "RESTOCK" },
-        actor,
-      ),
+      await adjustStock(shopId, {
+        productId: product.id,
+        quantity: "1",
+        reason: "RESTOCK",
+      }, actor),
     );
 
     const result = await confirmStockAdjustmentProposal({
       token: prepared.proposal.token,
       userId,
       actor,
+      shopId,
       now,
     });
 
@@ -483,7 +497,7 @@ describe("stock adjustment proposal", () => {
         quantity: "-20",
         reason: "damage",
       }),
-      { userId, now },
+      { userId, now, shopId },
     );
 
     expect(result.ok).toBe(false);

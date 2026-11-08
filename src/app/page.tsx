@@ -11,10 +11,10 @@ import {
   startOfKarachiDay,
   startOfKarachiMonth,
 } from "@/lib/dates";
-import { prisma } from "@/lib/db";
 import { formatDate, formatDateTime, formatPaisa } from "@/lib/format";
 import { formatQuantity } from "@/lib/quantity";
 import { readClientLocale, translate } from "@/lib/dictionary";
+import { requireShopkeeper } from "@/lib/require-user";
 import {
   inventoryValuePaisa,
   lowStockProducts,
@@ -45,8 +45,9 @@ export default async function Home() {
     console.error("Daily backup failed:", error);
   });
 
+  const { shop } = await requireShopkeeper();
+
   const [
-    shop,
     today,
     month,
     series,
@@ -55,14 +56,13 @@ export default async function Home() {
     stockValue,
     recentSales,
   ] = await Promise.all([
-    prisma.shop.findFirst({ orderBy: { createdAt: "asc" } }),
-    salesSummary(todayRange),
-    periodSummary(monthRange),
-    salesSeries(seriesRange),
-    creditOverview(5),
-    lowStockProducts(),
-    inventoryValuePaisa(),
-    listSales(5),
+    salesSummary(shop.id, todayRange),
+    periodSummary(shop.id, monthRange),
+    salesSeries(shop.id, seriesRange),
+    creditOverview(shop.id, 5),
+    lowStockProducts(shop.id),
+    inventoryValuePaisa(shop.id),
+    listSales(shop.id, 5),
   ]);
 
   const locale = readClientLocale();

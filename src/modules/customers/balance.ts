@@ -9,15 +9,16 @@ import type { Prisma } from "@/generated/prisma/client";
  */
 export async function outstandingPaisa(
   db: Prisma.TransactionClient,
+  shopId: string,
   customerId: string,
 ): Promise<number> {
   const sales = await db.sale.findMany({
-    where: { customerId, paymentMethod: "CREDIT", voidedAt: null },
+    where: { customerId, shopId, paymentMethod: "CREDIT", voidedAt: null },
     select: { totalPaisa: true, paidPaisa: true },
   });
 
   const payments = await db.payment.aggregate({
-    where: { customerId },
+    where: { customerId, shopId },
     _sum: { amountPaisa: true },
   });
 

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { requireOwner } from "@/lib/require-user";
+import { requireShopkeeper } from "@/lib/require-user";
 import {
   adjustStock,
   createProduct,
@@ -31,10 +31,10 @@ export async function createProductAction(
   _previousState: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  const user = await requireOwner();
+  const { shop } = await requireShopkeeper();
   const result = await createProduct(
+    shop.id,
     formDataToObject(formData),
-    user.username,
   );
 
   if (!result.ok) {
@@ -49,12 +49,12 @@ export async function updateProductAction(
   _previousState: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  const user = await requireOwner();
+  const { shop } = await requireShopkeeper();
   const id = String(formData.get("productId") ?? "");
   const result = await updateProduct(
+    shop.id,
     id,
     formDataToObject(formData),
-    user.username,
   );
 
   if (!result.ok) {
@@ -70,11 +70,11 @@ export async function adjustStockAction(
   _previousState: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  const user = await requireOwner();
+  const { shop } = await requireShopkeeper();
   const productId = String(formData.get("productId") ?? "");
   const result = await adjustStock(
+    shop.id,
     formDataToObject(formData),
-    user.username,
   );
 
   if (!result.ok) {
@@ -90,11 +90,11 @@ export async function adjustStockAction(
 export async function toggleProductActiveAction(
   formData: FormData,
 ): Promise<void> {
-  await requireOwner();
+  const { shop } = await requireShopkeeper();
   const id = String(formData.get("productId") ?? "");
   const isActive = formData.get("isActive") === "true";
 
-  await setProductActive(id, isActive);
+  await setProductActive(shop.id, id, isActive);
 
   revalidatePath("/products");
   revalidatePath(`/products/${id}/edit`);

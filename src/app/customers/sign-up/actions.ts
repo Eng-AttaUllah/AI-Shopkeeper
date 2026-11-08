@@ -3,6 +3,7 @@
 import { AuthError } from "next-auth";
 
 import { signIn } from "@/lib/auth";
+import { prisma } from "@/lib/db";
 import { createCustomerAccount } from "@/modules/customers/service";
 
 export type CustomerRegistrationState =
@@ -22,7 +23,17 @@ export async function customerRegistrationAction(
     password: formData.get("password"),
   };
 
-  const result = await createCustomerAccount(parsed);
+  // Single-shop transition: the new customer's ledger record belongs to the
+  // installation's shop until shopkeeper/customer joining is built in 13.5.
+  const shop = await prisma.shop.findFirst({ orderBy: { createdAt: "asc" } });
+
+  if (!shop) {
+    return {
+      error: "No shop is configured yet. Contact the platform operator.",
+    };
+  }
+
+  const result = await createCustomerAccount(shop.id, parsed);
 
   if (!result.ok) {
     return {

@@ -21,6 +21,7 @@ export async function confirmProductUpdateProposal(input: {
   token: string;
   userId: string;
   actor: string;
+  shopId: string;
   now?: Date;
 }): Promise<Result<ConfirmProductUpdateProposalOutcome>> {
   const verified = verifyProductUpdateProposalToken(
@@ -35,10 +36,16 @@ export async function confirmProductUpdateProposal(input: {
 
   const { productId, draft, preview, proposalId } = verified.data;
 
-  const result = await updateProductWithStatus(productId, draft, input.actor, {
-    proposalId,
-    expectedPreview: preview,
-  });
+  const result = await updateProductWithStatus(
+    input.shopId,
+    productId,
+    draft,
+    input.actor,
+    {
+      proposalId,
+      expectedPreview: preview,
+    },
+  );
 
   if (!result.ok) {
     return result;

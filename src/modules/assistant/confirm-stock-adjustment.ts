@@ -22,6 +22,7 @@ export async function confirmStockAdjustmentProposal(input: {
   token: string;
   userId: string;
   actor: string;
+  shopId: string;
   now?: Date;
 }): Promise<Result<ConfirmStockAdjustmentProposalOutcome>> {
   const verified = verifyStockAdjustmentProposalToken(
@@ -36,10 +37,15 @@ export async function confirmStockAdjustmentProposal(input: {
 
   const { draft, preview, proposalId } = verified.data;
 
-  const result = await adjustStockWithStatus(draft, input.actor, {
-    proposalId,
-    expectedPreview: preview,
-  });
+  const result = await adjustStockWithStatus(
+    input.shopId,
+    draft,
+    input.actor,
+    {
+      proposalId,
+      expectedPreview: preview,
+    },
+  );
 
   if (!result.ok) {
     return result;

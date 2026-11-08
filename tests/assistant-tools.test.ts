@@ -12,6 +12,8 @@ import { createExpense } from "@/modules/expenses/service";
 import { createProduct } from "@/modules/products/service";
 import { createSale } from "@/modules/sales/service";
 
+let shopId: string;
+
 const now = new Date();
 const todayKey = isoDateKeyInKarachi(now);
 
@@ -68,20 +70,20 @@ function expectToolData<T>(result: ToolRunResult): T {
 }
 
 async function runTool(name: string, input: unknown): Promise<ToolRunResult> {
-  return runAssistantTool(name, JSON.stringify(input), { now });
+  return runAssistantTool(name, JSON.stringify(input), { now, shopId });
 }
 
 async function seedShopData() {
-  const sugarProduct = expectOk(await createProduct(sugar));
-  const soapProduct = expectOk(await createProduct(soap));
-  const shampooProduct = expectOk(await createProduct(shampoo));
+  const sugarProduct = expectOk(await createProduct(shopId, sugar));
+  const soapProduct = expectOk(await createProduct(shopId, soap));
+  const shampooProduct = expectOk(await createProduct(shopId, shampoo));
 
   const customer = expectOk(
-    await createCustomer({ name: "Ali Khan", phone: "0300 1234567" }),
+    await createCustomer(shopId, { name: "Ali Khan", phone: "0300 1234567" }),
   );
 
   const cashSale = expectOk(
-    await createSale({
+    await createSale(shopId, {
       items: [{ productId: sugarProduct.id, quantity: "2" }],
       discount: "0",
       paid: "400",
@@ -90,7 +92,7 @@ async function seedShopData() {
   );
 
   const creditSale = expectOk(
-    await createSale({
+    await createSale(shopId, {
       items: [{ productId: shampooProduct.id, quantity: "1" }],
       discount: "0",
       paid: "300",
@@ -100,18 +102,18 @@ async function seedShopData() {
   );
 
   expectOk(
-    await recordPayment({ customerId: customer.id, amount: "40" }),
+    await recordPayment(shopId, { customerId: customer.id, amount: "40" }),
   );
 
   expectOk(
-    await createExpense({
+    await createExpense(shopId, {
       category: "RENT",
       amount: "100",
       date: todayKey,
     }),
   );
   expectOk(
-    await createExpense({
+    await createExpense(shopId, {
       category: "ELECTRICITY",
       amount: "50",
       date: todayKey,
@@ -131,6 +133,11 @@ async function seedShopData() {
 let fixtures: Awaited<ReturnType<typeof seedShopData>>;
 
 beforeEach(async () => {
+  const shop = await prisma.shop.create({
+    data: { name: "Test Shop", currency: "PKR", timezone: "Asia/Karachi" },
+  });
+  shopId = shop.id;
+
   await prisma.auditLog.deleteMany();
   await prisma.expense.deleteMany();
   await prisma.cashReconciliation.deleteMany();
@@ -306,7 +313,7 @@ describe("assistant tools", () => {
   });
 
   it("treats empty arguments as an empty object", async () => {
-    const result = await runAssistantTool("low_stock", "", { now });
+    const result = await runAssistantTool("low_stock", "", { now, shopId });
 
     expect(result.ok).toBe(true);
   });

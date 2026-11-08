@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { updateCustomerAction } from "@/app/customers/actions";
 import { CustomerForm } from "@/components/customers/customer-form";
 import { getCustomer } from "@/modules/customers/queries";
+import { requireShopkeeper } from "@/lib/require-user";
 import { t } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
@@ -16,7 +17,8 @@ export default async function EditCustomerPage({
   params,
 }: EditCustomerPageProps) {
   const { id } = await params;
-  const customer = await getCustomer(id);
+  const { shop } = await requireShopkeeper();
+  const customer = await getCustomer(shop.id, id);
 
   if (!customer) {
     notFound();

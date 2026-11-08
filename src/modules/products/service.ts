@@ -82,8 +82,10 @@ export type CreateProductOutcome = {
  * The product row, its opening stock movement, and its audit row are written in
  * one transaction so stock can never exist without a movement (invariant 6).
  * The unique proposal id makes a replayed confirmation idempotent.
+ * Everything is scoped to `shopId` so products never leak between shops.
  */
 export async function createProductWithStatus(
+  shopId: string,
   input: unknown,
   actor: string = LOCAL_ACTOR,
   options: CreateProductOptions = {},
@@ -120,8 +122,8 @@ export async function createProductWithStatus(
         }
       }
 
-      const duplicateName = await tx.product.findUnique({
-        where: { nameNormalized },
+      const duplicateName = await tx.product.findFirst({
+        where: { shopId, nameNormalized },
       });
 
       if (duplicateName) {
@@ -131,8 +133,8 @@ export async function createProductWithStatus(
       }
 
       if (barcode) {
-        const duplicateBarcode = await tx.product.findUnique({
-          where: { barcode },
+        const duplicateBarcode = await tx.product.findFirst({
+          where: { shopId, barcode },
         });
 
         if (duplicateBarcode) {
@@ -156,6 +158,7 @@ export async function createProductWithStatus(
           salePricePaisa: rupeesToPaisa(data.salePrice),
           stockMilli: openingMilli,
           lowStockMilli: toMilli(data.lowStockLevel),
+          shopId,
           proposalId: options.proposalId ?? null,
           aliases: {
             create: parseAliases(data.aliases).map((alias) => ({ alias })),
@@ -167,6 +170,7 @@ export async function createProductWithStatus(
         await tx.stockMovement.create({
           data: {
             productId: created.id,
+            shopId,
             quantityMilli: openingMilli,
             reason: "OPENING",
             note: "Opening stock",
@@ -176,6 +180,7 @@ export async function createProductWithStatus(
 
       await writeAudit(tx, {
         actor,
+        shopId,
         action: "PRODUCT_CREATED",
         entityType: "Product",
         entityId: created.id,
@@ -224,10 +229,11 @@ export async function createProductWithStatus(
 }
 
 export async function createProduct(
+  shopId: string,
   input: unknown,
   actor: string = LOCAL_ACTOR,
 ): Promise<Result<Product>> {
-  const result = await createProductWithStatus(input, actor);
+  const result = await createProductWithStatus(shopId, input, actor);
 
   if (!result.ok) {
     return result;
@@ -255,8 +261,10 @@ export type UpdateProductOutcome = {
  * replay returns the product without applying the edit twice. The signed
  * before-state is compared with the current row inside the transaction; a
  * price or name changed in the meantime rejects the stale proposal.
+ * Everything is scoped to `shopId`.
  */
 export async function updateProductWithStatus(
+  shopId: string,
   id: string,
   input: unknown,
   actor: string = LOCAL_ACTOR,
@@ -307,8 +315,8 @@ export async function updateProductWithStatus(
         }
       }
 
-      const existing = await tx.product.findUnique({
-        where: { id },
+      const existing = await tx.product.findFirst({
+        where: { id, shopId },
         include: { aliases: true },
       });
 
@@ -326,8 +334,8 @@ export async function updateProductWithStatus(
         }
       }
 
-      const duplicateName = await tx.product.findUnique({
-        where: { nameNormalized },
+      const duplicateName = await tx.product.findFirst({
+        where: { shopId, nameNormalized },
       });
 
       if (duplicateName && duplicateName.id !== id) {
@@ -337,8 +345,8 @@ export async function updateProductWithStatus(
       }
 
       if (barcode) {
-        const duplicateBarcode = await tx.product.findUnique({
-          where: { barcode },
+        const duplicateBarcode = await tx.product.findFirst({
+          where: { shopId, barcode },
         });
 
         if (duplicateBarcode && duplicateBarcode.id !== id) {
@@ -370,6 +378,7 @@ export async function updateProductWithStatus(
 
       await writeAudit(tx, {
         actor,
+        shopId,
         action: "PRODUCT_UPDATED",
         entityType: "Product",
         entityId: updated.id,
@@ -420,11 +429,12 @@ export async function updateProductWithStatus(
 
 /** Update product details from the product screen. */
 export async function updateProduct(
+  shopId: string,
   id: string,
   input: unknown,
   actor: string = LOCAL_ACTOR,
 ): Promise<Result<Product>> {
-  const result = await updateProductWithStatus(id, input, actor);
+  const result = await updateProductWithStatus(shopId, id, input, actor);
 
   if (!result.ok) {
     return result;
@@ -435,10 +445,19 @@ export async function updateProduct(
 
 /** Hide a product from sale screens without deleting its history. */
 export async function setProductActive(
+  shopId: string,
   id: string,
   isActive: boolean,
 ): Promise<Result<Product>> {
   try {
+    const existing = await prisma.product.findFirst({
+      where: { id, shopId },
+    });
+
+    if (!existing) {
+      return fail("Product not found.");
+    }
+
     const product = await prisma.product.update({
       where: { id },
       data: { isActive },
@@ -476,9 +495,10 @@ export type AdjustStockOutcome = {
  * Refuses to take stock below zero (invariant 3) and always writes a matching
  * movement row (invariant 6). The unique proposal id on the movement makes a
  * replayed confirmation idempotent; the signed before-stock rejects a stale
- * proposal.
+ * proposal. Everything is scoped to `shopId`.
  */
 export async function adjustStockWithStatus(
+  shopId: string,
   input: unknown,
   actor: string = LOCAL_ACTOR,
   options: AdjustStockOptions = {},
@@ -515,7 +535,9 @@ export async function adjustStockWithStatus(
         }
       }
 
-      const existing = await tx.product.findUnique({ where: { id: productId } });
+      const existing = await tx.product.findFirst({
+        where: { id: productId, shopId },
+      });
 
       if (!existing) {
         throw new ServiceError("Product not found.");
@@ -551,6 +573,7 @@ export async function adjustStockWithStatus(
       const movement = await tx.stockMovement.create({
         data: {
           productId,
+          shopId,
           quantityMilli: deltaMilli,
           reason,
           note: emptyToNull(note),
@@ -560,6 +583,7 @@ export async function adjustStockWithStatus(
 
       await writeAudit(tx, {
         actor,
+        shopId,
         action: "STOCK_ADJUSTED",
         entityType: "Product",
         entityId: updated.id,
@@ -609,10 +633,11 @@ export async function adjustStockWithStatus(
 
 /** Change stock from the product screen. */
 export async function adjustStock(
+  shopId: string,
   input: unknown,
   actor: string = LOCAL_ACTOR,
 ): Promise<Result<Product>> {
-  const result = await adjustStockWithStatus(input, actor);
+  const result = await adjustStockWithStatus(shopId, input, actor);
 
   if (!result.ok) {
     return result;

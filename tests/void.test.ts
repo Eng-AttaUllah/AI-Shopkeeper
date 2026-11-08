@@ -30,7 +30,14 @@ function expectOk<T>(result: Result<T>): T {
   return result.data;
 }
 
+let shopId: string;
+
 beforeEach(async () => {
+  const shop = await prisma.shop.create({
+    data: { name: "Test Shop", currency: "PKR", timezone: "Asia/Karachi" },
+  });
+  shopId = shop.id;
+
   await prisma.auditLog.deleteMany();
   await prisma.expense.deleteMany();
   await prisma.cashReconciliation.deleteMany();
@@ -49,10 +56,10 @@ afterAll(async () => {
 
 describe("voidSale", () => {
   it("restores stock with a VOID movement and removes the sale from reports", async () => {
-    const product = expectOk(await createProduct(sugar));
+    const product = expectOk(await createProduct(shopId, sugar));
 
     const sale = expectOk(
-      await createSale({
+      await createSale(shopId, {
         items: [{ productId: product.id, quantity: "2" }],
         paymentMethod: "CASH",
       }),
@@ -64,7 +71,7 @@ describe("voidSale", () => {
     expect(before?.stockMilli).toBe(8000);
 
     const voided = expectOk(
-      await voidSale(sale.id, { reason: "Wrong item entered" }),
+      await voidSale(shopId, sale.id, { reason: "Wrong item entered" }),
     );
 
     expect(voided.voidedAt).not.toBeNull();
@@ -81,11 +88,11 @@ describe("voidSale", () => {
     expect(movement?.quantityMilli).toBe(2000);
     expect(movement?.note).toBe("Wrong item entered");
 
-    const summary = await salesSummary(karachiDayRange(new Date()));
+    const summary = await salesSummary(shopId, karachiDayRange(new Date()));
     expect(summary.salesCount).toBe(0);
     expect(summary.revenuePaisa).toBe(0);
 
-    const rows = await productSales(karachiDayRange(new Date()));
+    const rows = await productSales(shopId, karachiDayRange(new Date()));
     expect(rows).toHaveLength(0);
 
     const audit = await prisma.auditLog.findFirst({
@@ -95,45 +102,51 @@ describe("voidSale", () => {
   });
 
   it("restores a credit sale's khata balance to zero", async () => {
-    const product = expectOk(await createProduct(sugar));
-    const customer = expectOk(await createCustomer({ name: "Ali Khan" }));
+    const product = expectOk(await createProduct(shopId, sugar));
+    const customer = expectOk(
+      await createCustomer(shopId, { name: "Ali Khan" }),
+    );
 
     const sale = expectOk(
-      await createSale({
+      await createSale(shopId, {
         items: [{ productId: product.id, quantity: "2" }],
         paymentMethod: "CREDIT",
         customerId: customer.id,
       }),
     );
 
-    expect(await customerBalancePaisa(customer.id)).toBe(32000);
+    expect(await customerBalancePaisa(shopId, customer.id)).toBe(32000);
 
-    expectOk(await voidSale(sale.id, { reason: "Entered twice" }));
+    expectOk(await voidSale(shopId, sale.id, { reason: "Entered twice" }));
 
-    expect(await customerBalancePaisa(customer.id)).toBe(0);
+    expect(await customerBalancePaisa(shopId, customer.id)).toBe(0);
   });
 
   it("refuses to void a credit sale after a repayment is applied", async () => {
-    const product = expectOk(await createProduct(sugar));
-    const customer = expectOk(await createCustomer({ name: "Ali Khan" }));
+    const product = expectOk(await createProduct(shopId, sugar));
+    const customer = expectOk(
+      await createCustomer(shopId, { name: "Ali Khan" }),
+    );
 
     const sale = expectOk(
-      await createSale({
+      await createSale(shopId, {
         items: [{ productId: product.id, quantity: "1" }],
         paymentMethod: "CREDIT",
         customerId: customer.id,
       }),
     );
-    expectOk(await recordPayment({ customerId: customer.id, amount: "50" }));
+    expectOk(
+      await recordPayment(shopId, { customerId: customer.id, amount: "50" }),
+    );
 
-    const result = await voidSale(sale.id, { reason: "Mistake" });
+    const result = await voidSale(shopId, sale.id, { reason: "Mistake" });
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.error).toContain("repayments applied");
     }
 
-    const stored = await getSale(sale.id);
+    const stored = await getSale(shopId, sale.id);
     expect(stored?.voidedAt).toBeNull();
 
     const productAfter = await prisma.product.findUnique({
@@ -149,11 +162,13 @@ describe("voidSale", () => {
   });
 
   it("allows voiding a credit sale that took cash at the counter", async () => {
-    const product = expectOk(await createProduct(sugar));
-    const customer = expectOk(await createCustomer({ name: "Ali Khan" }));
+    const product = expectOk(await createProduct(shopId, sugar));
+    const customer = expectOk(
+      await createCustomer(shopId, { name: "Ali Khan" }),
+    );
 
     const sale = expectOk(
-      await createSale({
+      await createSale(shopId, {
         items: [{ productId: product.id, quantity: "1" }],
         paymentMethod: "CREDIT",
         customerId: customer.id,
@@ -161,26 +176,26 @@ describe("voidSale", () => {
       }),
     );
 
-    expect(await customerBalancePaisa(customer.id)).toBe(6000);
-    expectOk(await voidSale(sale.id, { reason: "Returned" }));
-    expect(await customerBalancePaisa(customer.id)).toBe(0);
+    expect(await customerBalancePaisa(shopId, customer.id)).toBe(6000);
+    expectOk(await voidSale(shopId, sale.id, { reason: "Returned" }));
+    expect(await customerBalancePaisa(shopId, customer.id)).toBe(0);
   });
 
   it("rejects a second void and a missing reason", async () => {
-    const product = expectOk(await createProduct(sugar));
+    const product = expectOk(await createProduct(shopId, sugar));
     const sale = expectOk(
-      await createSale({
+      await createSale(shopId, {
         items: [{ productId: product.id, quantity: "1" }],
         paymentMethod: "CASH",
       }),
     );
 
-    const missingReason = await voidSale(sale.id, { reason: "" });
+    const missingReason = await voidSale(shopId, sale.id, { reason: "" });
     expect(missingReason.ok).toBe(false);
 
-    expectOk(await voidSale(sale.id, { reason: "Wrong price" }));
+    expectOk(await voidSale(shopId, sale.id, { reason: "Wrong price" }));
 
-    const second = await voidSale(sale.id, { reason: "Again" });
+    const second = await voidSale(shopId, sale.id, { reason: "Again" });
     expect(second.ok).toBe(false);
 
     expect(

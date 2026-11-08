@@ -20,7 +20,7 @@ import {
   listCustomersWithBalances,
   type CustomerWithBalance,
 } from "@/modules/customers/queries";
-import { expenseTotalPaisa } from "@/modules/expenses/queries";
+import { expenseTotalPaisa, expenseSummaryByCategory } from "@/modules/expenses/queries";
 
 import type { ReportPeriod, ReportQuery } from "./schema";
 
@@ -36,6 +36,9 @@ import type { ReportPeriod, ReportQuery } from "./schema";
  * discount, because a discount is applied to the sale as a whole and is not
  * allocated across lines. The summary subtracts discounts from revenue, so the
  * two figures are labelled differently in the UI.
+ *
+ * Every figure is scoped to `shopId`, so one shop's reports never touch
+ * another shop's data (Invariant 13).
  */
 
 export type SalesSummary = {
@@ -181,8 +184,12 @@ export function resolveReportRange(
 }
 
 /** Totals for one period. Voided sales are excluded. */
-export async function salesSummary(range: DateRange): Promise<SalesSummary> {
+export async function salesSummary(
+  shopId: string,
+  range: DateRange,
+): Promise<SalesSummary> {
   const saleWhere = {
+    shopId,
     voidedAt: null,
     createdAt: { gte: range.start, lt: range.end },
   };
@@ -221,10 +228,13 @@ export async function salesSummary(range: DateRange): Promise<SalesSummary> {
  * Sales plus the expenses recorded in the same range, and net profit
  * (gross profit minus expenses). This is the figure the reports page shows.
  */
-export async function periodSummary(range: DateRange): Promise<PeriodSummary> {
+export async function periodSummary(
+  shopId: string,
+  range: DateRange,
+): Promise<PeriodSummary> {
   const [sales, expensePaisa] = await Promise.all([
-    salesSummary(range),
-    expenseTotalPaisa(prisma, range),
+    salesSummary(shopId, range),
+    expenseTotalPaisa(prisma, range, shopId),
   ]);
 
   return {
@@ -239,12 +249,13 @@ export async function periodSummary(range: DateRange): Promise<PeriodSummary> {
  * are the line values before any sale-level discount.
  */
 export async function productSales(
+  shopId: string,
   range: DateRange,
 ): Promise<ProductSalesRow[]> {
   const groups = await prisma.saleItem.groupBy({
     by: ["productId"],
     where: {
-      sale: { voidedAt: null, createdAt: { gte: range.start, lt: range.end } },
+      sale: { shopId, voidedAt: null, createdAt: { gte: range.start, lt: range.end } },
     },
     _sum: { quantityMilli: true, lineTotalPaisa: true, lineCostPaisa: true },
   });
@@ -254,7 +265,7 @@ export async function productSales(
   }
 
   const products = await prisma.product.findMany({
-    where: { id: { in: groups.map((group) => group.productId) } },
+    where: { id: { in: groups.map((group) => group.productId) }, shopId },
     select: { id: true, name: true, unit: true },
   });
   const productsById = new Map(
@@ -288,12 +299,13 @@ export async function productSales(
  * by the cost value of the stock sitting still.
  */
 export async function slowMovingProducts(
+  shopId: string,
   range: DateRange,
   take = 5,
 ): Promise<SlowMovingProduct[]> {
   const sold = await prisma.saleItem.findMany({
     where: {
-      sale: { voidedAt: null, createdAt: { gte: range.start, lt: range.end } },
+      sale: { shopId, voidedAt: null, createdAt: { gte: range.start, lt: range.end } },
     },
     select: { productId: true },
     distinct: ["productId"],
@@ -301,7 +313,7 @@ export async function slowMovingProducts(
   const soldIds = new Set(sold.map((row) => row.productId));
 
   const products = await prisma.product.findMany({
-    where: { isActive: true, stockMilli: { gt: 0 } },
+    where: { shopId, isActive: true, stockMilli: { gt: 0 } },
     select: {
       id: true,
       name: true,
@@ -334,13 +346,17 @@ export async function slowMovingProducts(
  * Revenue per day for ranges up to 31 days, otherwise per month. Every bucket
  * is present, including empty ones, so a chart has a stable shape.
  */
-export async function salesSeries(range: DateRange): Promise<SalesSeries> {
+export async function salesSeries(
+  shopId: string,
+  range: DateRange,
+): Promise<SalesSeries> {
   const days = eachKarachiDay(range);
   const useDaily = days.length <= 31;
   const buckets = useDaily ? days : eachKarachiMonth(range);
 
   const sales = await prisma.sale.findMany({
     where: {
+      shopId,
       voidedAt: null,
       createdAt: { gte: range.start, lt: range.end },
     },
@@ -377,8 +393,11 @@ export async function salesSeries(range: DateRange): Promise<SalesSeries> {
 }
 
 /** Total khata and the customers who owe the most. */
-export async function creditOverview(take = 5): Promise<CreditOverview> {
-  const customers = await listCustomersWithBalances();
+export async function creditOverview(
+  shopId: string,
+  take = 5,
+): Promise<CreditOverview> {
+  const customers = await listCustomersWithBalances(shopId);
   const owing = customers
     .filter((customer) => customer.balancePaisa > 0)
     .sort(

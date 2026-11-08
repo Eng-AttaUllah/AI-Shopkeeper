@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { getChatProvider, isAssistantConfigured } from "@/lib/ai/config";
 import { getLocale } from "@/lib/i18n";
-import { requireOwner } from "@/lib/require-user";
+import { requireShopkeeper } from "@/lib/require-user";
 import { fail, ok, type Result } from "@/lib/result";
 import { confirmCustomerProposal } from "@/modules/assistant/confirm-customer";
 import { confirmExpenseProposal } from "@/modules/assistant/confirm-expense";
@@ -50,7 +50,7 @@ function invalidProposalToken(): Result<never> {
 export async function askAssistantAction(
   input: AssistantRequestInput,
 ): Promise<Result<AssistantAnswer>> {
-  const user = await requireOwner();
+  const { user, shop } = await requireShopkeeper();
 
   const parsed = assistantRequestSchema.safeParse(input);
 
@@ -70,6 +70,7 @@ export async function askAssistantAction(
       history: parsed.data.history,
       provider: getChatProvider(),
       userId: user.id,
+      shopId: shop.id,
       locale: await getLocale(),
     });
   } catch (error) {
@@ -97,7 +98,7 @@ export type ConfirmSaleProposalActionResult = {
 export async function confirmSaleProposalAction(
   token: string,
 ): Promise<Result<ConfirmSaleProposalActionResult>> {
-  const user = await requireOwner();
+  const { user, shop } = await requireShopkeeper();
 
   if (!isValidProposalToken(token)) {
     return invalidProposalToken();
@@ -108,6 +109,7 @@ export async function confirmSaleProposalAction(
       token,
       userId: user.id,
       actor: user.username,
+      shopId: shop.id,
     });
 
     if (!result.ok) {
@@ -150,7 +152,7 @@ export type ConfirmExpenseProposalActionResult = {
 export async function confirmExpenseProposalAction(
   token: string,
 ): Promise<Result<ConfirmExpenseProposalActionResult>> {
-  const user = await requireOwner();
+  const { user, shop } = await requireShopkeeper();
 
   if (!isValidProposalToken(token)) {
     return invalidProposalToken();
@@ -161,6 +163,7 @@ export async function confirmExpenseProposalAction(
       token,
       userId: user.id,
       actor: user.username,
+      shopId: shop.id,
     });
 
     if (!result.ok) {
@@ -203,7 +206,7 @@ export type ConfirmPaymentProposalActionResult = {
 export async function confirmPaymentProposalAction(
   token: string,
 ): Promise<Result<ConfirmPaymentProposalActionResult>> {
-  const user = await requireOwner();
+  const { user, shop } = await requireShopkeeper();
 
   if (!isValidProposalToken(token)) {
     return invalidProposalToken();
@@ -214,6 +217,7 @@ export async function confirmPaymentProposalAction(
       token,
       userId: user.id,
       actor: user.username,
+      shopId: shop.id,
     });
 
     if (!result.ok) {
@@ -256,7 +260,7 @@ export type ConfirmCustomerProposalActionResult = {
 export async function confirmCustomerProposalAction(
   token: string,
 ): Promise<Result<ConfirmCustomerProposalActionResult>> {
-  const user = await requireOwner();
+  const { user, shop } = await requireShopkeeper();
 
   if (!isValidProposalToken(token)) {
     return invalidProposalToken();
@@ -267,6 +271,7 @@ export async function confirmCustomerProposalAction(
       token,
       userId: user.id,
       actor: user.username,
+      shopId: shop.id,
     });
 
     if (!result.ok) {
@@ -302,7 +307,7 @@ export type ConfirmProductProposalActionResult = {
 export async function confirmProductProposalAction(
   token: string,
 ): Promise<Result<ConfirmProductProposalActionResult>> {
-  const user = await requireOwner();
+  const { user, shop } = await requireShopkeeper();
 
   if (!isValidProposalToken(token)) {
     return invalidProposalToken();
@@ -313,6 +318,7 @@ export async function confirmProductProposalAction(
       token,
       userId: user.id,
       actor: user.username,
+      shopId: shop.id,
     });
 
     if (!result.ok) {
@@ -351,7 +357,7 @@ export type ConfirmProductUpdateProposalActionResult = {
 export async function confirmProductUpdateProposalAction(
   token: string,
 ): Promise<Result<ConfirmProductUpdateProposalActionResult>> {
-  const user = await requireOwner();
+  const { user, shop } = await requireShopkeeper();
 
   if (!isValidProposalToken(token)) {
     return invalidProposalToken();
@@ -362,6 +368,7 @@ export async function confirmProductUpdateProposalAction(
       token,
       userId: user.id,
       actor: user.username,
+      shopId: shop.id,
     });
 
     if (!result.ok) {
@@ -403,7 +410,7 @@ export type ConfirmStockAdjustmentProposalActionResult = {
 export async function confirmStockAdjustmentProposalAction(
   token: string,
 ): Promise<Result<ConfirmStockAdjustmentProposalActionResult>> {
-  const user = await requireOwner();
+  const { user, shop } = await requireShopkeeper();
 
   if (!isValidProposalToken(token)) {
     return invalidProposalToken();
@@ -414,6 +421,7 @@ export async function confirmStockAdjustmentProposalAction(
       token,
       userId: user.id,
       actor: user.username,
+      shopId: shop.id,
     });
 
     if (!result.ok) {

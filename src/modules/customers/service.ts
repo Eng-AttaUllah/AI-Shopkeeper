@@ -74,6 +74,7 @@ export type CreateCustomerOutcome = {
  * created it and whether it came from the assistant.
  */
 export async function createCustomerWithStatus(
+  shopId: string,
   input: unknown,
   actor: string = LOCAL_ACTOR,
   options: CreateCustomerOptions = {},
@@ -112,12 +113,14 @@ export async function createCustomerWithStatus(
           name: data.name,
           phone: emptyToNull(data.phone),
           note: emptyToNull(data.note),
+          shopId,
           proposalId: options.proposalId ?? null,
         },
       });
 
       await writeAudit(tx, {
         actor,
+        shopId,
         action: "CUSTOMER_CREATED",
         entityType: "Customer",
         entityId: customer.id,
@@ -162,9 +165,10 @@ export async function createCustomerWithStatus(
 }
 
 export async function createCustomer(
+  shopId: string,
   input: unknown,
 ): Promise<Result<Customer>> {
-  const result = await createCustomerWithStatus(input);
+  const result = await createCustomerWithStatus(shopId, input);
 
   if (!result.ok) {
     return result;
@@ -174,6 +178,7 @@ export async function createCustomer(
 }
 
 export async function updateCustomer(
+  shopId: string,
   id: string,
   input: unknown,
 ): Promise<Result<Customer>> {
@@ -186,6 +191,14 @@ export async function updateCustomer(
   const data = parsed.data;
 
   try {
+    const existing = await prisma.customer.findFirst({
+      where: { id, shopId },
+    });
+
+    if (!existing) {
+      return fail("Customer not found.");
+    }
+
     const customer = await prisma.customer.update({
       where: { id },
       data: {
@@ -225,6 +238,7 @@ export type RecordPaymentOutcome = {
  * `recordPayment` keeps the simple customer-screen contract.
  */
 export async function recordPaymentWithStatus(
+  shopId: string,
   input: unknown,
   actor: string = LOCAL_ACTOR,
   options: RecordPaymentOptions = {},
@@ -264,15 +278,15 @@ export async function recordPaymentWithStatus(
         }
       }
 
-      const customer = await tx.customer.findUnique({
-        where: { id: data.customerId },
+      const customer = await tx.customer.findFirst({
+        where: { id: data.customerId, shopId },
       });
 
       if (!customer) {
         throw new ServiceError("Customer not found.");
       }
 
-      const outstanding = await outstandingPaisa(tx, data.customerId);
+      const outstanding = await outstandingPaisa(tx, shopId, data.customerId);
 
       if (
         options.expectedPreview &&
@@ -297,6 +311,7 @@ export async function recordPaymentWithStatus(
       const payment = await tx.payment.create({
         data: {
           customerId: data.customerId,
+          shopId,
           amountPaisa,
           note: emptyToNull(data.note),
           proposalId: options.proposalId ?? null,
@@ -316,6 +331,7 @@ export async function recordPaymentWithStatus(
 
       await writeAudit(tx, {
         actor,
+        shopId,
         action: "PAYMENT_RECORDED",
         entityType: "Payment",
         entityId: payment.id,
@@ -368,10 +384,11 @@ export async function recordPaymentWithStatus(
 
 /** Record a repayment from the customer screen. */
 export async function recordPayment(
+  shopId: string,
   input: unknown,
   actor: string = LOCAL_ACTOR,
 ): Promise<Result<Payment>> {
-  const result = await recordPaymentWithStatus(input, actor);
+  const result = await recordPaymentWithStatus(shopId, input, actor);
 
   if (!result.ok) {
     return result;
@@ -387,6 +404,7 @@ export async function recordPayment(
  * record in one transaction. The phone is used as the username.
  */
 export async function createCustomerAccount(
+  shopId: string,
   input: unknown,
   options: { source?: "self_registration" | "shopkeeper" } = {},
 ): Promise<Result<{ customer: Customer; user: User }>> {
@@ -418,8 +436,8 @@ export async function createCustomerAccount(
       let customer: Customer;
 
       if (data.customerId) {
-        const found = await tx.customer.findUnique({
-          where: { id: data.customerId },
+        const found = await tx.customer.findFirst({
+          where: { id: data.customerId, shopId },
         });
 
         if (!found) {
@@ -441,6 +459,7 @@ export async function createCustomerAccount(
             name: data.name,
             phone: data.phone,
             note: null,
+            shopId,
           },
         });
       }
@@ -457,6 +476,7 @@ export async function createCustomerAccount(
 
       await writeAudit(tx, {
         actor: user.username,
+        shopId,
         action: "CUSTOMER_ACCOUNT_CREATED",
         entityType: "User",
         entityId: user.id,
@@ -487,11 +507,12 @@ export async function createCustomerAccount(
  * it doubles as the username.
  */
 export async function createAccountForCustomer(
+  shopId: string,
   customerId: string,
   password: string,
 ): Promise<Result<{ customer: Customer; user: User }>> {
-  const customer = await prisma.customer.findUnique({
-    where: { id: customerId },
+  const customer = await prisma.customer.findFirst({
+    where: { id: customerId, shopId },
   });
 
   if (!customer) {
@@ -506,6 +527,7 @@ export async function createAccountForCustomer(
   }
 
   return createCustomerAccount(
+    shopId,
     {
       name: customer.name,
       phone: customer.phone,

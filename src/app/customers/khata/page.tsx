@@ -1,27 +1,22 @@
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
 
 import { buttonVariants } from "@/components/ui/button";
 import { formatDateTime, formatPaisa } from "@/lib/format";
-import { auth } from "@/lib/auth";
+import { requireActiveMembership } from "@/lib/require-user";
 import { t } from "@/lib/i18n";
 import {
+  buildStatementText,
   customerBalancePaisa,
   customerHistory,
-  getCustomer,
 } from "@/modules/customers/queries";
 
 export const dynamic = "force-dynamic";
 
 export default async function CustomerKhataPage() {
-  const session = await auth();
-  const user = session?.user;
+  const { shop, membership } = await requireActiveMembership();
+  const customer = membership.customer;
 
-  if (!user || user.role !== "CUSTOMER") {
-    redirect("/login");
-  }
-
-  if (!user.customerId) {
+  if (!customer) {
     return (
       <main className="flex flex-1 items-center justify-center px-4 py-10">
         <div className="w-full max-w-sm rounded-xl border border-line bg-surface p-6">
@@ -43,9 +38,6 @@ export default async function CustomerKhataPage() {
     outstandingBalanceLabel,
     transactionHistoryLabel,
     noTransactionsLabel,
-    saleLabel,
-    paymentLabel,
-    cashPaymentLabel,
     totalOutstandingLabel,
   ] = await Promise.all([
     t("customerKhata.yourKhata"),
@@ -53,21 +45,30 @@ export default async function CustomerKhataPage() {
     t("customerKhata.outstandingBalance"),
     t("customerKhata.transactionHistory"),
     t("customerKhata.noTransactions"),
-    t("customerKhata.sale"),
-    t("customerKhata.payment"),
-    t("customerKhata.cashPayment"),
     t("customerKhata.totalOutstanding"),
   ]);
 
-  const [balancePaisa, history, customer] = await Promise.all([
-    customerBalancePaisa(user.customerId),
-    customerHistory(user.customerId),
-    getCustomer(user.customerId),
+  const [balancePaisa, history] = await Promise.all([
+    customerBalancePaisa(shop.id, customer.id),
+    customerHistory(shop.id, customer.id),
   ]);
 
-  if (!customer) {
-    notFound();
-  }
+  const statement = buildStatementText({
+    shopName: shop.name,
+    customer,
+    balancePaisa,
+    entries: history,
+  });
+
+  const phoneDigits = customer.phone?.replace(/\D/g, "") ?? "";
+  const whatsappHref = `https://wa.me/${phoneDigits}?text=${encodeURIComponent(statement)}`;
+
+  const saleLabelLoc = await t("customers.sale");
+  const itemLabel = await t("customers.item");
+  const itemsLabel = await t("customers.items");
+  const paymentLabelLoc = await t("customers.payment");
+  const cashPaymentLabel = await t("customers.cashPayment");
+  const paidLabel = await t("customers.paid");
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-8">
@@ -113,7 +114,7 @@ export default async function CustomerKhataPage() {
                   {entry.kind === "sale" ? (
                     <>
                       <p className="font-medium">
-                        {saleLabel} {entry.number}
+                        {saleLabelLoc} {entry.number}
                       </p>
                       <p className="text-sm text-ink-muted">
                         {formatDateTime(entry.createdAt)}
@@ -121,7 +122,7 @@ export default async function CustomerKhataPage() {
                     </>
                   ) : (
                     <>
-                      <p className="font-medium">{paymentLabel}</p>
+                      <p className="font-medium">{paymentLabelLoc}</p>
                       <p className="text-sm text-ink-muted">
                         {formatDateTime(entry.createdAt)} ·{" "}
                         {entry.note ?? cashPaymentLabel}

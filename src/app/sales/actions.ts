@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { requireOwner } from "@/lib/require-user";
+import { requireShopkeeper } from "@/lib/require-user";
 import { createSale, voidSale } from "@/modules/sales/service";
 
 export type SaleActionState =
@@ -17,7 +17,7 @@ export async function createSaleAction(
   _previousState: SaleActionState,
   formData: FormData,
 ): Promise<SaleActionState> {
-  const user = await requireOwner();
+  const { shop } = await requireShopkeeper();
   const payload = formData.get("payload");
 
   if (typeof payload !== "string" || payload.length === 0) {
@@ -32,7 +32,7 @@ export async function createSaleAction(
     return { ok: false, error: UNREADABLE_CART };
   }
 
-  const result = await createSale(parsed, user.username);
+  const result = await createSale(shop.id, parsed);
 
   if (!result.ok) {
     return { ok: false, error: result.error, fieldErrors: result.fieldErrors };
@@ -49,7 +49,7 @@ export async function voidSaleAction(
   _previousState: SaleActionState,
   formData: FormData,
 ): Promise<SaleActionState> {
-  const user = await requireOwner();
+  const { shop } = await requireShopkeeper();
   const saleId = String(formData.get("saleId") ?? "");
   const reason = formData.get("reason");
 
@@ -58,11 +58,11 @@ export async function voidSaleAction(
   }
 
   const result = await voidSale(
+    shop.id,
     saleId,
     {
       reason: typeof reason === "string" ? reason : "",
     },
-    user.username,
   );
 
   if (!result.ok) {

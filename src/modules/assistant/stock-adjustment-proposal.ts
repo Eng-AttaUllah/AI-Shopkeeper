@@ -85,8 +85,8 @@ function resolveReason(value: string): StockReason | null {
   return REASON_ALIASES[normalized] ?? null;
 }
 
-function productCandidateList(): Promise<ProductCandidate[]> {
-  return listProducts({ includeInactive: true }).then((products) =>
+function productCandidateList(shopId: string): Promise<ProductCandidate[]> {
+  return listProducts(shopId, { includeInactive: true }).then((products) =>
     products.map((product) => ({
       id: product.id,
       name: product.name,
@@ -149,7 +149,7 @@ export async function runProposeStockAdjustmentTool(
     );
   }
 
-  const products = await productCandidateList();
+  const products = await productCandidateList(context.shopId ?? "");
   const matches = matchProduct(products, parsed.data.product);
 
   if (matches.length === 0) {
@@ -170,7 +170,9 @@ export async function runProposeStockAdjustmentTool(
     return fail(`No product matched "${parsed.data.product}".`);
   }
 
-  const product = await listProducts({ includeInactive: true }).then(
+  const product = await listProducts(context.shopId ?? "", {
+    includeInactive: true,
+  }).then(
     (rows) => rows.find((row) => row.id === candidate.id) ?? null,
   );
 

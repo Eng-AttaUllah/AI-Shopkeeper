@@ -12,6 +12,8 @@ const now = new Date("2026-10-28T10:00:00.000Z");
 const userId = "user-1";
 const actor = "owner";
 
+let shopId: string;
+
 const sugar = {
   name: "Sugar",
   category: "Grocery",
@@ -33,7 +35,7 @@ function expectOk<T>(result: Result<T>): T {
 }
 
 async function seedSugar() {
-  return expectOk(await createProduct(sugar));
+  return expectOk(await createProduct(shopId, sugar));
 }
 
 async function prepare(args: Record<string, unknown> = {}) {
@@ -44,7 +46,7 @@ async function prepare(args: Record<string, unknown> = {}) {
       paid: "320",
       ...args,
     }),
-    { userId, now },
+    { userId, now, shopId },
   );
 }
 
@@ -65,6 +67,11 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
+  const shop = await prisma.shop.create({
+    data: { name: "Test Shop", currency: "PKR", timezone: "Asia/Karachi" },
+  });
+  shopId = shop.id;
+
   await prisma.saleItem.deleteMany();
   await prisma.sale.deleteMany();
   await prisma.payment.deleteMany();
@@ -85,6 +92,7 @@ describe("confirmSaleProposal", () => {
         token: proposal.proposal.token,
         userId,
         actor,
+        shopId,
         now,
       }),
     );
@@ -126,6 +134,7 @@ describe("confirmSaleProposal", () => {
         token: proposal.proposal.token,
         userId,
         actor,
+        shopId,
         now,
       }),
     );
@@ -134,6 +143,7 @@ describe("confirmSaleProposal", () => {
         token: proposal.proposal.token,
         userId,
         actor,
+        shopId,
         now,
       }),
     );
@@ -165,6 +175,7 @@ describe("confirmSaleProposal", () => {
       token: proposal.proposal.token,
       userId,
       actor,
+      shopId,
       now,
     });
 
@@ -190,6 +201,7 @@ describe("confirmSaleProposal", () => {
       token: proposal.proposal.token,
       userId,
       actor,
+      shopId,
       now,
     });
 
@@ -210,6 +222,7 @@ describe("confirmSaleProposal", () => {
       token: proposal.proposal.token,
       userId: "user-2",
       actor,
+      shopId,
       now,
     });
 
@@ -230,6 +243,7 @@ describe("confirmSaleProposal", () => {
       token: proposal.proposal.token,
       userId,
       actor,
+      shopId,
       now: new Date(now.getTime() + 16 * 60 * 1000),
     });
 
@@ -252,6 +266,7 @@ describe("confirmSaleProposal", () => {
       token: tampered,
       userId,
       actor,
+      shopId,
       now,
     });
 
@@ -262,7 +277,7 @@ describe("confirmSaleProposal", () => {
   it("records a credit sale and updates the khata balance", async () => {
     await seedSugar();
     const customer = expectOk(
-      await createCustomer({
+      await createCustomer(shopId, {
         name: "Ali Khan",
         phone: "0300-1234567",
         note: "",
@@ -281,6 +296,7 @@ describe("confirmSaleProposal", () => {
         token: proposal.proposal.token,
         userId,
         actor,
+        shopId,
         now,
       }),
     );
@@ -288,7 +304,7 @@ describe("confirmSaleProposal", () => {
     expect(outcome.sale.paymentMethod).toBe("CREDIT");
     expect(outcome.sale.customerId).toBe(customer.id);
     expect(outcome.sale.paidPaisa).toBe(0);
-    expect(await outstandingPaisa(prisma, customer.id)).toBe(32000);
+    expect(await outstandingPaisa(prisma, shopId, customer.id)).toBe(32000);
 
     const audit = await prisma.auditLog.findFirst({
       where: { entityId: outcome.sale.id, action: "SALE_CREATED" },

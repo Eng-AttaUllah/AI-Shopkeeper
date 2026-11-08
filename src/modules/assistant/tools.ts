@@ -32,6 +32,8 @@ import { assistantRangeSchema, type AssistantRangeInput } from "./schema";
 
 export type ToolContext = {
   now: Date;
+  /** The shop every read is scoped to (Invariant 13). */
+  shopId: string;
 };
 
 export type ToolRunResult =
@@ -91,9 +93,9 @@ const salesSummaryTool = defineTool({
   description:
     "Totals for a period: number of sales, revenue, discounts, gross profit, credit given, expenses, and net profit. Use this for questions about how much was sold, revenue, profit, or expenses in a period.",
   schema: z.object({ ...rangeShape }),
-  run: async (input, { now }) => {
+  run: async (input, { now, shopId }) => {
     const resolved = resolveRange(input, now);
-    const summary = await periodSummary(resolved.range);
+    const summary = await periodSummary(shopId, resolved.range);
 
     return {
       period: resolved.label,
@@ -119,9 +121,9 @@ const topProductsTool = defineTool({
     ...rangeShape,
     limit: z.number().int().min(1).max(10).default(5),
   }),
-  run: async (input, { now }) => {
+  run: async (input, { now, shopId }) => {
     const resolved = resolveRange(input, now);
-    const rows = await productSales(resolved.range);
+    const rows = await productSales(shopId, resolved.range);
 
     return {
       period: resolved.label,
@@ -150,9 +152,9 @@ const productSalesTool = defineTool({
       .max(100)
       .describe("Product name, alias, or barcode."),
   }),
-  run: async (input, { now }) => {
+  run: async (input, { now, shopId }) => {
     const resolved = resolveRange(input, now);
-    const matches = await listProducts({ search: input.product });
+    const matches = await listProducts(shopId, { search: input.product });
 
     if (matches.length === 0) {
       return {
@@ -164,7 +166,7 @@ const productSalesTool = defineTool({
     }
 
     const ids = new Set(matches.map((product) => product.id));
-    const rows = (await productSales(resolved.range)).filter((row) =>
+    const rows = (await productSales(shopId, resolved.range)).filter((row) =>
       ids.has(row.productId),
     );
 
@@ -192,8 +194,8 @@ const lowStockTool = defineTool({
   description:
     "Active products at or below their low-stock level. Use this for questions about what needs restocking.",
   schema: z.object({}),
-  run: async () => {
-    const products = await lowStockProducts();
+  run: async (_, { now, shopId }) => {
+    const products = await lowStockProducts(shopId);
 
     return {
       count: products.length,
@@ -218,8 +220,8 @@ const outstandingCreditTool = defineTool({
   schema: z.object({
     limit: z.number().int().min(1).max(20).default(10),
   }),
-  run: async (input) => {
-    const overview = await creditOverview(input.limit);
+  run: async (input, { now, shopId }) => {
+    const overview = await creditOverview(shopId, input.limit);
 
     return {
       totalOutstanding: formatPaisa(overview.totalPaisa),
@@ -247,8 +249,8 @@ const customerBalanceTool = defineTool({
       .describe("Customer name or phone number."),
     historyLimit: z.number().int().min(0).max(10).default(5),
   }),
-  run: async (input) => {
-    const matches = await listCustomersWithBalances(input.customer);
+  run: async (input, { now, shopId }) => {
+    const matches = await listCustomersWithBalances(shopId, input.customer);
 
     if (matches.length === 0) {
       return {
@@ -277,7 +279,7 @@ const customerBalanceTool = defineTool({
 
     const entries =
       input.historyLimit > 0
-        ? await customerHistory(customer.id, input.historyLimit)
+        ? await customerHistory(shopId, customer.id, input.historyLimit)
         : [];
 
     return {
@@ -318,8 +320,8 @@ const inventoryValueTool = defineTool({
   description:
     "Total cost value of active stock on hand. Use this for questions about how much stock is worth.",
   schema: z.object({}),
-  run: async () => ({
-    inventoryCostValue: formatPaisa(await inventoryValuePaisa()),
+  run: async (_, { now, shopId }) => ({
+    inventoryCostValue: formatPaisa(await inventoryValuePaisa(shopId)),
     note: "This is the cost value of active stock, not the retail selling value.",
   }),
 });
@@ -333,9 +335,9 @@ const slowMovingTool = defineTool({
     ...rangeShape,
     limit: z.number().int().min(1).max(20).default(10),
   }),
-  run: async (input, { now }) => {
+  run: async (input, { now, shopId }) => {
     const resolved = resolveRange(input, now);
-    const rows = await slowMovingProducts(resolved.range, input.limit);
+    const rows = await slowMovingProducts(shopId, resolved.range, input.limit);
 
     return {
       period: resolved.label,
@@ -357,8 +359,8 @@ const recentSalesTool = defineTool({
   schema: z.object({
     limit: z.number().int().min(1).max(10).default(5),
   }),
-  run: async (input) => {
-    const sales = await listSales(input.limit);
+  run: async (input, { now, shopId }) => {
+    const sales = await listSales(shopId, input.limit);
 
     return {
       sales: sales.map((sale) => ({
@@ -381,9 +383,9 @@ const expensesSummaryTool = defineTool({
   description:
     "Expenses for a period, broken down by category, plus the total. Use this for questions about spending or a category such as rent.",
   schema: z.object({ ...rangeShape }),
-  run: async (input, { now }) => {
+  run: async (input, { now, shopId }) => {
     const resolved = resolveRange(input, now);
-    const summary = await expenseSummaryByCategory(resolved.range);
+    const summary = await expenseSummaryByCategory(resolved.range, shopId);
 
     return {
       period: resolved.label,
@@ -404,9 +406,9 @@ const expectedCashTool = defineTool({
   description:
     "Expected cash for a period: cash sales, cash paid on credit sales, repayments, expenses, and the expected drawer total. Use this for questions about how much cash should be in the drawer.",
   schema: z.object({ ...rangeShape }),
-  run: async (input, { now }) => {
+  run: async (input, { now, shopId }) => {
     const resolved = resolveRange(input, now);
-    const breakdown = await cashBreakdown(prisma, resolved.range);
+    const breakdown = await cashBreakdown(prisma, resolved.range, shopId);
 
     return {
       period: resolved.label,

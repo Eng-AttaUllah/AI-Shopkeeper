@@ -1,9 +1,13 @@
 import type { Product, ProductAlias } from "@/generated/prisma/client";
+import { StockMovement } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
 import { fromMilli } from "@/lib/quantity";
 import { normalizeText } from "@/lib/text";
 
-export type ProductWithAliases = Product & { aliases: ProductAlias[] };
+export type ProductWithAliases = Product & {
+  aliases: ProductAlias[];
+  stockMovements?: StockMovement[];
+};
 
 export type ListProductsOptions = {
   search?: string;
@@ -12,12 +16,14 @@ export type ListProductsOptions = {
 
 /** Products for the list screen, newest names sorted alphabetically. */
 export async function listProducts(
+  shopId: string,
   options: ListProductsOptions = {},
 ): Promise<ProductWithAliases[]> {
   const term = options.search?.trim();
 
   let products = await prisma.product.findMany({
     where: {
+      shopId,
       ...(options.includeInactive ? {} : { isActive: true }),
     },
     include: { aliases: { orderBy: { alias: "asc" } } },
@@ -45,9 +51,12 @@ export async function listProducts(
 }
 
 /** One product with its aliases and most recent stock movements. */
-export async function getProduct(id: string) {
+export async function getProduct(
+  shopId: string,
+  id: string,
+): Promise<ProductWithAliases | null> {
   return prisma.product.findUnique({
-    where: { id },
+    where: { id, shopId },
     include: {
       aliases: { orderBy: { alias: "asc" } },
       stockMovements: { orderBy: { createdAt: "desc" }, take: 10 },
@@ -61,9 +70,11 @@ export async function getProduct(id: string) {
  * Filtered in memory because the comparison is between two columns, and the
  * shop has a small number of products.
  */
-export async function lowStockProducts(): Promise<ProductWithAliases[]> {
+export async function lowStockProducts(
+  shopId: string,
+): Promise<ProductWithAliases[]> {
   const products = await prisma.product.findMany({
-    where: { isActive: true },
+    where: { shopId, isActive: true },
     include: { aliases: true },
     orderBy: { name: "asc" },
   });
@@ -74,9 +85,11 @@ export async function lowStockProducts(): Promise<ProductWithAliases[]> {
 }
 
 /** Total cost value of everything currently in stock. */
-export async function inventoryValuePaisa(): Promise<number> {
+export async function inventoryValuePaisa(
+  shopId: string,
+): Promise<number> {
   const products = await prisma.product.findMany({
-    where: { isActive: true },
+    where: { shopId, isActive: true },
     select: { stockMilli: true, costPricePaisa: true },
   });
 
@@ -102,9 +115,11 @@ export type SellableProduct = {
  * The columns the sell screen needs, with aliases flattened so the client can
  * search by the names people actually use.
  */
-export async function listSellableProducts(): Promise<SellableProduct[]> {
+export async function listSellableProducts(
+  shopId: string,
+): Promise<SellableProduct[]> {
   const products = await prisma.product.findMany({
-    where: { isActive: true },
+    where: { shopId, isActive: true },
     select: {
       id: true,
       name: true,
@@ -136,14 +151,18 @@ export type StockDrift = {
  * An empty result means the cache is consistent. Used by tests and by a repair
  * routine; see invariant 9.
  */
-export async function reconcileStock(): Promise<StockDrift[]> {
+export async function reconcileStock(
+  shopId: string,
+): Promise<StockDrift[]> {
   const [products, sums] = await Promise.all([
     prisma.product.findMany({
+      where: { shopId },
       select: { id: true, name: true, stockMilli: true },
     }),
     prisma.stockMovement.groupBy({
       by: ["productId"],
       _sum: { quantityMilli: true },
+      where: { shopId },
     }),
   ]);
 

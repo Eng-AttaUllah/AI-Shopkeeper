@@ -12,12 +12,14 @@ import {
 } from "@/components/ui/table";
 import { formatDateTime, formatPaisa } from "@/lib/format";
 import { readClientLocale, translate } from "@/lib/dictionary";
+import { requireShopkeeper } from "@/lib/require-user";
 import { listSales } from "@/modules/sales/queries";
 
 export const dynamic = "force-dynamic";
 
 export default async function SalesPage() {
-  const sales = await listSales(50);
+  const { shop } = await requireShopkeeper();
+  const sales = await listSales(shop.id, 50);
   const locale = readClientLocale();
 
   function t(key: string, params?: Record<string, string>): string {

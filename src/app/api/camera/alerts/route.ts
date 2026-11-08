@@ -2,6 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 
 import { recordCameraAlert } from "@/modules/camera/service";
+import { prisma } from "@/lib/db";
 
 /**
  * Alert intake for the camera service (Phase 11).
@@ -14,6 +15,9 @@ import { recordCameraAlert } from "@/modules/camera/service";
  * - The token is compared in constant time.
  * - The payload is validated by the camera module, which also verifies the
  *   clip file exists on disk before recording the alert.
+ *
+ * During the single-shop transition the alert is scoped to the installation's
+ * shop; per-shop camera tokens come later (Phase 13 open question).
  */
 export async function POST(request: Request): Promise<NextResponse> {
   const expected = process.env.CAMERA_ALERT_TOKEN;
@@ -43,7 +47,14 @@ export async function POST(request: Request): Promise<NextResponse> {
     return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
   }
 
-  const result = await recordCameraAlert(body);
+  // Single-shop transition: scope the alert to the installation's shop.
+  const shop = await prisma.shop.findFirst({ orderBy: { createdAt: "asc" } });
+
+  if (!shop) {
+    return NextResponse.json({ error: "No shop configured." }, { status: 503 });
+  }
+
+  const result = await recordCameraAlert(shop.id, body);
 
   if (!result.ok) {
     return NextResponse.json(

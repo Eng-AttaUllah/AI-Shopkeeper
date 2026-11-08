@@ -2,8 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 
+import { requireShopkeeper } from "@/lib/require-user";
 import { createBackup } from "@/lib/backup";
-import { requireOwner } from "@/lib/require-user";
 
 export type BackupActionState =
   | { ok: true; name: string }
@@ -14,7 +14,7 @@ export async function createBackupAction(
   formData: FormData,
 ): Promise<BackupActionState> {
   void formData;
-  await requireOwner();
+  await requireShopkeeper();
 
   try {
     const backup = await createBackup("manual");

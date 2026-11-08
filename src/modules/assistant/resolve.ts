@@ -5,6 +5,8 @@ import { normalizeDigits, normalizeText } from "@/lib/text";
 export type ProposalToolContext = {
   userId: string;
   now: Date;
+  /** The shop every read and proposal is scoped to (Invariant 13). */
+  shopId?: string;
 };
 
 export type CustomerCandidate = {
