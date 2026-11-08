@@ -13,7 +13,10 @@ datasource db {
   provider = "sqlite"
 }
 
-/// A shop user. v1 seeds one OWNER. Cashiers and customers are later phases.
+/// A shop user. Username is unique across the platform. v1 seeds one OWNER;
+/// Phase 13 adds shopkeeper self-registration and per-shop memberships.
+/// `role` (OWNER | CASHIER | CUSTOMER) is the v1 field and folds into
+/// `accountType` + `ShopMembership.role` in Phase 13 unit 13.4.
 model User {
   id           String   @id @default(cuid())
   /// Lowercased login name, unique across the installation.
@@ -28,14 +31,19 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  /// Link to the customer record for CUSTOMER role users. One-to-one.
+  /// Link to the customer record for CUSTOMER role users (v1). Phase 13 moves
+  /// this link to ShopMembership.customerId, which is shop-scoped.
   customerId   String?   @unique
   customer     Customer? @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  /// Per-shop access (Phase 13).
+  memberships ShopMembership[]
 
   @@map("users")
 }
 
-/// The single shop this installation serves.
+/// One of the many shops served by this installation. Every business record
+/// belongs to exactly one shop through `shopId` (Phase 13, Invariant 13).
 model Shop {
   id        String   @id @default(cuid())
   name      String
@@ -43,6 +51,46 @@ model Shop {
   timezone  String   @default("Asia/Karachi")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  memberships         ShopMembership[]
+  products            Product[]
+  stockMovements      StockMovement[]
+  sales               Sale[]
+  customers           Customer[]
+  payments            Payment[]
+  expenses            Expense[]
+  auditLogs           AuditLog[]
+  cashReconciliations CashReconciliation[]
+  cameraAlerts        CameraAlert[]
+}
+
+/// A user's access to one shop with a per-shop role. The account type lives on
+/// the user; membership decides which shop they can touch (Phase 13).
+/// `PENDING` for a join request until the shopkeeper approves; `ACTIVE` from
+/// then on; `REMOVED` when the customer or shopkeeper ends the access. The
+/// ledger link exists only for approved customer roles.
+model ShopMembership {
+  id      String @id @default(cuid())
+  shopId  String
+  userId  String
+  /// OWNER | CUSTOMER | CASHIER
+  role    String
+  /// PENDING | ACTIVE | REMOVED
+  status  String @default("PENDING")
+  /// The shop's ledger Customer record this membership reads. Unique so a
+  /// customer record is claimed by at most one login on the platform.
+  customerId String? @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  shop     Shop      @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  @@unique([shopId, userId])
+  @@index([userId, status])
+  @@index([shopId, status])
+  @@map("shop_memberships")
 }
 
 /// A sellable item. Stock is never written directly: every change goes through
@@ -73,7 +121,10 @@ model Product {
   aliases        ProductAlias[]
   stockMovements StockMovement[]
   saleItems      SaleItem[]
+  shop           Shop?           @relation(fields: [shopId], references: [id], onDelete: Restrict)
 
+  /// Owning shop (Phase 13). Nullable until unit 13.4 makes it required.
+  shopId   String?
   @@index([isActive, name])
   @@map("products")
 }
@@ -109,6 +160,10 @@ model StockMovement {
   createdAt     DateTime @default(now())
 
   product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  shop    Shop?   @relation(fields: [shopId], references: [id], onDelete: Restrict)
+
+  /// Owning shop (Phase 13). Nullable until unit 13.4 makes it required.
+  shopId String?
 
   @@index([productId, createdAt])
   @@map("stock_movements")
@@ -149,6 +204,10 @@ model Sale {
   createdAt DateTime @default(now())
 
   items SaleItem[]
+  shop  Shop?      @relation(fields: [shopId], references: [id], onDelete: Restrict)
+
+  /// Owning shop (Phase 13). Nullable until unit 13.4 makes it required.
+  shopId String?
 
   @@index([createdAt])
   @@index([customerId, createdAt])
@@ -199,7 +258,11 @@ model Customer {
   sales    Sale[]
   payments Payment[]
   user     User?
+  shop     Shop?     @relation(fields: [shopId], references: [id], onDelete: Restrict)
+  memberships ShopMembership[]
 
+  /// Owning shop (Phase 13). Nullable until unit 13.4 makes it required.
+  shopId String?
   @@index([name])
   @@index([phone])
   @@map("customers")
@@ -218,7 +281,10 @@ model Payment {
   createdAt   DateTime @default(now())
 
   customer Customer @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  shop     Shop?    @relation(fields: [shopId], references: [id], onDelete: Restrict)
 
+  /// Owning shop (Phase 13). Nullable until unit 13.4 makes it required.
+  shopId String?
   @@index([customerId, createdAt])
   @@map("payments")
 }
@@ -236,6 +302,10 @@ model Expense {
   /// replayed confirmation cannot record the expense twice (Phase 7).
   proposalId  String?  @unique
   createdAt   DateTime @default(now())
+
+  /// Owning shop (Phase 13). Nullable until unit 13.4 makes it required
+  shopId String?
+  shop   Shop?    @relation(fields: [shopId], references: [id], onDelete: Restrict)
 
   @@index([spentAt])
   @@map("expenses")
@@ -265,6 +335,10 @@ model AuditLog {
   proposalId String? @unique
   createdAt  DateTime @default(now())
 
+  /// Owning shop (Phase 13). Nullable until unit 13.4 makes it required.
+  shopId String?
+  shop   Shop?   @relation(fields: [shopId], references: [id], onDelete: Restrict)
+
   @@index([createdAt])
   @@index([entityType, entityId])
   @@map("audit_logs")
@@ -282,6 +356,10 @@ model CashReconciliation {
   note            String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+
+  /// Owning shop (Phase 13). Nullable until unit 13.4 makes it required.
+  shopId String?
+  shop   Shop?   @relation(fields: [shopId], references: [id], onDelete: Restrict)
 
   @@map("cash_reconciliations")
 }
@@ -304,6 +382,10 @@ model CameraAlert {
   reviewNote String?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+
+  /// Owning shop (Phase 13). Nullable until unit 13.4 makes it required.
+  shopId String?
+  shop   Shop?   @relation(fields: [shopId], references: [id], onDelete: Restrict)
 
   @@index([capturedAt])
   @@map("camera_alerts")

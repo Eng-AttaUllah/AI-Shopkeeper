@@ -67,9 +67,10 @@ npx prisma studio        # inspect the database
 ## Current state
 
 Phase 8 — Pashto support — and Phases 9–12 are complete, as are the settings and UI
-polish units. Phase 13, multi-shop accounts, is next: unit 13.1 (docs) is done, unit 13.2
-(schema, membership, backfill) follows. See `docs/progress-tracker.md` for the live task
-list and branch status.
+polish units. Phase 13, multi-shop accounts, is in progress: unit 13.1 (docs) and 13.2
+(schema, membership, backfill migration, seed) are done on `main`; unit 13.3 (tenancy
+plumbing) follows. See `docs/progress-tracker.md` for the live task list and branch
+status.
 
 <!-- BEGIN:nextjs-agent-rules -->
 

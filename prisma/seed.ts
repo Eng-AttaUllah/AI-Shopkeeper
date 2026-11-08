@@ -12,12 +12,14 @@ import { prisma } from "@/lib/db";
  * existing sessions.
  */
 async function main() {
-  const existingShop = await prisma.shop.findFirst();
+  let shop = await prisma.shop.findFirst({
+    orderBy: { createdAt: "asc" },
+  });
 
-  if (existingShop) {
-    console.log(`Shop "${existingShop.name}" already exists.`);
+  if (shop) {
+    console.log(`Shop "${shop.name}" already exists.`);
   } else {
-    const shop = await prisma.shop.create({
+    shop = await prisma.shop.create({
       data: {
         name: "Demo General Store",
         currency: "PKR",
@@ -49,6 +51,26 @@ async function main() {
   } else {
     console.log(`Owner "${owner.user.username}" already exists; password unchanged.`);
   }
+
+  // The shopkeeper's access to their shop is the OWNER membership. The
+  // migration backfilled existing owners; this upsert keeps the seed
+  // idempotent and covers a fresh owner created just now. Other membership
+  // rows (customers, join requests) are never the seed's business.
+  const membership = await prisma.shopMembership.upsert({
+    where: {
+      shopId_userId: { shopId: shop.id, userId: owner.user.id },
+    },
+    update: { role: "OWNER", status: "ACTIVE" },
+    create: {
+      shopId: shop.id,
+      userId: owner.user.id,
+      role: "OWNER",
+      status: "ACTIVE",
+    },
+  });
+  console.log(
+    `OWNER membership ready for "${owner.user.username}" at "${shop.name}" (${membership.status}).`,
+  );
 }
 
 main()

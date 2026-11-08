@@ -4,17 +4,27 @@ Update this file after every meaningful implementation change.
 
 ## Current Phase
 
-- Phase 13 — Multi-shop accounts: **13.1 (specification) Complete; 13.2 next.** Phases 0–12
-  and their follow-up units are complete on `main`.
+- Phase 13 — Multi-shop accounts: **13.1 (specification) and 13.2 (schema, membership,
+  backfill) Complete; 13.3 next.** Phases 0–12 and their follow-up units are complete on
+  `main`.
 
 ## Current Goal
 
-- Phase 13.1 wrote the multi-shop specification into the docs (owner decisions recorded
-  2026-11-08: central deployment, account types at signup, approval-based joining,
-  ledger-only shop reach into customer data, SQLite retained). Nothing is implemented yet;
-  the code still serves exactly one shop and all 232 tests pass. Next unit: **13.2** — add
-  `ShopMembership`, nullable `shopId` columns, and the idempotent backfill migration, with
-  `User.customerId` kept until unit 13.4 drops it. Every commit stays buildable and green.
+- Unit 13.2 added the `ShopMembership` model (role, status, unique ledger link) and a
+  nullable `shopId` + `Shop` relation on every business table (Product, StockMovement, Sale,
+  Customer, Payment, Expense, AuditLog, CashReconciliation, CameraAlert; SaleItem and
+  ProductAlias stay through their parent). Migration `20261108093612` backfills every row
+  from the single v1 shop and turns v1 owners and `customerId`-linked customer logins into
+  `ACTIVE` memberships; it is a no-op on a fresh database, which is what the test suite
+  builds. The seed upserts the OWNER membership idempotently. Verified: backfill counts on
+  `dev.db` (0 shopless rows in all nine tables), migrate status clean, seed re-run safe,
+  232/232 tests on a fresh `test.db`, typecheck/lint/build pass. Dev and test databases were
+  backed up to `backups/pre-13.2-*.db` first.
+- Next unit: **13.3** — tenancy plumbing: shop guards in `src/lib/require-user.ts`
+  (`requireShopkeeper()`, `requireCustomerShop()`), then every `src/modules` function takes
+  an explicit `shopId` and filters by it (products/customers → sales/expenses/cash →
+  reports/audit/camera → assistant → UI call sites), with the existing single-shop behaviour
+  and tests preserved until 13.4/13.5.
 
 ## Completed
 
@@ -691,11 +701,14 @@ Update this file after every meaningful implementation change.
 
 ## Next Up
 
-- Unit 13.2: `ShopMembership` model, nullable `shopId` on every business table, the
-  idempotent backfill migration (from the existing shop, plus `OWNER`/`CUSTOMER`
-  memberships), and seed updates. Existing tests stay green.
-- Then 13.3 (tenancy plumbing), 13.4 (required `shopId`, composite uniques, `accountType`),
-  13.5 (signup and accounts), 13.6 (discovery and joining), 13.7 (hardening).
+- Unit 13.3: tenancy plumbing. Add the shop guards (`requireShopkeeper()`,
+  `requireCustomerShop(shopId)`) in `src/lib/require-user.ts`, then change every
+  `src/modules` query/service to require an explicit `shopId` and scope every `where`,
+  `groupBy`, duplicate check, and transaction with it — in slices (products/customers,
+  sales/expenses/cash, reports/audit/camera, assistant, UI call sites), each ending with
+  typecheck, lint, 232 tests, build, and a commit.
+- Then 13.4 (required `shopId`, composite uniques, `accountType`), 13.5 (signup and
+  accounts), 13.6 (discovery and joining), 13.7 (hardening).
 - Optional parallel polish still pending elsewhere: Pashto speaker review of the dictionary
   strings (it must also cover the new Phase 13 strings when 13.5/13.6 add them); overnight
   camera run to tune the motion threshold and cooldown; real-browser QA at 360px.
