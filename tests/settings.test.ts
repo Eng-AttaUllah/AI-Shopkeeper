@@ -19,17 +19,31 @@ function expectOk<T>(result: Result<T>): T {
 }
 
 async function createUserWithPassword(password: string) {
+  const shop = await prisma.shop.create({
+    data: { name: "Test Shop", currency: "PKR", timezone: "Asia/Karachi" },
+  });
   return prisma.user.create({
     data: {
       username: "owner",
       name: "Shopkeeper",
-      role: "OWNER",
+      accountType: "SHOPKEEPER",
       passwordHash: await hash(password, BCRYPT_COST),
     },
+  }).then(async (user) => {
+    await prisma.shopMembership.create({
+      data: {
+        shopId: shop.id,
+        userId: user.id,
+        role: "OWNER",
+        status: "ACTIVE",
+      },
+    });
+    return user;
   });
 }
 
 beforeEach(async () => {
+  await prisma.shopMembership.deleteMany();
   await prisma.user.deleteMany();
   await prisma.auditLog.deleteMany();
 });

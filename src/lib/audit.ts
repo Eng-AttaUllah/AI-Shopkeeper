@@ -30,7 +30,7 @@ export type AuditEntry = {
    */
   proposalId?: string;
   /** The shop the change belongs to (Phase 13 tenant isolation). */
-  shopId?: string;
+  shopId: string;
 };
 
 /** Fallback actor for tests and seed data that run outside a session. */
@@ -51,7 +51,7 @@ export async function writeAudit(
       after: entry.after ? JSON.stringify(entry.after) : null,
       details: entry.details ? JSON.stringify(entry.details) : null,
       proposalId: entry.proposalId ?? null,
-      shopId: entry.shopId ?? null,
+      shopId: entry.shopId,
     },
   });
 }

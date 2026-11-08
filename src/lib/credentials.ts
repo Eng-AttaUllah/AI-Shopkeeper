@@ -88,15 +88,12 @@ export type AuthUser = {
   id: string;
   name: string | null;
   username: string;
-  role: string;
+  /// SHOPKEEPER | CUSTOMER — the platform-wide account type chosen at signup.
+  accountType: string;
   tokenVersion: number;
-  customerId?: string | null;
 };
 
-export type SafeUser = Pick<
-  AuthUser,
-  "id" | "username" | "role" | "tokenVersion" | "customerId"
->;
+export type SafeUser = Pick<AuthUser, "id" | "username" | "accountType" | "tokenVersion">;
 
 export type EnsureOwnerResult = {
   created: boolean;
@@ -108,7 +105,7 @@ function toSafeUser(user: SafeUser): SafeUser {
   return {
     id: user.id,
     username: user.username,
-    role: user.role,
+    accountType: user.accountType,
     tokenVersion: user.tokenVersion,
   };
 }
@@ -144,9 +141,8 @@ export async function verifyCredentials(
     id: user.id,
     name: user.name,
     username: user.username,
-    role: user.role,
+    accountType: user.accountType,
     tokenVersion: user.tokenVersion,
-    customerId: user.customerId,
   };
 }
 
@@ -170,7 +166,7 @@ export async function ensureOwner(input: unknown): Promise<EnsureOwnerResult> {
     select: {
       id: true,
       username: true,
-      role: true,
+      accountType: true,
       tokenVersion: true,
       passwordHash: true,
     },
@@ -182,9 +178,9 @@ export async function ensureOwner(input: unknown): Promise<EnsureOwnerResult> {
         username,
         name: name ?? "Shopkeeper",
         passwordHash: await hash(password, BCRYPT_COST),
-        role: "OWNER",
+        accountType: "SHOPKEEPER",
       },
-      select: { id: true, username: true, role: true, tokenVersion: true },
+      select: { id: true, username: true, accountType: true, tokenVersion: true },
     });
 
     return { created: true, passwordChanged: false, user: toSafeUser(user) };
@@ -206,7 +202,7 @@ export async function ensureOwner(input: unknown): Promise<EnsureOwnerResult> {
       passwordHash: await hash(password, BCRYPT_COST),
       tokenVersion: { increment: 1 },
     },
-    select: { id: true, username: true, role: true, tokenVersion: true },
+    select: { id: true, username: true, accountType: true, tokenVersion: true },
   });
 
   return { created: false, passwordChanged: true, user: toSafeUser(user) };

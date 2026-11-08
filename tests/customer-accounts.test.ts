@@ -25,7 +25,8 @@ beforeEach(async () => {
   });
   shopId = shop.id;
 
-  // Users reference customers, so remove users first.
+  // Users reference customers via memberships, so remove memberships first.
+  await prisma.shopMembership.deleteMany();
   await prisma.user.deleteMany();
   await prisma.payment.deleteMany();
   await prisma.saleItem.deleteMany();
@@ -49,21 +50,23 @@ describe("customer accounts", () => {
 
     expect(customer.name).toBe("Ali Khan");
     expect(customer.phone).toBe("0300 1234567");
-    expect(user.role).toBe("CUSTOMER");
+    expect(user.accountType).toBe("CUSTOMER");
     expect(user.username).toBe("03001234567");
-    expect(user.customerId).toBe(customer.id);
     expect(user.passwordHash).not.toBe("secret-pass");
     expect(user.passwordHash.startsWith("$2")).toBe(true);
 
-    const stored = await prisma.user.findUnique({
-      where: { id: user.id },
+    const membership = await prisma.shopMembership.findFirst({
+      where: { userId: user.id },
       include: { customer: true },
     });
 
-    expect(stored?.customer?.id).toBe(customer.id);
+    expect(membership?.role).toBe("CUSTOMER");
+    expect(membership?.status).toBe("ACTIVE");
+    expect(membership?.customerId).toBe(customer.id);
+    expect(membership?.customer?.id).toBe(customer.id);
   });
 
-  it("signs in with the phone number and reports the CUSTOMER role", async () => {
+  it("signs in with the phone number and reports the CUSTOMER account type", async () => {
     expectOk(
       await createCustomerAccount(shopId, {
         name: "Ali Khan",
@@ -77,8 +80,13 @@ describe("customer accounts", () => {
       password: "secret-pass",
     });
 
-    expect(signedIn?.role).toBe("CUSTOMER");
-    expect(signedIn?.customerId).toBeTruthy();
+    expect(signedIn?.accountType).toBe("CUSTOMER");
+
+    const membership = await prisma.shopMembership.findFirst({
+      where: { userId: signedIn!.id },
+    });
+
+    expect(membership?.customerId).toBeTruthy();
 
     expect(
       await verifyCredentials({
@@ -102,7 +110,7 @@ describe("customer accounts", () => {
       password: "secret-pass",
     });
 
-    expect(signedIn?.role).toBe("CUSTOMER");
+    expect(signedIn?.accountType).toBe("CUSTOMER");
   });
 
   it("rejects a phone number that is already registered", async () => {
@@ -147,7 +155,12 @@ describe("customer accounts", () => {
     );
 
     expect(customer.id).toBe(existing.id);
-    expect(user.customerId).toBe(existing.id);
+
+    const membership = await prisma.shopMembership.findFirst({
+      where: { userId: user.id },
+    });
+
+    expect(membership?.customerId).toBe(existing.id);
     expect(await prisma.customer.count()).toBe(1);
   });
 
@@ -164,9 +177,14 @@ describe("customer accounts", () => {
     );
 
     expect(customer.id).toBe(existing.id);
-    expect(user.role).toBe("CUSTOMER");
+    expect(user.accountType).toBe("CUSTOMER");
     expect(user.username).toBe("03219876543");
-    expect(user.customerId).toBe(existing.id);
+
+    const membership = await prisma.shopMembership.findFirst({
+      where: { userId: user.id },
+    });
+
+    expect(membership?.customerId).toBe(existing.id);
   });
 
   it("refuses to create an account when the customer has no phone", async () => {

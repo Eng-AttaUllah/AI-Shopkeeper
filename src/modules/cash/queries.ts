@@ -75,7 +75,7 @@ export async function getReconciliation(
   shopId: string,
   businessDate: Date,
 ) {
-  return prisma.cashReconciliation.findUnique({
+  return prisma.cashReconciliation.findFirst({
     where: { shopId, businessDate },
   });
 }

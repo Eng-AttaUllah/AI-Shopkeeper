@@ -397,11 +397,12 @@ export async function recordPayment(
   return ok(result.data.payment);
 }
 
-/** Create a customer account (User with CUSTOMER role) linked to a Customer record.
+/** Create a customer account (User with CUSTOMER account type) linked to a Customer record.
  *
  * Used for customer self-registration and for accounts created by the
- * shopkeeper. Creates both a User and, if no customerId is given, a Customer
- * record in one transaction. The phone is used as the username.
+ * shopkeeper. Creates both a User and a ShopMembership (role CUSTOMER, status
+ * ACTIVE) linked to the Customer record, in one transaction. The phone is used
+ * as the username.
  */
 export async function createCustomerAccount(
   shopId: string,
@@ -444,11 +445,11 @@ export async function createCustomerAccount(
           throw new ServiceError("Customer not found.");
         }
 
-        const linkedUser = await tx.user.findUnique({
+        const linkedMembership = await tx.shopMembership.findFirst({
           where: { customerId: data.customerId },
         });
 
-        if (linkedUser) {
+        if (linkedMembership) {
           throw new ServiceError("This customer already has an account.");
         }
 
@@ -469,7 +470,16 @@ export async function createCustomerAccount(
           username,
           name: data.name,
           passwordHash: await hash(data.password, BCRYPT_COST),
+          accountType: "CUSTOMER",
+        },
+      });
+
+      await tx.shopMembership.create({
+        data: {
+          shopId,
+          userId: user.id,
           role: "CUSTOMER",
+          status: "ACTIVE",
           customerId: customer.id,
         },
       });
@@ -484,8 +494,7 @@ export async function createCustomerAccount(
         before: null,
         after: {
           username: user.username,
-          role: user.role,
-          customerId: user.customerId,
+          accountType: user.accountType,
         },
         details: {
           source: options.source ?? "self_registration",

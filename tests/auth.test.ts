@@ -26,7 +26,7 @@ describe("credentials", () => {
 
     expect(result.created).toBe(true);
     expect(result.user.username).toBe("owner");
-    expect(result.user.role).toBe("OWNER");
+    expect(result.user.accountType).toBe("SHOPKEEPER");
 
     const stored = await prisma.user.findUnique({
       where: { username: "owner" },
@@ -95,7 +95,7 @@ describe("credentials", () => {
     });
 
     expect(valid?.username).toBe("owner");
-    expect(valid?.role).toBe("OWNER");
+    expect(valid?.accountType).toBe("SHOPKEEPER");
     expect(
       await verifyCredentials({
         username: "owner",

@@ -35,14 +35,16 @@ export default async function CustomerPage({ params }: CustomerPageProps) {
     notFound();
   }
 
-  const [balancePaisa, history, linkedUser] = await Promise.all([
+  const [balancePaisa, history, linkedMembership] = await Promise.all([
     customerBalancePaisa(shop.id, id),
     customerHistory(shop.id, id),
-    prisma.user.findUnique({
+    prisma.shopMembership.findFirst({
       where: { customerId: id },
-      select: { username: true },
+      include: { user: { select: { username: true } } },
     }),
   ]);
+
+  const linkedUser = linkedMembership?.user ?? null;
 
   const statement = buildStatementText({
     shopName: shop.name,

@@ -20,7 +20,7 @@ export default auth((request) => {
   const isSettingsPage = nextUrl.pathname === "/settings";
   const isSignedIn = Boolean(request.auth);
   const user = request.auth?.user;
-  const isCustomer = user?.role === "CUSTOMER";
+  const isCustomer = user?.accountType === "CUSTOMER";
 
   if (isLoginPage || isSignUpPage) {
     if (isSignedIn) {

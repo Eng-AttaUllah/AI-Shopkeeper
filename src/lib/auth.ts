@@ -41,9 +41,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (user) {
         const signedIn = user as AuthUser;
         token.username = signedIn.username;
-        token.role = signedIn.role;
+        token.accountType = signedIn.accountType;
         token.tokenVersion = signedIn.tokenVersion;
-        token.customerId = signedIn.customerId;
         return token;
       }
 
@@ -57,9 +56,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         where: { id: token.sub },
         select: {
           username: true,
-          role: true,
+          accountType: true,
           tokenVersion: true,
-          customerId: true,
         },
       });
 
@@ -68,8 +66,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
 
       token.username = current.username;
-      token.role = current.role;
-      token.customerId = current.customerId;
+      token.accountType = current.accountType;
 
       return token;
     },
@@ -77,8 +74,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (session.user && token.sub) {
         session.user.id = token.sub;
         session.user.username = token.username;
-        session.user.role = token.role;
-        session.user.customerId = token.customerId;
+        session.user.accountType = token.accountType;
       }
 
       return session;

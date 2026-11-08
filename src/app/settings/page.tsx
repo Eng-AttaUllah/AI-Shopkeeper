@@ -10,7 +10,7 @@ import { requireUser } from "@/lib/require-user";
 export const dynamic = "force-dynamic";
 
 const ROLE_LABEL_KEYS: Record<string, string> = {
-  OWNER: "settings.roleOwner",
+  SHOPKEEPER: "settings.roleOwner",
   CASHIER: "settings.roleCashier",
   CUSTOMER: "settings.roleCustomer",
 };
@@ -27,7 +27,7 @@ export default async function SettingsPage() {
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-8">
       <div>
         <Link
-          href={user.role === "CUSTOMER" ? "/customers/khata" : "/more"}
+          href={user.accountType === "CUSTOMER" ? "/customers/khata" : "/more"}
           className="text-sm text-ink-muted transition-colors hover:text-ink"
         >
           {t("settings.back")}
@@ -52,17 +52,17 @@ export default async function SettingsPage() {
           <div>
             <dt className="text-sm text-ink-muted">{t("settings.role")}</dt>
             <dd className="font-medium">
-              {t(ROLE_LABEL_KEYS[user.role] ?? "settings.roleOwner")}
+              {t(ROLE_LABEL_KEYS[user.accountType] ?? "settings.roleOwner")}
             </dd>
           </div>
-          {user.role === "CUSTOMER" ? (
+          {user.accountType === "CUSTOMER" ? (
             <div>
               <dt className="text-sm text-ink-muted">{t("settings.phone")}</dt>
               <dd className="font-medium">{user.username}</dd>
             </div>
           ) : null}
         </dl>
-        {user.role === "CUSTOMER" ? (
+        {user.accountType === "CUSTOMER" ? (
           <p className="mt-3 text-sm text-ink-muted">{t("settings.phoneHint")}</p>
         ) : null}
       </section>

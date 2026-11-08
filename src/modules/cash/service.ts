@@ -63,33 +63,30 @@ export async function recordReconciliation(
       const differencePaisa = countedPaisa - breakdown.expectedPaisa;
       const note = emptyToNull(data.note);
 
-      const existing = await tx.cashReconciliation.findUnique({
-        where: { businessDate },
+      const existing = await tx.cashReconciliation.findFirst({
+        where: { shopId, businessDate },
       });
 
-      // Only overwrite this shop's own check. A different shop's check for the
-      // same day stays untouched (Invariant 13).
-      if (existing && existing.shopId !== shopId) {
-        throw new ServiceError("A cash check already exists for this day.");
-      }
-
-      const saved = await tx.cashReconciliation.upsert({
-        where: { businessDate },
-        create: {
-          shopId,
-          businessDate,
-          expectedPaisa: breakdown.expectedPaisa,
-          countedPaisa,
-          differencePaisa,
-          note,
-        },
-        update: {
-          expectedPaisa: breakdown.expectedPaisa,
-          countedPaisa,
-          differencePaisa,
-          note,
-        },
-      });
+      const saved = existing
+        ? await tx.cashReconciliation.update({
+            where: { id: existing.id },
+            data: {
+              expectedPaisa: breakdown.expectedPaisa,
+              countedPaisa,
+              differencePaisa,
+              note,
+            },
+          })
+        : await tx.cashReconciliation.create({
+            data: {
+              shopId,
+              businessDate,
+              expectedPaisa: breakdown.expectedPaisa,
+              countedPaisa,
+              differencePaisa,
+              note,
+            },
+          });
 
       await writeAudit(tx, {
         actor,

@@ -39,7 +39,7 @@ export default async function RootLayout({
 }) {
   const session = await auth();
   const user = session?.user;
-  const isCustomer = user?.role === "CUSTOMER";
+  const isCustomer = user?.accountType === "CUSTOMER";
   const locale: Locale = await getLocale();
   const dir = await getDirection(locale);
 

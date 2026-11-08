@@ -73,6 +73,16 @@ export async function changeUserPassword(
 
     const passwordHash = await hash(data.newPassword, BCRYPT_COST);
 
+    // Password change is scoped to the user's shop (their OWNER membership).
+    const membership = await prisma.shopMembership.findFirst({
+      where: { userId: user.id, role: "OWNER", status: "ACTIVE" },
+      select: { shopId: true },
+    });
+
+    if (!membership) {
+      throw new ServiceError("Account is not linked to a shop.");
+    }
+
     await prisma.$transaction(async (tx) => {
       await tx.user.update({
         where: { id: user.id },
@@ -84,12 +94,13 @@ export async function changeUserPassword(
 
       await writeAudit(tx, {
         actor: user.username,
+        shopId: membership.shopId,
         action: "PASSWORD_CHANGED",
         entityType: "User",
         entityId: user.id,
         summary: `Password changed for "${user.username}"`,
         before: null,
-        after: { username: user.username, role: user.role },
+        after: { username: user.username, accountType: user.accountType },
       });
     });
 
@@ -114,6 +125,16 @@ export async function signOutEverywhere(
       throw new ServiceError("Account not found.");
     }
 
+    // Sign out everywhere is scoped to the user's shop (their OWNER membership).
+    const membership = await prisma.shopMembership.findFirst({
+      where: { userId: user.id, role: "OWNER", status: "ACTIVE" },
+      select: { shopId: true },
+    });
+
+    if (!membership) {
+      throw new ServiceError("Account is not linked to a shop.");
+    }
+
     await prisma.$transaction(async (tx) => {
       await tx.user.update({
         where: { id: user.id },
@@ -122,12 +143,13 @@ export async function signOutEverywhere(
 
       await writeAudit(tx, {
         actor: user.username,
+        shopId: membership.shopId,
         action: "SIGNED_OUT_EVERYWHERE",
         entityType: "User",
         entityId: user.id,
         summary: `Signed out every device for "${user.username}"`,
         before: null,
-        after: { username: user.username, role: user.role },
+        after: { username: user.username, accountType: user.accountType },
       });
     });
 
