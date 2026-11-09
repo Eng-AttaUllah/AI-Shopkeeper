@@ -1,5 +1,5 @@
 import { Prisma } from "@/generated/prisma/client";
-import type { Customer, Payment, User } from "@/generated/prisma/client";
+import type { Customer, Payment, ShopMembership, User } from "@/generated/prisma/client";
 import { LOCAL_ACTOR, writeAudit } from "@/lib/audit";
 import {
   BCRYPT_COST,
@@ -597,4 +597,78 @@ export async function createAccountForCustomer(
     },
     { source: "shopkeeper" },
   );
+}
+
+/**
+ * Request to join a shop as a customer. Creates a PENDING ShopMembership that
+ * the shopkeeper must approve before the customer can see the shop's khata.
+ * Returns an error if the user is already a member or has a pending request.
+ */
+export async function createJoinRequest(
+  shopId: string,
+  userId: string,
+): Promise<Result<{ membership: ShopMembership }>> {
+  try {
+    const outcome = await prisma.$transaction(async (tx) => {
+      const existing = await tx.shopMembership.findFirst({
+        where: { shopId, userId },
+      });
+
+      if (existing) {
+        throw new ServiceError(
+          existing.status === "PENDING"
+            ? "You have already requested to join this shop."
+            : "You are already a member of this shop.",
+        );
+      }
+
+      const shop = await tx.shop.findUnique({
+        where: { id: shopId },
+      });
+
+      if (!shop) {
+        throw new ServiceError("Shop not found.");
+      }
+
+      const user = await tx.user.findUnique({
+        where: { id: userId },
+        select: { username: true },
+      });
+
+      if (!user) {
+        throw new ServiceError("User not found.");
+      }
+
+      const membership = await tx.shopMembership.create({
+        data: {
+          shopId,
+          userId,
+          role: "CUSTOMER",
+          status: "PENDING",
+        },
+      });
+
+      await writeAudit(tx, {
+        actor: user.username,
+        shopId,
+        action: "JOIN_REQUEST_CREATED",
+        entityType: "ShopMembership",
+        entityId: membership.id,
+        summary: `Join request for "${shop.name}"`,
+        before: null,
+        after: {
+          shopId,
+          userId,
+          role: membership.role,
+          status: membership.status,
+        },
+      });
+
+      return { membership };
+    });
+
+    return ok(outcome);
+  } catch (error) {
+    return handleError(error);
+  }
 }

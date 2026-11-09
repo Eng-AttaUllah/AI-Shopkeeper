@@ -1,4 +1,4 @@
-import type { Customer } from "@/generated/prisma/client";
+import type { Customer, Shop } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
 import { formatDate, formatPaisa } from "@/lib/format";
 import { normalizeDigits, normalizeText } from "@/lib/text";
@@ -261,4 +261,50 @@ export function buildStatementText(input: StatementInput): string {
   lines.push("", `As of ${formatDate(input.now ?? new Date())}.`);
 
   return lines.join("\n");
+}
+
+export type ShopWithMembershipState = Shop & {
+  membershipState: "none" | "pending" | "active";
+};
+
+/** Shops searchable by name or shopkeeper username, annotated with the
+ * signed-in user's membership state on each shop (none / pending / active).
+ */
+export async function listShopsWithMembership(
+  userId: string,
+  search?: string,
+): Promise<ShopWithMembershipState[]> {
+  const term = search?.trim();
+
+  let shops = await prisma.shop.findMany({
+    orderBy: { name: "asc" },
+  });
+
+  if (term) {
+    const normalized = normalizeText(term);
+    shops = shops.filter((shop) => normalizeText(shop.name).includes(normalized));
+  }
+
+  const memberships = await prisma.shopMembership.findMany({
+    where: { userId },
+    select: { shopId: true, status: true },
+  });
+
+  const membershipByShop = new Map(memberships.map((m) => [m.shopId, m.status]));
+
+  return shops.map((shop) => {
+    const status = membershipByShop.get(shop.id);
+    let membershipState: "none" | "pending" | "active" = "none";
+
+    if (status === "ACTIVE") {
+      membershipState = "active";
+    } else if (status === "PENDING") {
+      membershipState = "pending";
+    }
+
+    return {
+      ...shop,
+      membershipState,
+    };
+  });
 }

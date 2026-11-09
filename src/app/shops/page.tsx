@@ -1,23 +1,26 @@
 import Link from "next/link";
 
 import { buttonVariants } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { readClientLocale, translate } from "@/lib/dictionary";
 import { requireActiveMembership } from "@/lib/require-user";
-import { prisma } from "@/lib/db";
+import { listShopsWithMembership } from "@/modules/customers/queries";
+import { JoinShopForm } from "@/components/shops/join-shop-form";
 
 export const dynamic = "force-dynamic";
 
-export default async function ShopsPage() {
-  const { user, shop, membership } = await requireActiveMembership();
+type ShopsPageProps = {
+  searchParams: Promise<{ q?: string }>;
+};
 
-  // A customer's memberships (shops they've joined). In 13.5 the shopkeeper
-  // creates their shop and the customer's account, but the browse-and-join
-  // flow lands in 13.6.
-  const memberships = await prisma.shopMembership.findMany({
-    where: { userId: user.id, status: "ACTIVE" },
-    include: { shop: true },
-    orderBy: { createdAt: "desc" },
-  });
+export default async function ShopsPage({
+  searchParams,
+}: ShopsPageProps) {
+  const { user } = await requireActiveMembership();
+  const { q } = await searchParams;
+  const search = q?.trim() ?? "";
+
+  const shops = await listShopsWithMembership(user.id, search);
 
   const locale = readClientLocale();
 
@@ -34,55 +37,74 @@ export default async function ShopsPage() {
             {t("shops.subtitle")}
           </p>
         </div>
-        {memberships.length === 0 && (
-          <Link
-            href="/settings"
-            className={buttonVariants({ className: "h-11 px-4 text-base" })}
-          >
-            {t("shops.settings")}
-          </Link>
-        )}
       </div>
 
-      {memberships.length === 0 ? (
+      <form action="/shops" className="mb-6 flex flex-col sm:flex-row gap-2">
+        <Input
+          name="q"
+          defaultValue={search}
+          placeholder={t("shops.searchPlaceholder")}
+          autoComplete="off"
+          className="h-11 max-w-sm text-base"
+        />
+        <button
+          type="submit"
+          className={buttonVariants({
+            variant: "outline",
+            className: "h-11 px-4 text-base",
+          })}
+        >
+          {t("shops.search")}
+        </button>
+      </form>
+
+      {shops.length === 0 ? (
         <div className="rounded-xl border border-dashed border-line bg-surface p-10 text-center">
-          <p className="font-medium">{t("shops.noShops")}</p>
+          <p className="font-medium">
+            {search ? t("shops.noShopMatches", { search }) : t("shops.noShops")}
+          </p>
           <p className="mt-1 text-sm text-ink-muted">
-            {t("shops.noShopsHint")}
+            {search
+              ? t("shops.tryDifferentWord")
+              : t("shops.noShopsHint")}
           </p>
         </div>
       ) : (
         <ul className="flex flex-col gap-3">
-          {memberships.map((membership) => (
+          {shops.map((shop) => (
             <li
-              key={membership.id}
+              key={shop.id}
               className="rounded-xl border border-line bg-surface p-4"
             >
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="font-medium">{membership.shop.name}</p>
+                  <p className="font-medium">{shop.name}</p>
                   <p className="text-sm text-ink-muted">
-                    {membership.role === "OWNER"
+                    {shop.membershipState === "active"
                       ? t("shops.owner")
-                      : t("shops.customer")}
+                      : shop.membershipState === "pending"
+                        ? t("shops.joining")
+                        : t("shops.customer")}
                   </p>
                 </div>
-                <Link
-                  href="/customers/khata"
-                  className="mt-3 inline-block text-sm font-medium text-brand hover:text-brand-hover"
-                >
-                  {t("shops.viewKhata")}
-                </Link>
+                {shop.membershipState === "none" ? (
+                  <JoinShopForm shopId={shop.id} />
+                ) : shop.membershipState === "pending" ? (
+                  <p className="mt-3 text-sm text-ink-muted">
+                    {t("shops.requestPending")}
+                  </p>
+                ) : (
+                  <Link
+                    href="/customers/khata"
+                    className="mt-3 inline-block text-sm font-medium text-brand hover:text-brand-hover"
+                  >
+                    {t("shops.viewKhata")}
+                  </Link>
+                )}
               </div>
             </li>
           ))}
         </ul>
-      )}
-
-      {memberships.length > 0 && (
-        <p className="mt-4 text-sm text-ink-muted text-center">
-          {t("shops.joinComingSoon")}
-        </p>
       )}
     </main>
   );
