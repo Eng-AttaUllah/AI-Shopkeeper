@@ -701,6 +701,17 @@ const en: Dictionary = {
   "shops.joining": "Join requested",
   "shops.joinComingSoon":
     "Browse and join more shops from this page (coming in the next update).",
+  "shops.joinRequests": "Join requests",
+  "shops.joinRequestsHint": "Customers who asked to join your shop.",
+  "shops.approve": "Approve",
+  "shops.approving": "Approving…",
+  "shops.reject": "Reject",
+  "shops.rejecting": "Rejecting…",
+  "shops.linkCustomer": "Link to existing customer",
+  "shops.createCustomer": "Create new customer record",
+  "shops.approved": "Request approved.",
+  "shops.rejected": "Request rejected.",
+  "shops.noJoinRequests": "No pending join requests.",
 };
 
 const ps: Dictionary = {
@@ -890,6 +901,17 @@ const ps: Dictionary = {
   "shops.requestPending": "... (placeholder review needed)",
   "shops.joining": "... (placeholder review needed)",
   "shops.joinComingSoon": "... (placeholder review needed)",
+  "shops.joinRequests": "... (placeholder review needed)",
+  "shops.joinRequestsHint": "... (placeholder review needed)",
+  "shops.approve": "... (placeholder review needed)",
+  "shops.approving": "... (placeholder review needed)",
+  "shops.reject": "... (placeholder review needed)",
+  "shops.rejecting": "... (placeholder review needed)",
+  "shops.linkCustomer": "... (placeholder review needed)",
+  "shops.createCustomer": "... (placeholder review needed)",
+  "shops.approved": "... (placeholder review needed)",
+  "shops.rejected": "... (placeholder review needed)",
+  "shops.noJoinRequests": "... (placeholder review needed)",
 };
 
 const DICTIONARIES: Record<Locale, Dictionary> = { en, ps };

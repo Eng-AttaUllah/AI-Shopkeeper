@@ -2,7 +2,12 @@
 
 import { redirect } from "next/navigation";
 
-import { requireUser } from "@/lib/require-user";
+import { requireShopkeeper, requireUser } from "@/lib/require-user";
+import {
+  approveJoinRequest,
+  listJoinRequests,
+  rejectJoinRequest,
+} from "@/modules/customers/service";
 import {
   changeUserPassword,
   signOutEverywhere,
@@ -39,4 +44,65 @@ export async function signOutEverywhereAction(): Promise<void> {
   await signOutEverywhere(user.id);
 
   redirect("/login?signedOutEverywhere=1");
+}
+
+export async function approveJoinRequestAction(
+  _previousState: { ok: boolean; error?: string },
+  formData: FormData,
+): Promise<{ ok: boolean; error?: string }> {
+  const { shop } = await requireShopkeeper();
+  const membershipId = String(formData.get("membershipId") ?? "");
+  const linkToCustomerId = String(formData.get("linkToCustomerId") ?? "") || undefined;
+  const createCustomerName = String(formData.get("createCustomerName") ?? "") || undefined;
+  const createCustomerPhone = String(formData.get("createCustomerPhone") ?? "") || undefined;
+  const createCustomerNote = String(formData.get("createCustomerNote") ?? "") || undefined;
+
+  const result = await approveJoinRequest(shop.id, membershipId, {
+    linkToCustomerId,
+    createCustomerName,
+    createCustomerPhone,
+    createCustomerNote,
+  });
+
+  if (!result.ok) {
+    return { ok: false, error: result.error };
+  }
+
+  return { ok: true };
+}
+
+export async function rejectJoinRequestAction(
+  _previousState: { ok: boolean; error?: string },
+  formData: FormData,
+): Promise<{ ok: boolean; error?: string }> {
+  const { shop } = await requireShopkeeper();
+  const membershipId = String(formData.get("membershipId") ?? "");
+
+  const result = await rejectJoinRequest(shop.id, membershipId);
+
+  if (!result.ok) {
+    return { ok: false, error: result.error };
+  }
+
+  return { ok: true };
+}
+
+export async function listJoinRequestsAction(): Promise<{
+  memberships: Array<{
+    membershipId: string;
+    username: string;
+    createdAt: Date;
+  }>;
+}> {
+  const { shop } = await requireShopkeeper();
+
+  const memberships = await listJoinRequests(shop.id);
+
+  return {
+    memberships: memberships.map((m) => ({
+      membershipId: m.id,
+      username: m.user.username,
+      createdAt: m.createdAt,
+    })),
+  };
 }

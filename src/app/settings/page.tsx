@@ -1,11 +1,15 @@
 import Link from "next/link";
 
+import { approveJoinRequestAction } from "@/app/settings/actions";
+import { rejectJoinRequestAction } from "@/app/settings/actions";
 import { signOutAction } from "@/app/auth-actions";
 import { signOutEverywhereAction } from "@/app/settings/actions";
 import { ChangePasswordForm } from "@/components/settings/change-password-form";
 import { Button } from "@/components/ui/button";
+import { JoinRequestForm } from "@/components/shops/join-request-form";
 import { readClientLocale, translate } from "@/lib/dictionary";
-import { requireUser } from "@/lib/require-user";
+import { requireActiveMembership } from "@/lib/require-user";
+import { listJoinRequests } from "@/modules/customers/service";
 
 export const dynamic = "force-dynamic";
 
@@ -16,12 +20,15 @@ const ROLE_LABEL_KEYS: Record<string, string> = {
 };
 
 export default async function SettingsPage() {
-  const user = await requireUser();
+  const { user, shop, membership } = await requireActiveMembership();
   const locale = readClientLocale();
 
   function t(key: string, params?: Record<string, string>): string {
     return translate(locale, key, params);
   }
+
+  const joinRequests =
+    membership.role === "OWNER" ? await listJoinRequests(shop.id) : [];
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-8">
@@ -106,6 +113,49 @@ export default async function SettingsPage() {
           </form>
         </div>
       </section>
+
+      {membership.role === "OWNER" ? (
+        <section id="join-requests" className="scroll-mt-20 rounded-xl border border-line bg-surface p-5">
+          <h2 className="text-lg font-semibold">{t("shops.joinRequests")}</h2>
+          <p className="mt-1 text-sm text-ink-muted">
+            {t("shops.joinRequestsHint")}
+          </p>
+
+          {joinRequests.length === 0 ? (
+            <p className="mt-3 text-sm text-ink-muted">
+              {t("shops.noJoinRequests")}
+            </p>
+          ) : (
+            <ul className="mt-3 divide-y divide-line">
+              {joinRequests.map((joinRequest) => (
+                <li
+                  key={joinRequest.id}
+                  className="flex flex-col gap-3 py-3 last:pb-0"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-medium">{joinRequest.user.username}</p>
+                      <p className="text-sm text-ink-muted">
+                        {new Date(joinRequest.createdAt).toLocaleDateString(
+                          undefined,
+                          { month: "short", day: "numeric", year: "numeric" },
+                        )}
+                      </p>
+                    </div>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <JoinRequestForm
+                        membershipId={joinRequest.id}
+                        approveAction={approveJoinRequestAction}
+                        rejectAction={rejectJoinRequestAction}
+                      />
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      ) : null}
 
       <section id="about" className="scroll-mt-20 rounded-xl border border-line bg-surface p-5">
         <h2 className="text-lg font-semibold">{t("settings.about")}</h2>

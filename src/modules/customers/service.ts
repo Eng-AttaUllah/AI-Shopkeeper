@@ -672,3 +672,149 @@ export async function createJoinRequest(
     return handleError(error);
   }
 }
+
+/**
+ * List pending join requests for a shop, newest first. Used by the shopkeeper
+ * to review and approve/reject requests.
+ */
+export async function listJoinRequests(
+  shopId: string,
+): Promise<(ShopMembership & { user: User })[]> {
+  return prisma.shopMembership.findMany({
+    where: { shopId, status: "PENDING" },
+    include: { user: true },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
+/**
+ * Approve a join request. The shopkeeper may link the request to an existing
+ * ledger Customer record (matched by phone) or create a new one. The
+ * membership becomes ACTIVE with the ledger link.
+ */
+export async function approveJoinRequest(
+  shopId: string,
+  membershipId: string,
+  options: {
+    linkToCustomerId?: string;
+    createCustomerName?: string;
+    createCustomerPhone?: string | null;
+    createCustomerNote?: string | null;
+  },
+): Promise<Result<{ membership: ShopMembership; customer: Customer }>> {
+  try {
+    const outcome = await prisma.$transaction(async (tx) => {
+      const membership = await tx.shopMembership.findFirst({
+        where: { id: membershipId, shopId, status: "PENDING" },
+        include: { user: true },
+      });
+
+      if (!membership) {
+        throw new ServiceError("Join request not found or already decided.");
+      }
+
+      let customer: Customer;
+
+      if (options.linkToCustomerId) {
+        const found = await tx.customer.findFirst({
+          where: { id: options.linkToCustomerId, shopId },
+        });
+
+        if (!found) {
+          throw new ServiceError("Customer not found.");
+        }
+
+        const alreadyLinked = await tx.shopMembership.findFirst({
+          where: { customerId: found.id, status: "ACTIVE" },
+        });
+
+        if (alreadyLinked) {
+          throw new ServiceError("This customer is already linked to an account.");
+        }
+
+        customer = found;
+      } else if (options.createCustomerName) {
+        customer = await tx.customer.create({
+          data: {
+            name: options.createCustomerName,
+            phone: options.createCustomerPhone ?? null,
+            note: options.createCustomerNote ?? null,
+            shopId,
+          },
+        });
+      } else {
+        throw new ServiceError(
+          "No customer record to link. Link an existing customer or create a new one.",
+        );
+      }
+
+      const updated = await tx.shopMembership.update({
+        where: { id: membershipId },
+        data: { status: "ACTIVE", customerId: customer.id },
+        include: { user: true },
+      });
+
+      await writeAudit(tx, {
+        actor: membership.user.username,
+        shopId,
+        action: "JOIN_REQUEST_APPROVED",
+        entityType: "ShopMembership",
+        entityId: membership.id,
+        summary: `Join request approved for shop "${shopId}"`,
+        before: { status: "PENDING", customerId: null },
+        after: { status: "ACTIVE", customerId: customer.id },
+      });
+
+      return { membership: updated, customer };
+    });
+
+    return ok(outcome);
+  } catch (error) {
+    return handleError(error);
+  }
+}
+
+/**
+ * Reject a join request. The membership becomes REMOVED and the customer
+ * sees nothing about the shop.
+ */
+export async function rejectJoinRequest(
+  shopId: string,
+  membershipId: string,
+): Promise<Result<{ membership: ShopMembership }>> {
+  try {
+    const outcome = await prisma.$transaction(async (tx) => {
+      const membership = await tx.shopMembership.findFirst({
+        where: { id: membershipId, shopId, status: "PENDING" },
+        include: { user: true },
+      });
+
+      if (!membership) {
+        throw new ServiceError("Join request not found or already decided.");
+      }
+
+      const updated = await tx.shopMembership.update({
+        where: { id: membershipId },
+        data: { status: "REMOVED" },
+        include: { user: true },
+      });
+
+      await writeAudit(tx, {
+        actor: membership.user.username,
+        shopId,
+        action: "JOIN_REQUEST_REJECTED",
+        entityType: "ShopMembership",
+        entityId: membership.id,
+        summary: `Join request rejected for shop "${shopId}"`,
+        before: { status: "PENDING" },
+        after: { status: "REMOVED" },
+      });
+
+      return { membership: updated };
+    });
+
+    return ok(outcome);
+  } catch (error) {
+    return handleError(error);
+  }
+}

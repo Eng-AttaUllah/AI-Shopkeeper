@@ -4,6 +4,8 @@ import { hash } from "@/lib/credentials";
 import { prisma } from "@/lib/db";
 import type { Result } from "@/lib/result";
 import { createJoinRequest } from "@/modules/customers/service";
+import { approveJoinRequest } from "@/modules/customers/service";
+import { rejectJoinRequest } from "@/modules/customers/service";
 import { listShopsWithMembership } from "@/modules/customers/queries";
 
 function expectOk<T>(result: Result<T>): T {
@@ -20,6 +22,7 @@ let userId: string;
 beforeEach(async () => {
   await prisma.shopMembership.deleteMany();
   await prisma.auditLog.deleteMany();
+  await prisma.customer.deleteMany();
   await prisma.shop.deleteMany();
   await prisma.user.deleteMany();
 
@@ -87,6 +90,74 @@ describe("createJoinRequest", () => {
     if (!result.ok) {
       expect(result.error).toBe("User not found.");
     }
+  });
+
+  describe("approveJoinRequest", () => {
+    it("approves a pending request and links a new customer record", async () => {
+      const request = expectOk(await createJoinRequest(shopId, userId));
+
+      const result = expectOk(
+        await approveJoinRequest(shopId, request.membership.id, {
+          createCustomerName: "Ali Khan",
+          createCustomerPhone: "0300 1234567",
+        }),
+      );
+
+      expect(result.membership.status).toBe("ACTIVE");
+      expect(result.membership.customerId).toBe(result.customer.id);
+      expect(result.customer.name).toBe("Ali Khan");
+      expect(result.customer.phone).toBe("0300 1234567");
+    });
+
+    it("approves a pending request linked to an existing customer", async () => {
+      const request = expectOk(await createJoinRequest(shopId, userId));
+      const customer = await prisma.customer.create({
+        data: {
+          name: "Existing Customer",
+          phone: "0311 1112223",
+          shopId,
+        },
+      });
+
+      const result = expectOk(
+        await approveJoinRequest(shopId, request.membership.id, {
+          linkToCustomerId: customer.id,
+        }),
+      );
+
+      expect(result.membership.status).toBe("ACTIVE");
+      expect(result.membership.customerId).toBe(customer.id);
+    });
+
+    it("rejects approving a non-existent request", async () => {
+      const result = await approveJoinRequest(shopId, "does-not-exist", {
+        createCustomerName: "Ali Khan",
+      });
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error).toBe("Join request not found or already decided.");
+      }
+    });
+  });
+
+  describe("rejectJoinRequest", () => {
+    it("rejects a pending request", async () => {
+      const request = expectOk(await createJoinRequest(shopId, userId));
+
+      const result = expectOk(
+        await rejectJoinRequest(shopId, request.membership.id),
+      );
+
+      expect(result.membership.status).toBe("REMOVED");
+    });
+
+    it("rejects rejecting a non-existent request", async () => {
+      const result = await rejectJoinRequest(shopId, "does-not-exist");
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error).toBe("Join request not found or already decided.");
+      }
+    });
   });
 });
 
