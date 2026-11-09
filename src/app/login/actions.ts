@@ -3,6 +3,7 @@
 import { AuthError } from "next-auth";
 
 import { signIn } from "@/lib/auth";
+import { loginRateLimiter } from "@/lib/rate-limit";
 import { loginSchema } from "@/lib/credentials";
 import { fieldErrors } from "@/lib/zod";
 
@@ -37,6 +38,17 @@ export async function loginAction(
   _previousState: LoginState,
   formData: FormData,
 ): Promise<LoginState> {
+  const username = String(formData.get("username") ?? "");
+
+  const limit = loginRateLimiter.check(username);
+  if (!limit.allowed) {
+    return {
+      error: `Too many sign-in attempts. Try again in ${Math.ceil(
+        limit.resetAfterMs / 1000,
+      )} seconds.`,
+    };
+  }
+
   const parsed = loginSchema.safeParse({
     username: formData.get("username"),
     password: formData.get("password"),

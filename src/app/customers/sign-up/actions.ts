@@ -4,6 +4,7 @@ import { AuthError } from "next-auth";
 
 import { signIn } from "@/lib/auth";
 import { createCustomerUser } from "@/modules/customers/service";
+import { signupRateLimiter } from "@/lib/rate-limit";
 
 export type CustomerRegistrationState =
   | {
@@ -16,6 +17,17 @@ export async function customerRegistrationAction(
   _previousState: CustomerRegistrationState,
   formData: FormData,
 ): Promise<CustomerRegistrationState> {
+  const phone = String(formData.get("phone") ?? "");
+
+  const limit = signupRateLimiter.check(phone);
+  if (!limit.allowed) {
+    return {
+      error: `Too many sign-up attempts. Try again in ${Math.ceil(
+        limit.resetAfterMs / 1000,
+      )} seconds.`,
+    };
+  }
+
   const parsed = {
     name: formData.get("name"),
     phone: formData.get("phone"),

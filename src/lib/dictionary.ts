@@ -712,6 +712,9 @@ const en: Dictionary = {
   "shops.approved": "Request approved.",
   "shops.rejected": "Request rejected.",
   "shops.noJoinRequests": "No pending join requests.",
+  "shops.searchRateLimited": "Too many searches.",
+  "shops.searchRateLimitedHint":
+    "Try again in {{seconds}} seconds.",
 };
 
 const ps: Dictionary = {
@@ -912,6 +915,8 @@ const ps: Dictionary = {
   "shops.approved": "... (placeholder review needed)",
   "shops.rejected": "... (placeholder review needed)",
   "shops.noJoinRequests": "... (placeholder review needed)",
+  "shops.searchRateLimited": "... (placeholder review needed)",
+  "shops.searchRateLimitedHint": "... (placeholder review needed)",
 };
 
 const DICTIONARIES: Record<Locale, Dictionary> = { en, ps };

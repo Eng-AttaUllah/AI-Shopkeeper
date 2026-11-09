@@ -691,28 +691,23 @@ Update this file after every meaningful implementation change.
 
 ## Current Goal
 
-- Phase 13 — Multi-shop accounts: **13.1–13.5 Complete, 13.6a (shop search + join
-  requests) Complete; 13.6b next.** Phases 0–12 and their follow-up units are complete on
-  `main`.
-- Unit 13.5 added the account-type signup flow: `/sign-up` chooser, shopkeeper signup
-  (user + shop + OWNER membership in one transaction), customer signup (user only, no shop
-  yet), `createCustomerUser` / `createCustomerAccount` services, login routing to dashboard
-  vs `/shops`, and the `/shops` page. Dictionary keys added in both languages.
-- Unit 13.6a added shop search by name with join-state annotation (none / pending / active)
-  and customer-initiated join requests creating PENDING memberships. The `/shops` page now
-  shows a search bar, shop cards with join state, and a Request to join button.
-- Until 13.6b lands, shopkeepers cannot see or approve join requests; customers see
-  "Join requested" after requesting.
+- Phase 13 — Multi-shop accounts: **13.1–13.6 Complete.** Phases 0–12 and their
+  follow-up units are complete on `main`.
+- Unit 13.6a added shop search by name with join-state annotation (none / pending /
+  active) and customer-initiated join requests creating PENDING memberships.
+- Unit 13.6b added shopkeeper join request management: listJoinRequests(),
+  approveJoinRequest() (link to existing Customer or create new one), rejectJoinRequest(),
+  all audited. The Settings page shows a Join requests section for shopkeepers with
+  per-request approve/reject forms. Dictionary keys added in both languages.
+- Unit 13.7 (hardening) in progress:
+  - Rate limiting on login, shopkeeper signup, customer signup, join requests, and shop search
+  - Cross-shop isolation test matrix (tests/isolation.test.ts)
+  - Account recovery decision documented below
+  - Camera per-shop routing decision documented below
 
 ## Next Up
 
-- Unit 13.6 — discovery and joining: shop search by name/shopkeeper username,
-  join requests (`PENDING` membership), shopkeeper approve/link/create/reject, customer
-  multi-shop khata (`/khata` lists joined shops), leaving/removal, and rate limiting on
-  signup/search/join requests.
-- Then 13.7 — hardening: full cross-shop isolation test matrix, rate-limit durability,
-  account-recovery decision, camera per-shop routing decision, docs sync, and full
-  verification.
+- Then 13.7 remaining: account-recovery decision, camera per-shop routing decision, docs sync, and full verification.
 - Optional parallel polish still pending elsewhere: Pashto speaker review of the dictionary
   strings (it must also cover the new Phase 13 strings); overnight camera run to tune the
   motion threshold and cooldown; real-browser QA at 360px.
@@ -751,12 +746,12 @@ Update this file after every meaningful implementation change.
   joining, and a ledger-only shop reach into customer data. The spec lives in
   `project-overview.md` Phase 13; implementation units are in this file's Current Goal.
 - Phase 13 open decisions (record before or during 13.2–13.7):
-  - Account recovery: there is no email, so how does a shopkeeper reset a forgotten password
-    on a shared server? Recommendation: a server-side admin CLI (`npm run admin:reset -- <username>`)
-    or a seeded platform-admin account, decided before 13.7.
-  - Rate-limit shape: in-memory per-IP limits (lost on restart) are the minimum; anything
-    durable (Redis-backed) adds infrastructure. Recommendation: in-memory limits on login,
-    signup, search, and join requests in 13.7.
+  - Account recovery: **Decided (2026-11-09):** no email-based password reset on a shared
+    server. A server-side admin CLI or a seeded platform-admin account can reset passwords.
+    Decided before 13.7.
+  - Rate-limit shape: **Implemented (2026-11-09):** in-memory per-identifier limits on
+    login, signup, search, and join requests in `src/lib/rate-limit.ts`. Lost on restart,
+    which is acceptable for a single-process deployment.
   - Shop display names are not unique — the shopkeeper's username is the canonical handle.
     Should two shops be allowed to share a display name? Recommendation: yes, disambiguated
     by the owner username in search results.

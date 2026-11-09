@@ -4,6 +4,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { readClientLocale, translate } from "@/lib/dictionary";
 import { requireActiveMembership } from "@/lib/require-user";
+import { shopSearchRateLimiter } from "@/lib/rate-limit";
 import { listShopsWithMembership } from "@/modules/customers/queries";
 import { JoinShopForm } from "@/components/shops/join-shop-form";
 
@@ -19,6 +20,24 @@ export default async function ShopsPage({
   const { user } = await requireActiveMembership();
   const { q } = await searchParams;
   const search = q?.trim() ?? "";
+
+  const limit = shopSearchRateLimiter.check(user.id);
+  if (!limit.allowed) {
+    return (
+      <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-8">
+        <div className="rounded-xl border border-dashed border-line bg-surface p-10 text-center">
+          <p className="font-medium text-error">
+            {t("shops.searchRateLimited")}
+          </p>
+          <p className="mt-1 text-sm text-ink-muted">
+            {t("shops.searchRateLimitedHint", {
+              seconds: String(Math.ceil(limit.resetAfterMs / 1000)),
+            })}
+          </p>
+        </div>
+      </main>
+    );
+  }
 
   const shops = await listShopsWithMembership(user.id, search);
 

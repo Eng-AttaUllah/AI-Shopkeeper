@@ -67,12 +67,9 @@ npx prisma studio        # inspect the database
 ## Current state
 
 Phase 8 — Pashto support — and Phases 9–12 are complete, as are the settings and UI
-polish units. Phase 13, multi-shop accounts, is in progress: units 13.1 (docs), 13.2
-(schema, membership, backfill migration, seed), 13.3 (tenancy plumbing — every module
-function scoped by `shopId`), 13.4 (required `shopId`, composite uniques, `accountType`),
-13.5 (signup and accounts), and 13.6a (shop search + join requests) are done on `main`;
-unit 13.6b (shopkeeper join request management) follows. See `docs/progress-tracker.md` for
-the live task list and branch status.
+polish units. Phase 13, multi-shop accounts, is in progress: units 13.1–13.6 are done on
+`main`; unit 13.7 (hardening: isolation tests, rate limiting, account recovery) follows.
+See `docs/progress-tracker.md` for the live task list and branch status.
 
 <!-- BEGIN:nextjs-agent-rules -->
 

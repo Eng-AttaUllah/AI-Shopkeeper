@@ -5,6 +5,7 @@ import { AuthError } from "next-auth";
 import { signIn } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { BCRYPT_COST, hash } from "@/lib/credentials";
+import { signupRateLimiter } from "@/lib/rate-limit";
 import { fieldErrors } from "@/lib/zod";
 import { z } from "zod";
 
@@ -32,6 +33,17 @@ export async function shopkeeperSignupAction(
   _previousState: ShopkeeperSignupState,
   formData: FormData,
 ): Promise<ShopkeeperSignupState> {
+  const formUsername = String(formData.get("username") ?? "");
+
+  const limit = signupRateLimiter.check(formUsername);
+  if (!limit.allowed) {
+    return {
+      error: `Too many sign-up attempts. Try again in ${Math.ceil(
+        limit.resetAfterMs / 1000,
+      )} seconds.`,
+    };
+  }
+
   const parsed = shopkeeperSignupSchema.safeParse({
     name: formData.get("name"),
     username: formData.get("username"),
