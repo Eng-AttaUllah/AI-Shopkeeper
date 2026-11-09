@@ -42,7 +42,7 @@ export default function SignUpPage() {
             href="/login"
             className="text-brand underline hover:text-brand-hover"
           >
-            {t("signIn")}
+            {t("customerRegistration.signIn")}
           </Link>
         </p>
       </div>
