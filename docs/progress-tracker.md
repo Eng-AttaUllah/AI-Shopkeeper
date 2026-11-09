@@ -691,14 +691,18 @@ Update this file after every meaningful implementation change.
 
 ## Current Goal
 
-- Phase 13 — Multi-shop accounts: **13.1 (specification), 13.2 (schema, membership,
-  backfill), 13.3 (tenancy plumbing), 13.4 (required shopId, composite uniques,
-  accountType), and 13.5 (signup and accounts) Complete.** Phases 0–12 and their
-  follow-up units are complete on `main`.
-- The code now serves many shops via memberships; existing shopkeeper logins and screens
-  keep working, and customers can self-register at `/sign-up`. Until 13.6 lands, the
-  browse-and-join flow shows a "coming soon" placeholder; build nothing outside the
-  Phase 13 unit list without an owner decision first.
+- Phase 13 — Multi-shop accounts: **13.1–13.5 Complete, 13.6a (shop search + join
+  requests) Complete; 13.6b next.** Phases 0–12 and their follow-up units are complete on
+  `main`.
+- Unit 13.5 added the account-type signup flow: `/sign-up` chooser, shopkeeper signup
+  (user + shop + OWNER membership in one transaction), customer signup (user only, no shop
+  yet), `createCustomerUser` / `createCustomerAccount` services, login routing to dashboard
+  vs `/shops`, and the `/shops` page. Dictionary keys added in both languages.
+- Unit 13.6a added shop search by name with join-state annotation (none / pending / active)
+  and customer-initiated join requests creating PENDING memberships. The `/shops` page now
+  shows a search bar, shop cards with join state, and a Request to join button.
+- Until 13.6b lands, shopkeepers cannot see or approve join requests; customers see
+  "Join requested" after requesting.
 
 ## Next Up
 

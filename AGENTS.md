@@ -70,8 +70,9 @@ Phase 8 — Pashto support — and Phases 9–12 are complete, as are the settin
 polish units. Phase 13, multi-shop accounts, is in progress: units 13.1 (docs), 13.2
 (schema, membership, backfill migration, seed), 13.3 (tenancy plumbing — every module
 function scoped by `shopId`), 13.4 (required `shopId`, composite uniques, `accountType`),
-and 13.5 (signup and accounts) are done on `main`; unit 13.6 (discovery and joining)
-follows. See `docs/progress-tracker.md` for the live task list and branch status.
+13.5 (signup and accounts), and 13.6a (shop search + join requests) are done on `main`;
+unit 13.6b (shopkeeper join request management) follows. See `docs/progress-tracker.md` for
+the live task list and branch status.
 
 <!-- BEGIN:nextjs-agent-rules -->
 
