@@ -73,11 +73,13 @@ export async function shopkeeperSignupAction(
     }
 
     const outcome = await prisma.$transaction(async (tx) => {
+      const shopCount = await tx.shop.count();
       const shop = await tx.shop.create({
         data: {
           name: shopName,
           currency: "PKR",
           timezone: "Asia/Karachi",
+          shopId: `SP-${String(shopCount + 1).padStart(6, "0")}`,
         },
       });
 

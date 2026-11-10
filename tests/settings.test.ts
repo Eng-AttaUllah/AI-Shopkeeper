@@ -19,8 +19,14 @@ function expectOk<T>(result: Result<T>): T {
 }
 
 async function createUserWithPassword(password: string) {
+  const shopCount = await prisma.shop.count();
   const shop = await prisma.shop.create({
-    data: { name: "Test Shop", currency: "PKR", timezone: "Asia/Karachi" },
+    data: {
+      shopId: `SP-${String(shopCount + 1).padStart(6, "0")}`,
+      name: "Test Shop",
+      currency: "PKR",
+      timezone: "Asia/Karachi",
+    },
   });
   return prisma.user.create({
     data: {

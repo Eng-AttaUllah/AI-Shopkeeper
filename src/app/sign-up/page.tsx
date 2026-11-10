@@ -22,16 +22,19 @@ export default function SignUpPage() {
         <p className="mt-1 text-sm text-ink-muted">
           {t("signUp.subtitle")}
         </p>
-        <div className="mt-6 flex flex-col gap-3">
+        <h2 className="mt-4 mb-2 text-sm font-medium text-ink-muted">
+          {t("signUp.joinAs")}
+        </h2>
+        <div className="mt-0 flex flex-col gap-3">
           <Link
             href="/sign-up/shopkeeper"
-            className="w-full flex shrink-0 items-center justify-between rounded-lg border border-transparent bg-primary text-primary-foreground hover:bg-primary/80 px-5 py-3 text-sm font-medium transition-colors"
+            className="w-full flex shrink-0 items-center justify-between rounded-lg border border-border bg-background hover:bg-muted hover:text-foreground px-5 py-3 text-sm font-medium transition-colors text-ink"
           >
             {t("signUp.shopkeeper")}
           </Link>
           <Link
             href="/sign-up/customer"
-            className="w-full flex shrink-0 items-center justify-between rounded-lg border border-border bg-background hover:bg-muted hover:text-foreground px-5 py-3 text-sm font-medium transition-colors"
+            className="w-full flex shrink-0 items-center justify-between rounded-lg border border-border bg-background hover:bg-muted hover:text-foreground px-5 py-3 text-sm font-medium transition-colors text-ink"
           >
             {t("signUp.customer")}
           </Link>

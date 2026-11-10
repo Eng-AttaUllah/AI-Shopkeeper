@@ -27,18 +27,22 @@ let shopAProductId: string;
 let shopACustomerId: string;
 
 beforeEach(async () => {
+  const shopACount = await prisma.shop.count();
   const shopA = await prisma.shop.create({
     data: {
       name: "Shop A",
       currency: "PKR",
       timezone: "Asia/Karachi",
+      shopId: `SP-${String(shopACount + 1).padStart(6, "0")}`,
     },
   });
+  const shopBCount = await prisma.shop.count();
   const shopB = await prisma.shop.create({
     data: {
       name: "Shop B",
       currency: "PKR",
       timezone: "Asia/Karachi",
+      shopId: `SP-${String(shopBCount + 1).padStart(6, "0")}`,
     },
   });
   shopAId = shopA.id;

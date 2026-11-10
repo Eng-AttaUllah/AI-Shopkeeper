@@ -42,6 +42,7 @@ model User {
 /// belongs to exactly one shop through `shopId` (Phase 13, Invariant 13).
 model Shop {
   id        String   @id @default(cuid())
+  shopId    String?   // e.g., SP-000001 (unique via application logic)
   name      String
   currency  String   @default("PKR")
   timezone  String   @default("Asia/Karachi")
@@ -122,8 +123,6 @@ model Product {
   /// Owning shop (Phase 13, Invariant 13).
   shopId String
 
-  @@unique([shopId, nameNormalized])
-  @@unique([shopId, barcode])
   @@index([isActive, name])
   @@map("products")
 }
@@ -208,7 +207,6 @@ model Sale {
   /// Owning shop (Phase 13, Invariant 13).
   shopId String
 
-  @@unique([shopId, number])
   @@index([createdAt])
   @@index([customerId, createdAt])
   @@map("sales")
@@ -246,6 +244,7 @@ model SaleItem {
 /// (invariant 9).
 model Customer {
   id         String   @id @default(cuid())
+  customerId String?   // e.g., CST-000001
   name       String
   phone      String?
   note       String?
@@ -363,7 +362,6 @@ model CashReconciliation {
   shopId String
   shop   Shop   @relation(fields: [shopId], references: [id], onDelete: Restrict)
 
-  @@unique([shopId, businessDate])
   @@map("cash_reconciliations")
 }
 

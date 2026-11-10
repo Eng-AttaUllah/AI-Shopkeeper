@@ -53,8 +53,14 @@ async function seedProducts() {
 }
 
 beforeEach(async () => {
+  const shopCount = await prisma.shop.count();
   const shop = await prisma.shop.create({
-    data: { name: "Test Shop", currency: "PKR", timezone: "Asia/Karachi" },
+    data: {
+      name: "Test Shop",
+      currency: "PKR",
+      timezone: "Asia/Karachi",
+      shopId: `SP-${String(shopCount + 1).padStart(6, "0")}`,
+    },
   });
   shopId = shop.id;
 

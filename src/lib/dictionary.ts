@@ -658,8 +658,9 @@ const en: Dictionary = {
   "signUp.title": "Create account",
   "signUp.subtitle":
     "Choose the kind of account you want. A shopkeeper creates and runs their shop; a customer joins shops to track their khata.",
-  "signUp.shopkeeper": "I run a shop",
-  "signUp.customer": "I’m a customer",
+  "signUp.shopkeeper": "Shopkeeper",
+  "signUp.customer": "Customer",
+  "signUp.joinAs": "Join as a",
   "signUp.haveAccount": "Already have an account?",
   "shopkeeperSignup.title": "Create your shop",
   "shopkeeperSignup.subtitle":
@@ -876,7 +877,7 @@ const ps: Dictionary = {
   "signUp.title": "حساب جوړول",
   "signUp.subtitle":
     "د حساب جوړولې سي Sekti ... (placeholder, review needed)",
-  "signUp.shopkeeper": "د دوکان مالک شي",
+  "signUp.shopkeeper": "دوکاندار",
   "shopkeeperSignup.title": "خپل دوکان جوړول",
   "shopkeeperSignup.subtitle":
     "د دوکان مالک یوں ... (placeholder review needed)",
@@ -887,7 +888,8 @@ const ps: Dictionary = {
   "shopkeeperSignup.registerButton": "دوکان او حساب جوړ کړئ",
   "shopkeeperSignup.creating": "دوکان جوړیږي…",
   "shopkeeperSignup.haveAccount": "لکه حساب لرئ؟",
-  "signUp.customer": "د مشتری حساب جوړول (placeholder review needed)",
+  "signUp.customer": "مشتری",
+  "signUp.joinAs": "د کارن ډول چېړئ",
   "signUp.haveAccount": "لکه حساب لرئ؟",
   "shops.title": "دوکانونه",
   "shops.subtitle": "دukanونه واصل کولي نه dang khata تрекول ... (placeholder review needed)",

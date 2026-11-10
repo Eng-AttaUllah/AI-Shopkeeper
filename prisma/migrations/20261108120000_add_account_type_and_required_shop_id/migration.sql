@@ -57,7 +57,7 @@ CREATE TABLE "products_new" (
     "proposalId" TEXT,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL,
-    "shopId" TEXT NOT NULL,
+    "shopId" TEXT,
     CONSTRAINT "products_shopId_fkey" FOREIGN KEY ("shopId") REFERENCES "Shop" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
 );
 

@@ -19,15 +19,17 @@ async function main() {
   if (shop) {
     console.log(`Shop "${shop.name}" already exists.`);
   } else {
+    const shopCount = await prisma.shop.count();
     shop = await prisma.shop.create({
       data: {
         name: "Demo General Store",
         currency: "PKR",
         timezone: "Asia/Karachi",
+        shopId: `SP-${String(shopCount + 1).padStart(6, "0")}`,
       },
     });
 
-    console.log(`Seeded shop "${shop.name}" (${shop.id}).`);
+    console.log(`Seeded shop "${shop.name}" (${shop.shopId}).`);
   }
 
   const ownerPassword = process.env.OWNER_PASSWORD;

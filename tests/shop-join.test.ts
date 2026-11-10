@@ -26,8 +26,14 @@ beforeEach(async () => {
   await prisma.shop.deleteMany();
   await prisma.user.deleteMany();
 
+  const shopCount = await prisma.shop.count();
   const shop = await prisma.shop.create({
-    data: { name: "Test Shop", currency: "PKR", timezone: "Asia/Karachi" },
+    data: {
+      name: "Test Shop",
+      currency: "PKR",
+      timezone: "Asia/Karachi",
+      shopId: `SP-${String(shopCount + 1).padStart(6, "0")}`,
+    },
   });
   shopId = shop.id;
 
@@ -111,11 +117,13 @@ describe("createJoinRequest", () => {
 
     it("approves a pending request linked to an existing customer", async () => {
       const request = expectOk(await createJoinRequest(shopId, userId));
+      const customerCount = await prisma.customer.count();
       const customer = await prisma.customer.create({
         data: {
           name: "Existing Customer",
           phone: "0311 1112223",
           shopId,
+          customerId: `CST-${String(customerCount + 1).padStart(6, "0")}`,
         },
       });
 
@@ -166,8 +174,14 @@ describe("listShopsWithMembership", () => {
     await expectOk(await createJoinRequest(shopId, userId));
 
     // Create another shop with no membership
+    const otherShopCount = await prisma.shop.count();
     await prisma.shop.create({
-      data: { name: "Other Shop", currency: "PKR", timezone: "Asia/Karachi" },
+      data: {
+        name: "Other Shop",
+        currency: "PKR",
+        timezone: "Asia/Karachi",
+        shopId: `SP-${String(otherShopCount + 1).padStart(6, "0")}`,
+      },
     });
 
     const shops = await listShopsWithMembership(userId);
@@ -181,11 +195,23 @@ describe("listShopsWithMembership", () => {
   });
 
   it("filters shops by name", async () => {
+    const alphaCount = await prisma.shop.count();
     await prisma.shop.create({
-      data: { name: "Alpha Foods", currency: "PKR", timezone: "Asia/Karachi" },
+      data: {
+        name: "Alpha Foods",
+        currency: "PKR",
+        timezone: "Asia/Karachi",
+        shopId: `SP-${String(alphaCount + 1).padStart(6, "0")}`,
+      },
     });
+    const betaCount = await prisma.shop.count();
     await prisma.shop.create({
-      data: { name: "Beta Mart", currency: "PKR", timezone: "Asia/Karachi" },
+      data: {
+        name: "Beta Mart",
+        currency: "PKR",
+        timezone: "Asia/Karachi",
+        shopId: `SP-${String(betaCount + 1).padStart(6, "0")}`,
+      },
     });
 
     const shops = await listShopsWithMembership(userId, "alpha");

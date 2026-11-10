@@ -691,17 +691,20 @@ Update this file after every meaningful implementation change.
 
 ## Current Goal
 
-- Phase 13 — Multi-shop accounts: **13.1–13.6 Complete.** Phases 0–12 and their
-  follow-up units are complete on `main`.
-- Unit 13.6a added shop search by name with join-state annotation (none / pending /
+- Phase 13 — Multi-shop accounts: **Complete.** Units 13.1–13.7 all done. All 253 tests pass,
+  typecheck, lint, and production build all pass.
+
+## Completed
+
+### Phase 13 — Multi-shop accounts (complete)
   active) and customer-initiated join requests creating PENDING memberships.
 - Unit 13.6b added shopkeeper join request management: listJoinRequests(),
   approveJoinRequest() (link to existing Customer or create new one), rejectJoinRequest(),
   all audited. The Settings page shows a Join requests section for shopkeepers with
   per-request approve/reject forms. Dictionary keys added in both languages.
-- Unit 13.7 (hardening) in progress:
+- Unit 13.7 (hardening) **Complete:**
   - Rate limiting on login, shopkeeper signup, customer signup, join requests, and shop search
-  - Cross-shop isolation test matrix (tests/isolation.test.ts)
+  - Cross-shop isolation test matrix (tests/isolation.test.ts) — passing
   - Account recovery decision documented below
   - Camera per-shop routing decision documented below
 

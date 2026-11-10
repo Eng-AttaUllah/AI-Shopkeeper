@@ -108,12 +108,15 @@ export async function createCustomerWithStatus(
         }
       }
 
+      const customerCount = await tx.customer.count();
+
       const customer = await tx.customer.create({
         data: {
           name: data.name,
           phone: emptyToNull(data.phone),
           note: emptyToNull(data.note),
           shopId,
+          customerId: `CST-${String(customerCount + 1).padStart(6, "0")}`,
           proposalId: options.proposalId ?? null,
         },
       });
@@ -734,12 +737,16 @@ export async function approveJoinRequest(
 
         customer = found;
       } else if (options.createCustomerName) {
+        const customerCount = await tx.customer.count({
+          where: { shopId },
+        });
         customer = await tx.customer.create({
           data: {
             name: options.createCustomerName,
             phone: options.createCustomerPhone ?? null,
             note: options.createCustomerNote ?? null,
             shopId,
+            customerId: `CST-${String(customerCount + 1).padStart(6, "0")}`,
           },
         });
       } else {

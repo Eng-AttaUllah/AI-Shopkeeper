@@ -67,8 +67,14 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
+  const shopCount = await prisma.shop.count();
   const shop = await prisma.shop.create({
-    data: { name: "Test Shop", currency: "PKR", timezone: "Asia/Karachi" },
+    data: {
+      name: "Test Shop",
+      currency: "PKR",
+      timezone: "Asia/Karachi",
+      shopId: `SP-${String(shopCount + 1).padStart(6, "0")}`,
+    },
   });
   shopId = shop.id;
 
@@ -167,8 +173,17 @@ describe("customer proposal", () => {
   });
 
   it("refuses a duplicate customer name", async () => {
+    const customerCount = await prisma.customer.count({
+      where: { shopId },
+    });
     await prisma.customer.create({
-      data: { name: "Ali Khan", phone: null, note: null, shopId },
+      data: {
+        name: "Ali Khan",
+        phone: null,
+        note: null,
+        shopId,
+        customerId: `CST-${String(customerCount + 1).padStart(6, "0")}`,
+      },
     });
 
     const result = await runProposeCustomerTool(
