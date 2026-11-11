@@ -12,6 +12,7 @@ import {
   changeUserPassword,
   signOutEverywhere,
 } from "@/modules/settings/service";
+import { cancelJoinRequest, leaveShop } from "@/modules/customers/service";
 
 export type ChangePasswordState =
   | { ok: true }
@@ -105,4 +106,38 @@ export async function listJoinRequestsAction(): Promise<{
       createdAt: m.createdAt,
     })),
   };
+}
+
+export async function leaveShopAction(
+  formData: FormData,
+): Promise<void> {
+  const user = await requireUser();
+  const membershipId = String(formData.get("membershipId") ?? "");
+
+  if (!membershipId) {
+    throw new Error("Membership not found.");
+  }
+
+  const result = await leaveShop(user.id, membershipId);
+
+  if (!result.ok) {
+    throw new Error(result.error);
+  }
+}
+
+export async function cancelJoinRequestAction(
+  formData: FormData,
+): Promise<void> {
+  const user = await requireUser();
+  const membershipId = String(formData.get("membershipId") ?? "");
+
+  if (!membershipId) {
+    throw new Error("Join request not found.");
+  }
+
+  const result = await cancelJoinRequest(user.id, membershipId);
+
+  if (!result.ok) {
+    throw new Error(result.error);
+  }
 }

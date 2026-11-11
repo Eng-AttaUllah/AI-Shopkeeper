@@ -3,7 +3,7 @@ import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { readClientLocale, translate } from "@/lib/dictionary";
-import { requireActiveMembership } from "@/lib/require-user";
+import { requireUser } from "@/lib/require-user";
 import { shopSearchRateLimiter } from "@/lib/rate-limit";
 import { listShopsWithMembership } from "@/modules/customers/queries";
 import { JoinShopForm } from "@/components/shops/join-shop-form";
@@ -17,7 +17,7 @@ type ShopsPageProps = {
 export default async function ShopsPage({
   searchParams,
 }: ShopsPageProps) {
-  const { user } = await requireActiveMembership();
+  const user = await requireUser();
   const { q } = await searchParams;
   const search = q?.trim() ?? "";
 

@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 
-import { requireActiveMembership } from "@/lib/require-user";
+import { requireUser } from "@/lib/require-user";
 import { joinRequestRateLimiter } from "@/lib/rate-limit";
 import { createJoinRequest } from "@/modules/customers/service";
 
@@ -14,7 +14,7 @@ export async function joinShopAction(
   _previousState: ShopJoinActionState,
   formData: FormData,
 ): Promise<ShopJoinActionState> {
-  const { user } = await requireActiveMembership();
+  const user = await requireUser();
   const shopId = String(formData.get("shopId") ?? "");
 
   if (!shopId) {

@@ -825,3 +825,118 @@ export async function rejectJoinRequest(
     return handleError(error);
   }
 }
+
+/**
+ * Leave a shop as a customer. The membership becomes REMOVED and is audited.
+ * The shop's ledger Customer record stays with the shop — leaving only ends
+ * the login's access, not the shop's record of any khata the customer owes.
+ * A customer may leave even while they owe money; the shop keeps the balance.
+ * Only the membership's own owner may call this, only while ACTIVE.
+ */
+export async function leaveShop(
+  userId: string,
+  membershipId: string,
+): Promise<Result<{ membership: ShopMembership }>> {
+  try {
+    const outcome = await prisma.$transaction(async (tx) => {
+      const membership = await tx.shopMembership.findFirst({
+        where: { id: membershipId, userId, role: "CUSTOMER", status: "ACTIVE" },
+        include: { shop: true },
+      });
+
+      if (!membership) {
+        throw new ServiceError(
+          "Active customer membership not found for this shop.",
+        );
+      }
+
+      const before = {
+        role: membership.role,
+        status: membership.status,
+        customerId: membership.customerId,
+      };
+
+      let balancePaisa: number | undefined;
+      if (membership.customerId) {
+        balancePaisa = await outstandingPaisa(
+          tx,
+          membership.shopId,
+          membership.customerId,
+        );
+      }
+
+      const updated = await tx.shopMembership.update({
+        where: { id: membershipId },
+        data: { status: "REMOVED" },
+      });
+
+      await writeAudit(tx, {
+        actor: membership.shop ? "local" : undefined,
+        shopId: membership.shopId,
+        action: "MEMBERSHIP_LEFT",
+        entityType: "ShopMembership",
+        entityId: membershipId,
+        summary: `Customer left shop "${membership.shop?.name ?? membership.shopId}"`,
+        before,
+        after: { status: "REMOVED" },
+        details: balancePaisa !== undefined
+          ? { outstandingPaisa: balancePaisa }
+          : undefined,
+      });
+
+      return { membership: updated };
+    });
+
+    return ok(outcome);
+  } catch (error) {
+    return handleError(error);
+  }
+}
+
+/**
+ * Cancel a PENDING join request. The membership becomes REMOVED and is audited.
+ * Only the request's own owner may call this, only while PENDING.
+ */
+export async function cancelJoinRequest(
+  userId: string,
+  membershipId: string,
+): Promise<Result<{ membership: ShopMembership }>> {
+  try {
+    const outcome = await prisma.$transaction(async (tx) => {
+      const membership = await tx.shopMembership.findFirst({
+        where: { id: membershipId, userId, role: "CUSTOMER", status: "PENDING" },
+        include: { shop: true },
+      });
+
+      if (!membership) {
+        throw new ServiceError(
+          "Pending join request not found for this account.",
+        );
+      }
+
+      const before = { role: membership.role, status: membership.status };
+
+      const updated = await tx.shopMembership.update({
+        where: { id: membershipId },
+        data: { status: "REMOVED" },
+      });
+
+      await writeAudit(tx, {
+        actor: membership.shop ? "local" : undefined,
+        shopId: membership.shopId,
+        action: "JOIN_REQUEST_CANCELLED",
+        entityType: "ShopMembership",
+        entityId: membershipId,
+        summary: `Join request cancelled for shop "${membership.shop?.name ?? membership.shopId}"`,
+        before,
+        after: { status: "REMOVED" },
+      });
+
+      return { membership: updated };
+    });
+
+    return ok(outcome);
+  } catch (error) {
+    return handleError(error);
+  }
+}

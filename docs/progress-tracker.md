@@ -707,6 +707,7 @@ Update this file after every meaningful implementation change.
   - Cross-shop isolation test matrix (tests/isolation.test.ts) — passing
   - Account recovery decision documented below
   - Camera per-shop routing decision documented below
+  - Customer signup → /shops flow fixed: requireUser() replaces requireActiveMembership() in shops page and join action so newly registered customers (who have no ShopMembership yet) can search and request to join a shop
 
 ## Next Up
 

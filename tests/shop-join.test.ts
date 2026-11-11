@@ -6,6 +6,8 @@ import type { Result } from "@/lib/result";
 import { createJoinRequest } from "@/modules/customers/service";
 import { approveJoinRequest } from "@/modules/customers/service";
 import { rejectJoinRequest } from "@/modules/customers/service";
+import { leaveShop } from "@/modules/customers/service";
+import { cancelJoinRequest } from "@/modules/customers/service";
 import { listShopsWithMembership } from "@/modules/customers/queries";
 
 function expectOk<T>(result: Result<T>): T {
@@ -217,5 +219,124 @@ describe("listShopsWithMembership", () => {
     const shops = await listShopsWithMembership(userId, "alpha");
     expect(shops).toHaveLength(1);
     expect(shops[0]?.name).toBe("Alpha Foods");
+  });
+});
+
+describe("leaveShop", () => {
+  it("leaves an active membership (sets REMOVED)", async () => {
+    const membership = await prisma.shopMembership.create({
+      data: { shopId, userId, role: "CUSTOMER", status: "ACTIVE" },
+    });
+    const result = expectOk(await leaveShop(userId, membership.id));
+
+    expect(result.membership.status).toBe("REMOVED");
+  });
+
+  it("refuses to leave a non-existent membership", async () => {
+    const result = await leaveShop(userId, "does-not-exist");
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error).toBe(
+        "Active customer membership not found for this shop.",
+      );
+    }
+  });
+
+  it("refuses to leave another user's membership (isolation)", async () => {
+    const otherUser = await prisma.user.create({
+      data: {
+        username: "03009999999",
+        name: "Other Customer",
+        passwordHash: await hash("password", 12),
+        accountType: "CUSTOMER",
+      },
+    });
+    const membership = await prisma.shopMembership.create({
+      data: {
+        shopId,
+        userId: otherUser.id,
+        role: "CUSTOMER",
+        status: "ACTIVE",
+      },
+    });
+    const result = await leaveShop(userId, membership.id);
+    expect(result.ok).toBe(false);
+  });
+
+  it("keeps the ledger customer record when leaving", async () => {
+    const customerCount = await prisma.customer.count();
+    const customer = await prisma.customer.create({
+      data: {
+        name: "Ledger Customer",
+        phone: "0311 2223334",
+        shopId,
+        customerId: `CST-${String(customerCount + 1).padStart(6, "0")}`,
+      },
+    });
+    const membership = await prisma.shopMembership.create({
+      data: {
+        shopId,
+        userId,
+        role: "CUSTOMER",
+        status: "ACTIVE",
+        customerId: customer.id,
+      },
+    });
+
+    const result = expectOk(await leaveShop(userId, membership.id));
+
+    expect(result.membership.status).toBe("REMOVED");
+    expect(result.membership.customerId).toBe(customer.id);
+
+    // The shop keeps its ledger record of the customer.
+    const stillThere = await prisma.customer.findUnique({
+      where: { id: customer.id },
+    });
+    expect(stillThere).not.toBeNull();
+  });
+});
+
+describe("cancelJoinRequest", () => {
+  it("cancels a pending join request", async () => {
+    const membership = await prisma.shopMembership.create({
+      data: { shopId, userId, role: "CUSTOMER", status: "PENDING" },
+    });
+    const result = expectOk(await cancelJoinRequest(userId, membership.id));
+
+    expect(result.membership.status).toBe("REMOVED");
+  });
+
+  it("refuses to cancel an active membership", async () => {
+    const membership = await prisma.shopMembership.create({
+      data: { shopId, userId, role: "CUSTOMER", status: "ACTIVE" },
+    });
+    const result = await cancelJoinRequest(userId, membership.id);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error).toBe(
+        "Pending join request not found for this account.",
+      );
+    }
+  });
+
+  it("refuses to cancel another user's request (isolation)", async () => {
+    const otherUser = await prisma.user.create({
+      data: {
+        username: "03008888888",
+        name: "Other Customer",
+        passwordHash: await hash("password", 12),
+        accountType: "CUSTOMER",
+      },
+    });
+    const membership = await prisma.shopMembership.create({
+      data: {
+        shopId,
+        userId: otherUser.id,
+        role: "CUSTOMER",
+        status: "PENDING",
+      },
+    });
+    const result = await cancelJoinRequest(userId, membership.id);
+    expect(result.ok).toBe(false);
   });
 });

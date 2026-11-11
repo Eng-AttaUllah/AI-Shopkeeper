@@ -4,8 +4,10 @@
 
 Light theme only. The shop is bright during the day and the interface must stay readable in
 daylight on a cheap phone screen. The design language is a clean, calm business workspace:
-warm off-white backgrounds, white surfaces, near-black text, and one teal accent reserved for
-the primary action on each screen.
+white surfaces, near-black text, and one fresh green accent reserved for the primary action on
+each screen. Applied per the AI Grocery Delivery / Fresh Food design direction — large rounded
+cards, pill chips, large touch targets — but style language only: no cart, delivery, or
+e-commerce features copied, and no assets reused from that reference.
 
 Principles:
 
@@ -24,13 +26,13 @@ All components must use these tokens — no hardcoded hex values.
 | --------------- | ------------------ | --------- |
 | Page background | `--bg-base`        | `#FFFFFF` |
 | Surface         | `--bg-surface`     | `#FFFFFF` |
-| Subtle surface  | `--bg-subtle`      | `#F7FAF9` |
-| Mint tint       | `--bg-tint`        | `#ECFDF5` |
+| Subtle surface  | `--bg-subtle`      | `#F0FDF4` |
+| Green tint      | `--bg-tint`        | `#D1FAE5` |
 | Primary text    | `--text-primary`   | `#17181A` |
 | Muted text      | `--text-muted`     | `#6B7280` |
-| Primary accent  | `--accent-primary` | `#0F766E` |
-| Accent hover    | `--accent-hover`   | `#115E59` |
-| Accent soft     | `--accent-soft`    | `#ECFDF5` |
+| Primary accent  | `--accent-primary` | `#16A34A` |
+| Accent hover    | `--accent-hover`   | `#15803D` |
+| Accent soft     | `--accent-soft`    | `#D1FAE5` |
 | Money accent    | `--accent-money`   | `#B45309` |
 | Money hover     | `--accent-money-hover` | `#92400E` |
 | Money soft      | `--accent-money-soft`  | `#FEF3C7` |

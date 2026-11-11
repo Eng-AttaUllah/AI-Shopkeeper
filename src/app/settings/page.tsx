@@ -1,14 +1,22 @@
 import Link from "next/link";
 
 import { approveJoinRequestAction } from "@/app/settings/actions";
+import { cancelJoinRequestAction } from "@/app/settings/actions";
+import { leaveShopAction } from "@/app/settings/actions";
 import { rejectJoinRequestAction } from "@/app/settings/actions";
 import { signOutAction } from "@/app/auth-actions";
 import { signOutEverywhereAction } from "@/app/settings/actions";
 import { ChangePasswordForm } from "@/components/settings/change-password-form";
 import { Button } from "@/components/ui/button";
 import { JoinRequestForm } from "@/components/shops/join-request-form";
+import { prisma } from "@/lib/db";
+import { formatPaisa } from "@/lib/format";
 import { readClientLocale, translate } from "@/lib/dictionary";
-import { requireActiveMembership } from "@/lib/require-user";
+import { requireShopkeeper, requireUser } from "@/lib/require-user";
+import {
+  customerBalancePaisa,
+  listShopsWithMembership,
+} from "@/modules/customers/queries";
 import { listJoinRequests } from "@/modules/customers/service";
 
 export const dynamic = "force-dynamic";
@@ -20,15 +28,47 @@ const ROLE_LABEL_KEYS: Record<string, string> = {
 };
 
 export default async function SettingsPage() {
-  const { user, shop, membership } = await requireActiveMembership();
+  const user = await requireUser();
   const locale = readClientLocale();
 
   function t(key: string, params?: Record<string, string>): string {
     return translate(locale, key, params);
   }
 
+  const isCustomer = user.accountType === "CUSTOMER";
+  const isShopkeeper = user.accountType === "SHOPKEEPER";
+
+  const myShops = isCustomer ? await listShopsWithMembership(user.id) : [];
+
+  const balances = new Map<string, string>();
+  if (isCustomer) {
+    for (const shop of myShops) {
+      if (shop.membershipState === "active") {
+        const membership = await prisma.shopMembership.findFirst({
+          where: {
+            userId: user.id,
+            shopId: shop.id,
+            status: "ACTIVE",
+            role: "CUSTOMER",
+          },
+          select: { customerId: true },
+        });
+        if (membership?.customerId) {
+          const balance = await customerBalancePaisa(shop.id, membership.customerId);
+          balances.set(shop.id, formatPaisa(balance));
+        }
+      }
+    }
+  }
+
+  let shopkeeperShop: { id: string; name: string } | null = null;
+  if (isShopkeeper) {
+    const { shop } = await requireShopkeeper();
+    shopkeeperShop = { id: shop.id, name: shop.name };
+  }
+
   const joinRequests =
-    membership.role === "OWNER" ? await listJoinRequests(shop.id) : [];
+    shopkeeperShop ? await listJoinRequests(shopkeeperShop.id) : [];
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-8">
@@ -114,7 +154,106 @@ export default async function SettingsPage() {
         </div>
       </section>
 
-      {membership.role === "OWNER" ? (
+      {isCustomer && myShops.length > 0 ? (
+        <section id="my-shops" className="scroll-mt-20 rounded-xl border border-line bg-surface p-5">
+          <h2 className="text-lg font-semibold">{t("settings.myShops")}</h2>
+          <p className="mt-1 text-sm text-ink-muted">
+            {t("settings.myShopsHint")}
+          </p>
+          <ul className="mt-3 divide-y divide-line">
+            {myShops.map((shop) => {
+              const active = shop.membershipState === "active";
+              const pending = shop.membershipState === "pending";
+
+              return (
+                <li key={shop.id} className="py-3 last:pb-0">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <p className="font-medium">{shop.name}</p>
+                      <p className="text-sm text-ink-muted">
+                        {active
+                          ? t("settings.membershipActive")
+                          : pending
+                            ? t("settings.membershipPending")
+                            : t("settings.membershipRemoved")}
+                      </p>
+                    </div>
+                    <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
+                      {active ? (
+                        <>
+                          <div className="flex items-end gap-1">
+                            <span className="font-semibold text-brand">
+                              {balances.get(shop.id) ?? "0.00"}
+                            </span>
+                            <span className="text-xs text-ink-muted">
+                              {t("settings.outstandingBalance")}
+                            </span>
+                          </div>
+                          <form
+                            action={leaveShopAction}
+                            className="mt-2 sm:mt-0"
+                            onSubmit={(event) => {
+                              if (
+                                !window.confirm(
+                                  t("settings.confirmLeave", {
+                                    shop: shop.name,
+                                  }),
+                                )
+                              ) {
+                                event.preventDefault();
+                              }
+                            }}
+                          >
+                            <input type="hidden" name="membershipId" value={shop.id} />
+                            <Button
+                              type="submit"
+                              variant="destructive"
+                              className="h-10 px-4 text-sm"
+                            >
+                              {t("settings.leaveShop")}
+                            </Button>
+                          </form>
+                        </>
+                      ) : pending ? (
+                        <form
+                          action={cancelJoinRequestAction}
+                          className="mt-2 sm:mt-0"
+                          onSubmit={(event) => {
+                            if (
+                              !window.confirm(
+                                t("settings.cancelRequestHint", {
+                                  shop: shop.name,
+                                }),
+                              )
+                            ) {
+                              event.preventDefault();
+                            }
+                          }}
+                        >
+                          <input type="hidden" name="membershipId" value={shop.id} />
+                          <Button
+                            type="submit"
+                            variant="outline"
+                            className="h-10 px-4 text-sm"
+                          >
+                            {t("settings.cancelRequest")}
+                          </Button>
+                        </form>
+                      ) : null}
+                    </div>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      ) : isCustomer ? (
+        <p className="mt-3 text-sm text-ink-muted">
+          {t("settings.noBalance")}
+        </p>
+      ) : null}
+
+      {shopkeeperShop ? (
         <section id="join-requests" className="scroll-mt-20 rounded-xl border border-line bg-surface p-5">
           <h2 className="text-lg font-semibold">{t("shops.joinRequests")}</h2>
           <p className="mt-1 text-sm text-ink-muted">
